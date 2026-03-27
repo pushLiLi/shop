@@ -3,11 +3,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import { getStateName } from '../utils/states'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
+const toast = useToastStore()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
@@ -16,6 +18,7 @@ const loading = ref(false)
 const error = ref(null)
 const addresses = ref([])
 const selectedAddressId = ref(null)
+const remark = ref('')
 
 onMounted(async () => {
   if (!authStore.isLoggedIn) {
@@ -75,8 +78,8 @@ async function createOrder() {
     })
     await res.json()
     cartStore.clear()
+    toast.success('订单创建成功！')
     router.push('/orders')
-    alert('订单创建成功！')
   } catch (e) {
     error.value = e.message
   } finally {
