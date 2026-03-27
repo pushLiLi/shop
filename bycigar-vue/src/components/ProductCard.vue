@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
+import { useToastStore } from '../stores/toast'
 
 const emit = defineEmits(['addToCart'])
 
@@ -18,6 +19,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
+const toast = useToastStore()
 
 const isFavorite = computed(() => {
   return favoritesStore.items.some(item => item.productId === props.product.id)
@@ -35,7 +37,7 @@ async function addToCartHandler(e) {
     return
   }
   await cartStore.addItem(props.product, 1)
-  alert('已添加到购物车')
+  toast.success('已添加到购物车')
 }
 
 async function toggleFavorite(e) {

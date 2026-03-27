@@ -3,12 +3,14 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
+import { useToastStore } from '../stores/toast'
 import ProductCard from '../components/ProductCard.vue'
 
 const route = useRoute()
 const router = useRouter()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
+const toast = useToastStore()
 const product = ref(null)
 const relatedProducts = ref([])
 const loading = ref(true)
@@ -60,7 +62,7 @@ function decreaseQty() {
 async function addToCart() {
   if (!product.value) return
   await cartStore.addItem(product.value, quantity.value)
-  alert(`已添加 ${quantity.value} 件到购物车`)
+  toast.success(`已添加 ${quantity.value} 件到购物车`)
 }
 
 async function toggleFavorite() {
