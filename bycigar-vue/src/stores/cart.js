@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
+import { useToastStore } from './toast'
 
 const API_BASE = 'http://localhost:3000/api'
+const pendingUpdates = new Map()
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')
@@ -67,37 +69,62 @@ export const useCartStore = defineStore('cart', {
     
     async updateQuantity(cartItemId, quantity) {
       if (quantity < 1) {
-        await this.removeItem(cartItemId)
+        this.removeItem(cartItemId)
         return
       }
-      try {
-        const res = await fetch(`${API_BASE}/cart/${cartItemId}`, {
-          method: 'PUT',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ quantity })
-        })
-        const data = await res.json()
-        if (data.success) {
-          await this.fetchCart()
-        }
-      } catch (e) {
-        console.error('Update quantity failed:', e)
+      
+      this.items = this.items.map(item =>
+        item.id === cartItemId ? { ...item, quantity } : item
+      )
+      
+      if (pendingUpdates.has(cartItemId)) {
+        clearTimeout(pendingUpdates.get(cartItemId))
       }
+      
+      pendingUpdates.set(cartItemId, setTimeout(async () => {
+        pendingUpdates.delete(cartItemId)
+        try {
+          const res = await fetch(`${API_BASE}/cart/${cartItemId}`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ quantity })
+          })
+          const data = await res.json()
+          if (!data.success) {
+            useToastStore().error('更新失败')
+          }
+        } catch (e) {
+          useToastStore().error('更新失败')
+        }
+      }, 300))
     },
     
-    async removeItem(cartItemId) {
-      try {
-        const res = await fetch(`${API_BASE}/cart/${cartItemId}`, {
-          method: 'DELETE',
-          headers: getAuthHeaders()
-        })
-        const data = await res.json()
-        if (data.success) {
-          await this.fetchCart()
-        }
-      } catch (e) {
-        console.error('Remove item failed:', e)
+    removeItem(cartItemId) {
+      if (pendingUpdates.has(cartItemId)) {
+        clearTimeout(pendingUpdates.get(cartItemId))
+        pendingUpdates.delete(cartItemId)
       }
+      
+      const oldItem = this.items.find(item => item.id === cartItemId)
+      this.items = this.items.filter(item => item.id !== cartItemId)
+      
+      fetch(`${API_BASE}/cart/${cartItemId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success && oldItem) {
+            this.items.push(oldItem)
+            useToastStore().error('删除失败')
+          }
+        })
+        .catch(() => {
+          if (oldItem) {
+            this.items.push(oldItem)
+            useToastStore().error('删除失败')
+          }
+        })
     },
     
     clear() {

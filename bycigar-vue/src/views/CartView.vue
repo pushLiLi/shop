@@ -12,6 +12,24 @@ function formatPrice(price) {
   return `$${Number(price).toFixed(2)}`
 }
 
+function handleInput(item, e) {
+  const val = parseInt(e.target.value) || 0
+  const idx = cartStore.items.findIndex(i => i.id === item.id)
+  if (idx !== -1) {
+    cartStore.items[idx] = { ...cartStore.items[idx], quantity: val }
+  }
+}
+
+function handleBlur(item) {
+  let qty = parseInt(item.quantity) || 0
+  if (qty < 1) qty = 1
+  const idx = cartStore.items.findIndex(i => i.id === item.id)
+  if (idx !== -1) {
+    cartStore.items[idx] = { ...cartStore.items[idx], quantity: qty }
+  }
+  cartStore.updateQuantity(item.id, qty)
+}
+
 onMounted(() => {
   cartStore.fetchCart()
 })
@@ -40,14 +58,24 @@ onMounted(() => {
                 <router-link :to="'/products/' + item.productId">{{ item.product?.name }}</router-link>
               </h3>
               <div class="item-price">单价: {{ formatPrice(item.product?.price) }}</div>
-              <div class="item-actions">
-                <div class="quantity-control">
-                   <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
-                   <span>{{ item.quantity }}</span>
-                   <button @click="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
-                 </div>
-                 <button @click="cartStore.removeItem(item.id)" class="remove-btn">删除</button>
-              </div>
+               <div class="item-actions">
+                 <div class="quantity-control">
+                    <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
+                    <input 
+                      type="number"
+                      :value="item.quantity"
+                      @input="handleInput(item, $event)"
+                      @blur="handleBlur(item)"
+                      @keyup.enter="handleBlur(item)"
+                      min="1"
+                    />
+                    <button @click="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
+                  </div>
+                  <button 
+                    @click="cartStore.removeItem(item.id)" 
+                    class="remove-btn"
+                  >删除</button>
+               </div>
               <div class="item-total">
                 小计: {{ formatPrice((item.product?.price || 0) * item.quantity) }}
               </div>
@@ -163,7 +191,7 @@ onMounted(() => {
 .quantity-control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .quantity-control button {
@@ -174,16 +202,32 @@ onMounted(() => {
   height: 30px;
   cursor: pointer;
   border-radius: 4px;
+  font-size: 16px;
 }
 
 .quantity-control button:hover {
   background: #3a3a3a;
 }
 
-.quantity-control span {
+.quantity-control input {
+  background: #2a2a2a;
+  border: 1px solid #444;
   color: #fff;
-  min-width: 40px;
+  width: 50px;
+  height: 30px;
   text-align: center;
+  font-size: 14px;
+  border-radius: 4px;
+}
+
+.quantity-control input::-webkit-outer-spin-button,
+.quantity-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-control input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .remove-btn {

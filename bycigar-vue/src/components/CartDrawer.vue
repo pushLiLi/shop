@@ -14,6 +14,24 @@ function formatPrice(price) {
   return `$${Number(price).toFixed(2)}`
 }
 
+function handleInput(item, e) {
+  const val = parseInt(e.target.value) || 0
+  const idx = cartStore.items.findIndex(i => i.id === item.id)
+  if (idx !== -1) {
+    cartStore.items[idx] = { ...cartStore.items[idx], quantity: val }
+  }
+}
+
+function handleBlur(item) {
+  let qty = parseInt(item.quantity) || 0
+  if (qty < 1) qty = 1
+  const idx = cartStore.items.findIndex(i => i.id === item.id)
+  if (idx !== -1) {
+    cartStore.items[idx] = { ...cartStore.items[idx], quantity: qty }
+  }
+  cartStore.updateQuantity(item.id, qty)
+}
+
 function closeDrawer() {
   cartStore.closeCart()
 }
@@ -77,10 +95,20 @@ watch(() => cartStore.isOpen, (isOpen) => {
                   <div class="item-actions">
                     <div class="quantity-control">
                       <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
-                      <span>{{ item.quantity }}</span>
+                      <input 
+                        type="number"
+                        :value="item.quantity"
+                        @input="handleInput(item, $event)"
+                        @blur="handleBlur(item)"
+                        @keyup.enter="handleBlur(item)"
+                        min="1"
+                      />
                       <button @click="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
                     </div>
-                    <button @click="cartStore.removeItem(item.id)" class="remove-btn">
+                    <button 
+                      @click="cartStore.removeItem(item.id)" 
+                      class="remove-btn"
+                    >
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -264,7 +292,7 @@ watch(() => cartStore.isOpen, (isOpen) => {
 .quantity-control {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 .quantity-control button {
@@ -285,11 +313,25 @@ watch(() => cartStore.isOpen, (isOpen) => {
   background: #3a3a3a;
 }
 
-.quantity-control span {
+.quantity-control input {
+  background: #2a2a2a;
+  border: 1px solid #444;
   color: #fff;
-  min-width: 24px;
+  width: 40px;
+  height: 24px;
   text-align: center;
   font-size: 13px;
+  border-radius: 4px;
+}
+
+.quantity-control input::-webkit-outer-spin-button,
+.quantity-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-control input[type=number] {
+  -moz-appearance: textfield;
 }
 
 .remove-btn {
