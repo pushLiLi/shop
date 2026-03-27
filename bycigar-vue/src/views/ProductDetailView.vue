@@ -59,6 +59,12 @@ function decreaseQty() {
   if (quantity.value > 1) quantity.value--
 }
 
+function handleQtyInput() {
+  if (!quantity.value || quantity.value < 1) {
+    quantity.value = 1
+  }
+}
+
 async function addToCart() {
   if (!product.value) return
   await cartStore.addItem(product.value, quantity.value)
@@ -117,7 +123,7 @@ onMounted(() => {
             <div class="purchase-section">
               <div class="quantity-selector">
                 <button class="qty-btn" @click="decreaseQty">-</button>
-                <input type="number" v-model="quantity" min="1" class="qty-input">
+                <input type="number" v-model.number="quantity" min="1" class="qty-input" @input="handleQtyInput">
                 <button class="qty-btn" @click="increaseQty">+</button>
               </div>
               <button class="buy-btn" @click="addToCart">加入购物车</button>
@@ -277,18 +283,32 @@ onMounted(() => {
 }
 
 .qty-input {
-  background: #1a1a1a;
-  border: none;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
   color: #fff;
   width: 60px;
   height: 40px;
   text-align: center;
   font-size: 16px;
+  -moz-appearance: textfield;
 }
 
 .qty-input::-webkit-inner-spin-button,
 .qty-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
+  margin: 0;
+}
+
+.qty-input:focus {
+  outline: none;
+  box-shadow: 0 0 8px rgba(212, 165, 116, 0.5);
+}
+
+.qty-input::-webkit-inner-spin-button,
+.qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .buy-btn {
