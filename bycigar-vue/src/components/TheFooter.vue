@@ -1,5 +1,9 @@
 <script setup>
+import { onMounted } from 'vue'
+import { useSettingsStore } from '../stores/useSettingsStore'
+
 const currentYear = new Date().getFullYear()
+const settingsStore = useSettingsStore()
 
 const footerLinks = [
   { name: '关于我们', path: '/about' },
@@ -7,6 +11,10 @@ const footerLinks = [
   { name: '隐私政策', path: '/privacy-policy' },
   { name: '严正声明', path: '/statement' }
 ]
+
+onMounted(() => {
+  settingsStore.fetchSettings()
+})
 </script>
 
 <template>
@@ -28,8 +36,8 @@ const footerLinks = [
         </div>
 
         <div class="footer-description">
-          <p>BYCIGAR是中国领先的雪茄文化与在线购物平台。我们提供最新、最专业的雪茄测评、品牌新闻与养护知识，并为您甄选全球优质雪茄及配件，支持便捷在线购买。加入我们的雪茄社区，探索醇香世界。</p>
-          <p class="service-time"><strong>客服在线时间每周一至周六 9:00到18:00</strong></p>
+          <p>{{ settingsStore.footerDescription }}</p>
+          <p class="service-time"><strong>{{ settingsStore.footerServiceTime }}</strong></p>
         </div>
 
 

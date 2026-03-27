@@ -57,6 +57,7 @@ func main() {
 	r.GET("/api/banners", handlers.GetBanners)
 
 	r.GET("/api/pages/:slug", handlers.GetPage)
+	r.GET("/api/settings", handlers.GetSettings)
 
 	r.GET("/api/cart", handlers.GetCart)
 	r.POST("/api/cart", handlers.AddToCart)
@@ -104,6 +105,8 @@ func main() {
 
 		admin.GET("/pages", handlers.GetAdminPages)
 		admin.PUT("/pages/:slug", handlers.UpdatePage)
+
+		admin.PUT("/settings/:key", handlers.UpdateSetting)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

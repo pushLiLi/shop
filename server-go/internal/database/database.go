@@ -60,6 +60,7 @@ func Migrate() {
 		&models.SiteConfig{},
 		&models.Banner{},
 		&models.Page{},
+		&models.Setting{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -70,6 +71,7 @@ func Migrate() {
 func Seed() {
 	SeedAdminUser()
 	SeedPages()
+	SeedSettings()
 }
 
 func SeedAdminUser() {
@@ -112,6 +114,20 @@ func SeedPages() {
 		var existing models.Page
 		if err := DB.Where("slug = ?", page.Slug).First(&existing).Error; err != nil {
 			DB.Create(&page)
+		}
+	}
+}
+
+func SeedSettings() {
+	defaultSettings := []models.Setting{
+		{Key: "footer_description", Value: "BYCIGAR是中国领先的雪茄文化与在线购物平台。我们提供最新、最专业的雪茄测评、品牌新闻与养护知识，并为您甄选全球优质雪茄及配件，支持便捷在线购买。加入我们的雪茄社区，探索醇香世界。"},
+		{Key: "footer_service_time", Value: "客服在线时间每周一至周六 9:00到18:00"},
+	}
+
+	for _, setting := range defaultSettings {
+		var existing models.Setting
+		if err := DB.Where("key = ?", setting.Key).First(&existing).Error; err != nil {
+			DB.Create(&setting)
 		}
 	}
 }

@@ -15,6 +15,7 @@ import AdminProducts from '../views/admin/AdminProducts.vue'
 import AdminBanners from '../views/admin/AdminBanners.vue'
 import AdminCategories from '../views/admin/AdminCategories.vue'
 import AdminPages from '../views/admin/AdminPages.vue'
+import AdminSettings from '../views/admin/AdminSettings.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -115,6 +116,12 @@ const router = createRouter({
           name: 'admin-pages',
           component: AdminPages,
           meta: { title: '页面管理' }
+        },
+        {
+          path: 'settings',
+          name: 'admin-settings',
+          component: AdminSettings,
+          meta: { title: '站点设置' }
         }
       ]
     }

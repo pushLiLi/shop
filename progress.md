@@ -2,67 +2,37 @@
 
 ## 已完成
 
-### Phase 1 - 动态架构与编辑模式 ✅
-- [x] 后端 Express 服务器 (`server/index.js`)
-- [x] Prisma + SQLite 数据库 (`server/prisma/schema.prisma`)
-- [x] 数据模型: Product, Category, SiteConfig, User
-- [x] 数据库迁移和种子数据
-- [x] API 端点: `/api/products`, `/api/categories`, `/api/config`
-- [x] Admin API: `/api/auth/login`, `/api/admin/config/:key`, `/api/admin/upload`
-- [x] 前端 Pinia store (`stores/auth.js`)
-- [x] EditableText.vue 和 EditableImage.vue 组件
+### 基础架构 ✅
+- [x] Go 后端服务器 (Gin + GORM + MySQL)
+- [x] Vue 3 前端 (Vite + Vue Router + Pinia)
+- [x] JWT 认证系统
+- [x] 管理后台框架
 
-### Phase 3 - 购物车与交易流程 ✅
-- [x] Cart, Order, OrderItem, Favorite 数据模型
-- [x] 购物车 API: `/api/cart`, `/api/cart/:id`
-- [x] 订单 API: `/api/orders`, `/api/orders/:id`
-- [x] 收藏 API: `/api/favorites`
-- [x] 购物车 Store (`stores/cart.js`)
-- [x] CartView.vue (购物车页面)
-- [x] CheckoutView.vue (结算页面)
-- [x] ProductCard 添加购物车功能
-- [x] Header 显示购物车数量
+### 核心功能 ✅
+- [x] 商品管理 (CRUD)
+- [x] 分类管理 (CRUD)
+- [x] 轮播图管理
+- [x] CMS 页面管理 (Markdown + 数据库)
+- [x] 购物车功能
+- [x] 订单功能
+- [x] 收藏功能
+- [x] 收货地址管理
+- [x] 用户认证与资料
 
-## 待完成
-
-- [ ] OrdersView.vue (订单列表页面)
-- [ ] FavoritesView.vue (收藏功能)
-- [ ] Header 搜索功能集成
-- [ ] 管理后台 (Phase 4)
+### 站点设置 ✅ (新增)
+- [x] Setting 模型 (key-value 存储)
+- [x] 设置 API (GET /api/settings, PUT /api/admin/settings/:key)
+- [x] AdminSettings.vue 管理页面
+- [x] TheFooter.vue 动态页脚内容
+- [x] useSettingsStore.js 状态管理
 
 ## 服务器状态
 
 - 后端: http://localhost:3000
-- 前端: http://localhost:5175
+- 前端: http://localhost:5173
 
-## 文件结构
+## 技术栈
 
-```
-server/
-├── index.js          # Express API 服务器
-├── prisma/
-│   ├── schema.prisma # 数据库模型
-│   └── migrations/   # 迁移文件
-├── seed.js           # 种子数据脚本
-└── public/uploads/   # 上传文件目录
-
-bycigar-vue/
-├── src/
-│   ├── components/
-│   │   ├── ProductCard.vue      # 产品卡片组件
-│   │   ├── EditableText.vue     # 可编辑文本
-│   │   └── EditableImage.vue    # 可编辑图片
-│   ├── views/
-│   │   ├── HomeView.vue         # 馽页
-│   │   ├── CategoryView.vue     # 分类页
-│   │   ├── ProductDetailView.vue # 产品详情
-│   │   ├── CartView.vue         # 购物车
-│   │   ├── CheckoutView.vue     # 结算页
-│   │   └── SearchView.vue       # 搜索页
-│   ├── stores/
-│   │   ├── auth.js              # 认证状态
-│   │   └── cart.js              # 购物车状态
-│   └── router/
-│       └── index.js             # 路由配置
-└── vite.config.js               # Vite 配置 (API 代理)
-```
+- 前端: Vue 3 + Vite + Vue Router + Pinia + marked
+- 后端: Go 1.23 + Gin + GORM + JWT + Swagger
+- 数据库: MySQL 8.4 (Docker)
