@@ -37,6 +37,17 @@ func GetProducts(c *gin.Context) {
 	sortBy := c.DefaultQuery("sortBy", c.DefaultQuery("sort", "createdAt"))
 	sortOrder := c.DefaultQuery("sortOrder", c.DefaultQuery("order", "desc"))
 
+	sortColumnMap := map[string]string{
+		"createdAt": "created_at",
+		"price":     "price",
+		"name":      "name",
+		"id":        "id",
+	}
+	sortColumn, ok := sortColumnMap[sortBy]
+	if !ok {
+		sortColumn = "created_at"
+	}
+
 	if page < 1 {
 		page = 1
 	}
@@ -70,9 +81,9 @@ func GetProducts(c *gin.Context) {
 	var total int64
 	query.Count(&total)
 
-	orderClause := sortBy + " " + sortOrder
+	orderClause := sortColumn + " " + sortOrder
 	if sortOrder != "asc" {
-		orderClause = sortBy + " DESC"
+		orderClause = sortColumn + " DESC"
 	}
 
 	var products []models.Product

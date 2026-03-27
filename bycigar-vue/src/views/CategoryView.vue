@@ -48,7 +48,8 @@ async function fetchProducts() {
 }
 
 watch(() => route.params.slug, (newSlug) => {
-  categorySlug.value = newSlug
+  categorySlug.value = newSlug || ''
+  categoryName.value = '全部商品'
   currentPage.value = 1
   fetchProducts()
 }, { immediate: true })
