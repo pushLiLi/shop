@@ -77,6 +77,7 @@ function toggleSelectAll() {
 
 async function addToCart(product) {
   await cartStore.addItem(product, 1)
+  toast.success('已添加到购物车')
 }
 
 async function batchAddToCart() {
