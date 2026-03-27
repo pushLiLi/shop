@@ -33,6 +33,18 @@ func generateSlug(name string) string {
 	return slug
 }
 
+// CreateProduct godoc
+// @Summary 创建商品
+// @Description 创建新的商品
+// @Tags admin-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body ProductInput true "商品信息"
+// @Success 201 {object} models.Product
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /admin/products [post]
 func CreateProduct(c *gin.Context) {
 	var input ProductInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -65,6 +77,19 @@ func CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, product)
 }
 
+// UpdateProduct godoc
+// @Summary 更新商品
+// @Description 更新指定商品信息
+// @Tags admin-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "商品ID"
+// @Param input body ProductInput true "商品信息"
+// @Success 200 {object} models.Product
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /admin/products/{id} [put]
 func UpdateProduct(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -105,6 +130,18 @@ func UpdateProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
+// DeleteProduct godoc
+// @Summary 删除商品
+// @Description 删除指定商品
+// @Tags admin-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "商品ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /admin/products/{id} [delete]
 func DeleteProduct(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -126,6 +163,21 @@ func DeleteProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "商品已删除"})
 }
 
+// GetAdminProducts godoc
+// @Summary 获取商品列表(管理端)
+// @Description 获取商品列表，支持分页和筛选
+// @Tags admin-products
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "页码" default(1)
+// @Param limit query int false "每页数量" default(20)
+// @Param search query string false "搜索关键词"
+// @Param categoryId query int false "分类ID"
+// @Param featured query string false "是否推荐"
+// @Param active query string false "是否上架"
+// @Success 200 {object} map[string]interface{}
+// @Router /admin/products [get]
 func GetAdminProducts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))

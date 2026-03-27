@@ -3,14 +3,36 @@ package main
 import (
 	"log"
 
+	_ "bycigar-server/docs"
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title BYCIGAR API
+// @version 1.0
+// @description BYCIGAR 电商后台 API 接口文档
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@bycigar.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+// @host localhost:3000
+// @BasePath /api
+// @schemes http
 func main() {
 	config.LoadConfig()
 	database.Connect()
@@ -22,6 +44,8 @@ func main() {
 	r.Use(middleware.AuthMiddleware())
 
 	r.Static("/static", "./static")
+
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(-1)))
 
 	r.POST("/api/auth/register", handlers.Register)
 	r.POST("/api/auth/login", handlers.Login)

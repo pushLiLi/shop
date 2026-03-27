@@ -11,6 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetAddresses godoc
+// @Summary 获取地址列表
+// @Description 获取当前用户的收货地址列表
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /addresses [get]
 func GetAddresses(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -30,6 +40,18 @@ func GetAddresses(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"addresses": addresses})
 }
 
+// CreateAddress godoc
+// @Summary 创建地址
+// @Description 创建新的收货地址
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body models.CreateAddressInput true "地址信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /addresses [post]
 func CreateAddress(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -82,6 +104,20 @@ func CreateAddress(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "address": address})
 }
 
+// UpdateAddress godoc
+// @Summary 更新地址
+// @Description 更新指定的收货地址
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "地址ID"
+// @Param input body models.UpdateAddressInput true "地址信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /addresses/{id} [put]
 func UpdateAddress(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -140,6 +176,19 @@ func UpdateAddress(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "address": existing})
 }
 
+// DeleteAddress godoc
+// @Summary 删除地址
+// @Description 删除指定的收货地址
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "地址ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /addresses/{id} [delete]
 func DeleteAddress(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -170,6 +219,19 @@ func DeleteAddress(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// SetDefaultAddress godoc
+// @Summary 设置默认地址
+// @Description 将指定地址设为默认收货地址
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "地址ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /addresses/{id}/default [put]
 func SetDefaultAddress(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

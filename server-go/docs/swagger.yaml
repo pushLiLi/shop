@@ -1,0 +1,1499 @@
+basePath: /api
+definitions:
+  handlers.CategoryInput:
+    properties:
+      name:
+        type: string
+      parentId:
+        type: integer
+      slug:
+        type: string
+    type: object
+  handlers.ProductInput:
+    properties:
+      categoryId:
+        type: integer
+      description:
+        type: string
+      imageUrl:
+        type: string
+      images:
+        type: string
+      isActive:
+        type: boolean
+      isFeatured:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      slug:
+        type: string
+      stock:
+        type: integer
+    type: object
+  models.AddFavoriteInput:
+    properties:
+      productId:
+        type: integer
+    required:
+    - productId
+    type: object
+  models.AddToCartInput:
+    properties:
+      productId:
+        type: integer
+      quantity:
+        type: integer
+    required:
+    - productId
+    type: object
+  models.Address:
+    properties:
+      addressLine1:
+        type: string
+      addressLine2:
+        type: string
+      city:
+        type: string
+      createdAt:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: integer
+      isDefault:
+        type: boolean
+      phone:
+        type: string
+      state:
+        type: string
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+      zipCode:
+        type: string
+    type: object
+  models.Banner:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      isActive:
+        type: boolean
+      link:
+        type: string
+      sortOrder:
+        type: integer
+      title:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.Category:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.Category'
+        type: array
+      createdAt:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      parent:
+        $ref: '#/definitions/models.Category'
+      parentId:
+        type: integer
+      products:
+        items:
+          $ref: '#/definitions/models.Product'
+        type: array
+      slug:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.CreateAddressInput:
+    properties:
+      addressLine1:
+        type: string
+      addressLine2:
+        type: string
+      city:
+        type: string
+      fullName:
+        type: string
+      isDefault:
+        type: boolean
+      phone:
+        type: string
+      state:
+        type: string
+      zipCode:
+        type: string
+    required:
+    - addressLine1
+    - city
+    - fullName
+    - phone
+    - state
+    - zipCode
+    type: object
+  models.CreateOrderInput:
+    properties:
+      addressId:
+        type: integer
+      remark:
+        type: string
+    required:
+    - addressId
+    type: object
+  models.LoginInput:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.Order:
+    properties:
+      address:
+        $ref: '#/definitions/models.Address'
+      addressId:
+        type: integer
+      createdAt:
+        type: string
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.OrderItem'
+        type: array
+      remark:
+        type: string
+      status:
+        type: string
+      total:
+        type: number
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  models.OrderItem:
+    properties:
+      id:
+        type: integer
+      orderId:
+        type: integer
+      price:
+        type: number
+      product:
+        $ref: '#/definitions/models.Product'
+      productId:
+        type: integer
+      quantity:
+        type: integer
+    type: object
+  models.Product:
+    properties:
+      category:
+        $ref: '#/definitions/models.Category'
+      categoryId:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      imageUrl:
+        type: string
+      images:
+        type: string
+      isActive:
+        type: boolean
+      isFeatured:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      slug:
+        type: string
+      stock:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  models.RegisterInput:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.SiteConfig:
+    properties:
+      configKey:
+        type: string
+      configValue:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  models.UpdateAddressInput:
+    properties:
+      addressLine1:
+        type: string
+      addressLine2:
+        type: string
+      city:
+        type: string
+      fullName:
+        type: string
+      phone:
+        type: string
+      state:
+        type: string
+      zipCode:
+        type: string
+    type: object
+  models.UpdateCartInput:
+    properties:
+      quantity:
+        type: integer
+    required:
+    - quantity
+    type: object
+  models.UpdateProfileInput:
+    properties:
+      name:
+        type: string
+    type: object
+host: localhost:3000
+info:
+  contact:
+    email: support@bycigar.com
+    name: API Support
+  description: BYCIGAR 电商后台 API 接口文档
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: BYCIGAR API
+  version: "1.0"
+paths:
+  /addresses:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的收货地址列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取地址列表
+      tags:
+      - addresses
+    post:
+      consumes:
+      - application/json
+      description: 创建新的收货地址
+      parameters:
+      - description: 地址信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAddressInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建地址
+      tags:
+      - addresses
+  /addresses/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的收货地址
+      parameters:
+      - description: 地址ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除地址
+      tags:
+      - addresses
+    put:
+      consumes:
+      - application/json
+      description: 更新指定的收货地址
+      parameters:
+      - description: 地址ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 地址信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateAddressInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新地址
+      tags:
+      - addresses
+  /addresses/{id}/default:
+    put:
+      consumes:
+      - application/json
+      description: 将指定地址设为默认收货地址
+      parameters:
+      - description: 地址ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 设置默认地址
+      tags:
+      - addresses
+  /admin/banners:
+    post:
+      consumes:
+      - application/json
+      description: 创建新的轮播图
+      parameters:
+      - description: 轮播图信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.Banner'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Banner'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建轮播图
+      tags:
+      - admin-banners
+  /admin/banners/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定的轮播图
+      parameters:
+      - description: 轮播图ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除轮播图
+      tags:
+      - admin-banners
+    put:
+      consumes:
+      - application/json
+      description: 更新指定的轮播图
+      parameters:
+      - description: 轮播图ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 轮播图信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.Banner'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Banner'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新轮播图
+      tags:
+      - admin-banners
+  /admin/categories:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有分类列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: 获取分类列表(管理端)
+      tags:
+      - admin-categories
+    post:
+      consumes:
+      - application/json
+      description: 创建新的商品分类
+      parameters:
+      - description: 分类信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CategoryInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建分类
+      tags:
+      - admin-categories
+  /admin/categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定分类
+      parameters:
+      - description: 分类ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除分类
+      tags:
+      - admin-categories
+    put:
+      consumes:
+      - application/json
+      description: 更新指定分类信息
+      parameters:
+      - description: 分类ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 分类信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.CategoryInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新分类
+      tags:
+      - admin-categories
+  /admin/config/{key}:
+    put:
+      consumes:
+      - application/json
+      description: 更新指定的网站配置项
+      parameters:
+      - description: 配置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 配置值
+        in: body
+        name: input
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SiteConfig'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新网站配置
+      tags:
+      - admin-config
+  /admin/products:
+    get:
+      consumes:
+      - application/json
+      description: 获取商品列表，支持分页和筛选
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: search
+        type: string
+      - description: 分类ID
+        in: query
+        name: categoryId
+        type: integer
+      - description: 是否推荐
+        in: query
+        name: featured
+        type: string
+      - description: 是否上架
+        in: query
+        name: active
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取商品列表(管理端)
+      tags:
+      - admin-products
+    post:
+      consumes:
+      - application/json
+      description: 创建新的商品
+      parameters:
+      - description: 商品信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProductInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建商品
+      tags:
+      - admin-products
+  /admin/products/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定商品
+      parameters:
+      - description: 商品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除商品
+      tags:
+      - admin-products
+    put:
+      consumes:
+      - application/json
+      description: 更新指定商品信息
+      parameters:
+      - description: 商品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 商品信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ProductInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新商品
+      tags:
+      - admin-products
+  /admin/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传图片文件到服务器
+      parameters:
+      - description: 图片文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 上传图片
+      tags:
+      - admin-upload
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: 用户登录获取token
+      parameters:
+      - description: 登录信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 用户登录
+      tags:
+      - auth
+  /auth/me:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前登录用户的个人信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取用户信息
+      tags:
+      - auth
+  /auth/profile:
+    put:
+      consumes:
+      - application/json
+      description: 更新当前用户的个人信息
+      parameters:
+      - description: 用户信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateProfileInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新用户信息
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 注册新用户账号
+      parameters:
+      - description: 注册信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 用户注册
+      tags:
+      - auth
+  /banners:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有激活状态的轮播图
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Banner'
+            type: array
+      summary: 获取轮播图列表
+      tags:
+      - banners
+  /cart:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的购物车内容
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取购物车
+      tags:
+      - cart
+    post:
+      consumes:
+      - application/json
+      description: 添加商品到当前用户的购物车
+      parameters:
+      - description: 商品信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddToCartInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 添加商品到购物车
+      tags:
+      - cart
+  /cart/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 从购物车中删除指定商品
+      parameters:
+      - description: 购物车项ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除购物车商品
+      tags:
+      - cart
+    put:
+      consumes:
+      - application/json
+      description: 更新购物车中指定商品的数量
+      parameters:
+      - description: 购物车项ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 数量信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCartInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 更新购物车商品数量
+      tags:
+      - cart
+  /categories:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有分类及其子分类
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+      summary: 获取分类列表
+      tags:
+      - categories
+  /config:
+    get:
+      consumes:
+      - application/json
+      description: 获取所有网站配置项
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取网站配置
+      tags:
+      - config
+  /favorites:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的收藏列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取收藏列表
+      tags:
+      - favorites
+    post:
+      consumes:
+      - application/json
+      description: 添加商品到收藏列表
+      parameters:
+      - description: 商品信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddFavoriteInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 添加收藏
+      tags:
+      - favorites
+  /favorites/{productId}:
+    delete:
+      consumes:
+      - application/json
+      description: 从收藏列表中删除指定商品
+      parameters:
+      - description: 产品ID
+        in: path
+        name: productId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 删除收藏
+      tags:
+      - favorites
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的订单列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取订单列表
+      tags:
+      - orders
+    post:
+      consumes:
+      - application/json
+      description: 从购物车商品创建订单
+      parameters:
+      - description: 订单信息
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateOrderInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 创建订单
+      tags:
+      - orders
+  /orders/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定订单的详细信息
+      parameters:
+      - description: 订单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Order'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 获取订单详情
+      tags:
+      - orders
+  /products:
+    get:
+      consumes:
+      - application/json
+      description: 获取产品列表，支持分页、搜索、分类筛选和排序
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 12
+        description: 每页数量
+        in: query
+        name: limit
+        type: integer
+      - description: 搜索关键词
+        in: query
+        name: search
+        type: string
+      - description: 分类 slug
+        in: query
+        name: category
+        type: string
+      - description: 分类 ID
+        in: query
+        name: categoryId
+        type: integer
+      - description: 是否精选
+        in: query
+        name: featured
+        type: string
+      - default: createdAt
+        description: 排序字段
+        in: query
+        name: sortBy
+        type: string
+      - default: desc
+        description: 排序方向 (asc/desc)
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取产品列表
+      tags:
+      - products
+  /products/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根据ID获取产品详情
+      parameters:
+      - description: 产品ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Product'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: 获取单个产品
+      tags:
+      - products
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

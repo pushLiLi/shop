@@ -17,6 +17,18 @@ type CategoryInput struct {
 	ParentID *uint  `json:"parentId"`
 }
 
+// CreateCategory godoc
+// @Summary 创建分类
+// @Description 创建新的商品分类
+// @Tags admin-categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body CategoryInput true "分类信息"
+// @Success 201 {object} models.Category
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /admin/categories [post]
 func CreateCategory(c *gin.Context) {
 	var input CategoryInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -42,6 +54,19 @@ func CreateCategory(c *gin.Context) {
 	c.JSON(http.StatusCreated, category)
 }
 
+// UpdateCategory godoc
+// @Summary 更新分类
+// @Description 更新指定分类信息
+// @Tags admin-categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "分类ID"
+// @Param input body CategoryInput true "分类信息"
+// @Success 200 {object} models.Category
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /admin/categories/{id} [put]
 func UpdateCategory(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -75,6 +100,18 @@ func UpdateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, category)
 }
 
+// DeleteCategory godoc
+// @Summary 删除分类
+// @Description 删除指定分类
+// @Tags admin-categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "分类ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /admin/categories/{id} [delete]
 func DeleteCategory(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -110,6 +147,15 @@ func DeleteCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "分类已删除"})
 }
 
+// GetAdminCategories godoc
+// @Summary 获取分类列表(管理端)
+// @Description 获取所有分类列表
+// @Tags admin-categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.Category
+// @Router /admin/categories [get]
 func GetAdminCategories(c *gin.Context) {
 	var categories []models.Category
 	database.DB.Order("id ASC").Find(&categories)

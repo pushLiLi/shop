@@ -11,6 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetOrders godoc
+// @Summary 获取订单列表
+// @Description 获取当前用户的订单列表
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /orders [get]
 func GetOrders(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -28,6 +38,18 @@ func GetOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"orders": orders})
 }
 
+// CreateOrder godoc
+// @Summary 创建订单
+// @Description 从购物车商品创建订单
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body models.CreateOrderInput true "订单信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /orders [post]
 func CreateOrder(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -97,6 +119,19 @@ func CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "orderId": order.ID})
 }
 
+// GetOrder godoc
+// @Summary 获取订单详情
+// @Description 获取指定订单的详细信息
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "订单ID"
+// @Success 200 {object} models.Order
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /orders/{id} [get]
 func GetOrder(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

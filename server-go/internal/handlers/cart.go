@@ -11,6 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetCart godoc
+// @Summary 获取购物车
+// @Description 获取当前用户的购物车内容
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /cart [get]
 func GetCart(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -34,6 +43,18 @@ func GetCart(c *gin.Context) {
 	})
 }
 
+// AddToCart godoc
+// @Summary 添加商品到购物车
+// @Description 添加商品到当前用户的购物车
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body models.AddToCartInput true "商品信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /cart [post]
 func AddToCart(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -72,6 +93,20 @@ func AddToCart(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "item": item})
 }
 
+// UpdateCartItem godoc
+// @Summary 更新购物车商品数量
+// @Description 更新购物车中指定商品的数量
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "购物车项ID"
+// @Param input body models.UpdateCartInput true "数量信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /cart/{id} [put]
 func UpdateCartItem(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -109,6 +144,19 @@ func UpdateCartItem(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// DeleteCartItem godoc
+// @Summary 删除购物车商品
+// @Description 从购物车中删除指定商品
+// @Tags cart
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "购物车项ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /cart/{id} [delete]
 func DeleteCartItem(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

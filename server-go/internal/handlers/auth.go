@@ -15,6 +15,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Register godoc
+// @Summary 用户注册
+// @Description 注册新用户账号
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body models.RegisterInput true "注册信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /auth/register [post]
 func Register(c *gin.Context) {
 	var input models.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -81,6 +91,17 @@ func Register(c *gin.Context) {
 	})
 }
 
+// Login godoc
+// @Summary 用户登录
+// @Description 用户登录获取token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param input body models.LoginInput true "登录信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/login [post]
 func Login(c *gin.Context) {
 	var input models.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -121,6 +142,16 @@ func Login(c *gin.Context) {
 	})
 }
 
+// GetProfile godoc
+// @Summary 获取用户信息
+// @Description 获取当前登录用户的个人信息
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/me [get]
 func GetProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -144,6 +175,18 @@ func GetProfile(c *gin.Context) {
 	})
 }
 
+// UpdateProfile godoc
+// @Summary 更新用户信息
+// @Description 更新当前用户的个人信息
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body models.UpdateProfileInput true "用户信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/profile [put]
 func UpdateProfile(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

@@ -5,6 +5,7 @@ bycigar-vue/node_modules/
 # Build
 bycigar-vue/dist/
 server-go/server
+server-go/server.exe
 server-go/bycigar-server
 
 # Environment

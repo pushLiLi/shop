@@ -30,7 +30,7 @@ async function fetchProducts() {
     })
     
     if (categorySlug.value) {
-      params.append('categorySlug', categorySlug.value)
+      params.append('category', categorySlug.value)
     }
     
     const res = await fetch(`http://localhost:3000/api/products?${params}`)

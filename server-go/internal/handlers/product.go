@@ -11,6 +11,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetProducts godoc
+// @Summary 获取产品列表
+// @Description 获取产品列表，支持分页、搜索、分类筛选和排序
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param page query int false "页码" default(1)
+// @Param limit query int false "每页数量" default(12)
+// @Param search query string false "搜索关键词"
+// @Param category query string false "分类 slug"
+// @Param categoryId query int false "分类 ID"
+// @Param featured query string false "是否精选"
+// @Param sortBy query string false "排序字段" default(createdAt)
+// @Param sortOrder query string false "排序方向 (asc/desc)" default(desc)
+// @Success 200 {object} map[string]interface{}
+// @Router /products [get]
 func GetProducts(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "12"))
@@ -77,6 +93,17 @@ func GetProducts(c *gin.Context) {
 	})
 }
 
+// GetProduct godoc
+// @Summary 获取单个产品
+// @Description 根据ID获取产品详情
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "产品ID"
+// @Success 200 {object} models.Product
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /products/{id} [get]
 func GetProduct(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -93,6 +120,14 @@ func GetProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
+// GetCategories godoc
+// @Summary 获取分类列表
+// @Description 获取所有分类及其子分类
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {array} models.Category
+// @Router /categories [get]
 func GetCategories(c *gin.Context) {
 	var categories []models.Category
 	database.DB.Preload("Children").Find(&categories)

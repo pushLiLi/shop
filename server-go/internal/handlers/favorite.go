@@ -11,6 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetFavorites godoc
+// @Summary 获取收藏列表
+// @Description 获取当前用户的收藏列表
+// @Tags favorites
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /favorites [get]
 func GetFavorites(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -24,6 +33,18 @@ func GetFavorites(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"items": favorites})
 }
 
+// AddFavorite godoc
+// @Summary 添加收藏
+// @Description 添加商品到收藏列表
+// @Tags favorites
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param input body models.AddFavoriteInput true "商品信息"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /favorites [post]
 func AddFavorite(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
@@ -53,6 +74,18 @@ func AddFavorite(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+// DeleteFavorite godoc
+// @Summary 删除收藏
+// @Description 从收藏列表中删除指定商品
+// @Tags favorites
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param productId path int true "产品ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /favorites/{productId} [delete]
 func DeleteFavorite(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {
