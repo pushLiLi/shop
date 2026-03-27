@@ -1,12 +1,14 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
 
+	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -15,7 +17,7 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=True&loc=Local",
 		config.AppConfig.DBUser,
 		config.AppConfig.DBPassword,
 		config.AppConfig.DBHost,
@@ -24,9 +26,22 @@ func Connect() {
 	)
 
 	var err error
-	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	mysqlConfig := mysql.New(mysql.Config{
+		DSN:                       dsn,
+		DefaultStringSize:         255,
+		SkipInitializeWithVersion: false,
+	})
+	DB, err = gorm.Open(mysqlConfig, &gorm.Config{})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	var sqlDB *sql.DB
+	sqlDB, err = DB.DB()
+	if err == nil {
+		sqlDB.SetConnMaxLifetime(0)
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetMaxOpenConns(100)
 	}
 
 	log.Println("Database connected successfully")
