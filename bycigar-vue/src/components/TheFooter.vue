@@ -5,7 +5,7 @@ const footerLinks = [
   { name: '关于我们', path: '/about' },
   { name: '服务条款', path: '/services' },
   { name: '隐私政策', path: '/privacy-policy' },
-  { name: '严正声明', path: '/returns-policy' }
+  { name: '严正声明', path: '/statement' }
 ]
 </script>
 

@@ -7,16 +7,14 @@ import CartView from '../views/CartView.vue'
 import CheckoutView from '../views/CheckoutView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import FavoritesView from '../views/FavoritesView.vue'
-import AboutView from '../views/AboutView.vue'
+import PageView from '../views/PageView.vue'
 import LoginView from '../views/LoginView.vue'
 import ProfileView from '../views/ProfileView.vue'
-import ServicesView from '../views/ServicesView.vue'
-import PrivacyPolicyView from '../views/PrivacyPolicyView.vue'
-import ReturnsPolicyView from '../views/ReturnsPolicyView.vue'
 import AdminLayout from '../views/admin/AdminLayout.vue'
 import AdminProducts from '../views/admin/AdminProducts.vue'
 import AdminBanners from '../views/admin/AdminBanners.vue'
 import AdminCategories from '../views/admin/AdminCategories.vue'
+import AdminPages from '../views/admin/AdminPages.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -70,9 +68,9 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
-      path: '/about',
-      name: 'about',
-      component: AboutView
+      path: '/:slug(about|services|privacy-policy|statement)',
+      name: 'page',
+      component: PageView
     },
     {
       path: '/login',
@@ -84,21 +82,6 @@ const router = createRouter({
       name: 'profile',
       component: ProfileView,
       meta: { requiresAuth: true }
-    },
-    {
-      path: '/services',
-      name: 'services',
-      component: ServicesView
-    },
-    {
-      path: '/privacy-policy',
-      name: 'privacy-policy',
-      component: PrivacyPolicyView
-    },
-    {
-      path: '/returns-policy',
-      name: 'returns-policy',
-      component: ReturnsPolicyView
     },
     {
       path: '/admin',
@@ -126,6 +109,12 @@ const router = createRouter({
           name: 'admin-categories',
           component: AdminCategories,
           meta: { title: '分类管理' }
+        },
+        {
+          path: 'pages',
+          name: 'admin-pages',
+          component: AdminPages,
+          meta: { title: '页面管理' }
         }
       ]
     }

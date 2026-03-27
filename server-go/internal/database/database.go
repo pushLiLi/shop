@@ -59,6 +59,7 @@ func Migrate() {
 		&models.OrderItem{},
 		&models.SiteConfig{},
 		&models.Banner{},
+		&models.Page{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
@@ -68,6 +69,7 @@ func Migrate() {
 
 func Seed() {
 	SeedAdminUser()
+	SeedPages()
 }
 
 func SeedAdminUser() {
@@ -96,4 +98,20 @@ func SeedAdminUser() {
 	}
 
 	log.Println("Admin user created successfully")
+}
+
+func SeedPages() {
+	defaultPages := []models.Page{
+		{Slug: "about", Title: "关于我们", Content: "# 关于我们\n\n欢迎使用 BYCIGAR，我们致力于为您提供最优质的雪茄产品和服务。"},
+		{Slug: "services", Title: "服务条款", Content: "# 服务条款\n\n使用本网站即表示您同意以下服务条款..."},
+		{Slug: "privacy-policy", Title: "隐私政策", Content: "# 隐私政策\n\n我们重视您的隐私，以下是我们的隐私政策..."},
+		{Slug: "statement", Title: "严正声明", Content: "# 严正声明\n\n本网站所有商品均为正品，假一赔十..."},
+	}
+
+	for _, page := range defaultPages {
+		var existing models.Page
+		if err := DB.Where("slug = ?", page.Slug).First(&existing).Error; err != nil {
+			DB.Create(&page)
+		}
+	}
 }
