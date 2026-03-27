@@ -36,8 +36,13 @@ function closeDrawer() {
   cartStore.closeCart()
 }
 
+function goToProduct(productId) {
+  closeDrawer()
+  router.push(`/products/${productId}`)
+}
+
 function goToCheckout() {
-  cartStore.closeCart()
+  closeDrawer()
   router.push('/checkout')
 }
 
@@ -86,11 +91,11 @@ watch(() => cartStore.isOpen, (isOpen) => {
 
             <div v-else class="cart-items">
               <div v-for="item in items" :key="item.productId" class="cart-item">
-                <div class="item-image">
+                <div class="item-image" @click="goToProduct(item.productId)">
                   <img :src="item.product?.imageUrl" :alt="item.product?.name">
                 </div>
                 <div class="item-info">
-                  <h3 class="item-name">{{ item.product?.name }}</h3>
+                  <h3 class="item-name" @click="goToProduct(item.productId)">{{ item.product?.name }}</h3>
                   <div class="item-price">{{ formatPrice(item.product?.price) }}</div>
                   <div class="item-actions">
                     <div class="quantity-control">
@@ -253,6 +258,12 @@ watch(() => cartStore.isOpen, (isOpen) => {
   background: #fff;
   border-radius: 4px;
   overflow: hidden;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.item-image:hover {
+  opacity: 0.8;
 }
 
 .item-image img {
@@ -274,6 +285,12 @@ watch(() => cartStore.isOpen, (isOpen) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.item-name:hover {
+  color: #d4a574;
 }
 
 .item-price {
