@@ -76,8 +76,13 @@ function toggleSelectAll() {
 }
 
 async function addToCart(product) {
+  const existingItem = cartStore.items.find(item => item.productId === product.id)
   await cartStore.addItem(product, 1)
-  toast.success('已添加到购物车')
+  if (existingItem) {
+    toast.success('已在购物车，数量+1')
+  } else {
+    toast.success('已添加到购物车')
+  }
 }
 
 async function batchAddToCart() {
