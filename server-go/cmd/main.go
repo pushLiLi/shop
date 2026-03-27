@@ -80,6 +80,8 @@ func main() {
 
 	r.GET("/api/auth/me", handlers.GetProfile)
 	r.PUT("/api/auth/profile", handlers.UpdateProfile)
+	r.GET("/api/auth/captcha", handlers.GetCaptcha)
+	r.PUT("/api/auth/change-password", middleware.RequireAuth(), handlers.ChangePassword)
 
 	r.PUT("/api/admin/config/:key", handlers.UpdateConfig)
 

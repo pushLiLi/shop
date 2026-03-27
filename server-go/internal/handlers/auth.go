@@ -222,3 +222,47 @@ func UpdateProfile(c *gin.Context) {
 		"role":  user.Role,
 	})
 }
+
+func ChangePassword(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var input models.ChangePasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "请填写完整信息")
+		return
+	}
+
+	if !captchaInstance.Verify(input.CaptchaId, input.CaptchaCode, true) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "验证码错误或已过期")
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "用户不存在")
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.OldPassword)); err != nil {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "原密码错误")
+		return
+	}
+
+	if input.OldPassword == input.NewPassword {
+		utils.ErrorResponse(c, http.StatusBadRequest, "新密码不能与原密码相同")
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "密码加密失败")
+		return
+	}
+	user.Password = string(hashedPassword)
+	if err := database.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "密码更新失败")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
+}

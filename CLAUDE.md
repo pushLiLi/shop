@@ -1,164 +1,97 @@
-# Project Role & Guidelines
+# CLAUDE.md
 
-You are a **Senior Frontend Architect and Automation Expert**.
-Your goal is to migrate a legacy static website (`./bycigar_site`) into a modern, production-ready **Vue 3 + Vite** project with backend integration.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
----
+## Project Overview
 
-# User Context
+BYCIGAR e-commerce platform — a cigar shop migrated from a static HTML site to Vue 3 + Go. The project is feature-complete with products, categories, cart, orders, favorites, user auth, admin panel, CMS pages, and site settings.
 
-- The user is **NOT familiar with frontend development**.
-- You must act autonomously: execute commands, create files, and fix errors.
-- Do not ask for permission for every small step; follow the workflow below.
-- Explain what you are doing in simple Chinese before executing complex actions.
+## Tech Stack
 
----
+| Layer | Technology |
+|---|---|
+| Frontend | Vue 3 (Composition API, `<script setup>`) + Vite + Vue Router + Pinia |
+| Backend | Go 1.23 + Gin + GORM + JWT + Swagger |
+| Database | MySQL 8.4 (Docker) |
+| Deployment | Docker Compose (MySQL + Go backend + Vue frontend) |
+| Language | JavaScript only (no TypeScript) |
 
-# Tech Stack Standards
+## Common Commands
 
-| Layer       | Technology                                    |
-|-------------|-----------------------------------------------|
-| Framework   | Vue 3 (Composition API, `<script setup>`)     |
-| Build Tool  | Vite                                          |
-| Language    | JavaScript (Strictly **NO** TypeScript)       |
-| State       | Pinia (only if necessary, otherwise local)    |
-| Routing     | Vue Router 4                                  |
-| Backend     | Node.js + Express                             |
-| Database    | SQLite (Prisma ORM)                           |
-| Styling     | Scoped CSS within `.vue` files                |
+### Frontend (`bycigar-vue/`)
+```bash
+cd bycigar-vue
+npm run dev      # Dev server at localhost:5173, proxies /api -> localhost:3000
+npm run build    # Production build to dist/
+npm run preview  # Preview production build
+```
 
----
+### Backend (`server-go/`)
+```bash
+cd server-go
+go run ./cmd/main.go    # Start API server at localhost:3000
+go build -o server ./cmd/main.go   # Build binary
+```
 
-# Source & Target
+### Docker (full stack)
+```bash
+docker-compose up --build    # MySQL:3306 + Backend:3000 + Frontend:80
+```
 
-- **Source**: `./bycigar_site` (Raw HTML/CSS/JS/Images)
-- **Target**: `./bycigar-vue` (New Vue Project)
-- **Backend**: `./server` (Node.js API)
+### Database
+```bash
+docker-compose up mysql      # Start MySQL only (root/123456, database: bycigar)
+```
+Auto-migrates all tables on backend startup. Seeds admin user and default data on first run. MySQL uses healthcheck (`mysqladmin ping`) with `my.cnf` forcing utf8mb4 charset.
 
----
+## Architecture
 
-# Execution Workflow (STRICT ORDER)
+### Frontend (`bycigar-vue/src/`)
 
-## Phase 1: Initialization
+- **Entry**: `main.js` → installs Pinia + Vue Router
+- **Layout**: `App.vue` — shows TheHeader/TheFooter on all routes except admin. Global Toast + CartDrawer always present. Dark theme (#0f0f0f background).
+- **Router**: `router/index.js` — 17 routes. Navigation guard checks `localStorage` for JWT token and user role.
+  - Public: `/`, `/products`, `/category/:slug`, `/products/:id`, `/search`, `/:slug(about|services|privacy-policy|statement)`
+  - Auth required: `/checkout`, `/orders`, `/favorites`, `/profile`
+  - Admin (`/admin/*`): requires `role === 'admin'`
+- **Stores** (Pinia): `auth.js` (Composition API), `cart.js` (Options API), `favorites.js` (Options API), `useSettingsStore.js` (Options API), `toast.js` (Composition API). Each store defines its own `getAuthHeaders()` reading `localStorage.getItem('token')` directly. API calls hardcode `http://localhost:3000/api/*` (Vite proxy at `/api` exists in config but stores bypass it).
+- **Global CSS**: `style.css` — dark theme, grid system (.col-2/3/4/6/12), utility classes, 768px responsive breakpoint.
+- **Markdown**: `marked` library renders CMS page content.
 
-1. Create project: `npm create vue@latest bycigar-vue`
-   - Settings: No TS, No JSX, No SSR, No Testing. Yes to Vue Router.
-2. `cd bycigar-vue` && `npm install`.
+### Backend (`server-go/`)
 
-## Phase 2: Asset Migration
+- **Entry**: `cmd/main.go` — loads config, connects MySQL, runs migrations, seeds, sets up Gin router
+- **Structure**: `internal/config/`, `internal/database/`, `internal/models/`, `internal/handlers/`, `internal/middleware/`
+- **Config**: `.env` file (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET, SERVER_PORT)
+- **Auth middleware** (`internal/middleware/auth.go`):
+  - `AuthMiddleware()` — optional JWT parsing; supports `Bearer {token}` and `user-{id}` dev bypass. Sets `userID` in Gin context.
+  - `RequireAuth()` — checks `userID` exists + DB lookup to verify user still exists. Returns 401 if missing.
+  - `AdminOnly` — standalone function (not wrapped). Checks `userID`, does DB lookup, verifies `role === 'admin'`, sets `c.Set("user", user)`.
+- **Captcha**: `internal/handlers/captcha.go` — `base64Captcha` library generates 4-digit numeric image captcha with 5-min TTL.
+- **Response helpers** (`pkg/utils/response.go`): `SuccessResponse`, `CreatedResponse`, `ErrorResponse`, `Success` — standard JSON response wrappers.
+- **Static files**: `static/` — uploaded images at `/static/uploads/`, original site assets at `/static/themes/`
+- **Swagger docs**: Generated in `docs/`, served at `/swagger/index.html`
 
-1. Copy `../bycigar_site/images` -> `./public/images`.
-2. Copy `../bycigar_site/css` -> `./src/assets/css_raw` (Keep original for reference).
-3. Copy `../bycigar_site/js` -> `./src/assets/js_raw`.
-4. Analyze `../bycigar_site/index.html` for asset paths.
+### Default Credentials
+- Admin: `admin@admin.com` / `123456` (seeded on first run)
 
-## Phase 3: Component Refactoring (Iterative)
+## Key Conventions
 
-**DO NOT generate all components at once.** Process one section at a time:
+- **Language**: Communicate with the user in Chinese
+- **No code comments** in source files
+- **Keep responses concise** (max 4 lines when possible)
+- **No tests or linter** configured
+- **Pinia stores**: Mix of Composition API (`auth.js`, `toast.js`) and Options API (`cart.js`, `favorites.js`, `useSettingsStore.js`). Each defines its own `getAuthHeaders()` helper reading from `localStorage` directly.
+- **Image paths**: Stored as relative paths, served from `static/` directory
+- **API base**: All frontend API calls hardcode `http://localhost:3000/api/*` in stores. Production uses nginx to proxy `/api` to backend (see `bycigar-vue/nginx.conf`).
 
-1. **Header**: Extract `<header>` -> `src/components/TheHeader.vue`.
-2. **Footer**: Extract `<footer>` -> `src/components/TheFooter.vue`.
-3. **Home View**: Extract main content -> `src/views/HomeView.vue`.
-   - Convert HTML to Vue Template.
-   - Extract relevant CSS to `<style scoped>`. Rename classes if conflicting.
-   - Fix Image Paths: Use absolute paths starting with `/` (e.g., `/images/logo.png`).
-   - Interactivity: Replace vanilla JS event listeners with Vue `@click`, `ref`, `onMounted`.
-4. Update `src/App.vue` to include Header/Footer and `<router-view>`.
-5. Configure `src/router/index.js`.
+## Data Models
 
-## Phase 4: Verification & Polish
-
-1. Remove default Vite/Vue boilerplate code.
-2. Run `npm run dev`.
-3. Self-Correction: If images fail to load or styles break, analyze the error and fix immediately.
-4. Handle Complex JS: If a script (e.g., slider) is too complex to rewrite, import it directly in `onMounted` and preserve original logic rather than breaking it.
-
-## Phase 5: Backend Integration & Data Separation
-
-### 5.1 Backend Setup
-
-1. Create `server` folder at project root.
-2. Initialize npm: `npm init -y`.
-3. Install dependencies: `express`, `cors`, `@prisma/client`, `prisma`.
-4. Configure `schema.prisma` with SQLite.
-
-### 5.2 Data Model (Product)
-
-| Field       | Type     | Description                    |
-|-------------|----------|--------------------------------|
-| id          | Int      | Primary key (auto-increment)   |
-| name        | String   | Product name                   |
-| price       | Float    | Price                          |
-| description | String   | Product description            |
-| imageUrl    | String   | Relative path (e.g., `/images/xxx.jpg`) |
-| brand       | String?  | Brand name (optional)          |
-| category    | String?  | Category (optional)            |
-
-### 5.3 Database Migration
-
-1. Run `npx prisma migrate dev` to create SQLite database.
-2. Create `seed.js` script to import hardcoded data into database.
-
-### 5.4 API Endpoints
-
-| Method | Endpoint        | Description           |
-|--------|-----------------|-----------------------|
-| GET    | `/api/products` | Return all products   |
-
-- Enable CORS for Vue dev server (localhost:5173).
-
-### 5.5 Frontend Refactor
-
-1. Modify `HomeView.vue`:
-   - Remove hardcoded product HTML.
-   - Use `fetch` or `axios` in `onMounted` to call `/api/products`.
-   - Render products with `v-for`.
-   - Handle loading and error states.
-
----
-
-# Image Storage Strategy
-
-## Current Stage (Development)
-
-- Store images in `public/images`.
-- Database stores **relative paths** only (e.g., `/images/cigar_01.jpg`).
-- Frontend uses relative paths directly.
-
-## Future-Proofing
-
-- API response structure:
-  ```json
-  {
-    "id": 1,
-    "name": "Product Name",
-    "filename": "cigar_01.jpg",
-    "fullUrl": "/images/cigar_01.jpg"
-  }
-  ```
-- Backend env variable: `PUBLIC_IMAGE_BASE_URL` (default: `/images`).
-- To switch to MinIO/CDN later, only change this variable.
-
----
-
-# Critical Constraints
-
-- **Step-by-Step**: Execute one phase, report success, then proceed. Never dump 20 files at once.
-- **Error Handling**: Retry failed commands up to 3 times before asking.
-- **Simplicity**: Keep code clean. Avoid over-engineering.
-- **No Auth**: Skip login/registration for now.
-- **Language**: Communicate with user in **Chinese**.
-
----
-
-# Current Status
-
-| Phase | Status      |
-|-------|-------------|
-| 1     | Completed   |
-| 2     | Completed   |
-| 3     | Completed   |
-| 4     | Completed   |
-| 5     | Pending     |
-
-**Next Action**: Start Phase 5 - Backend Integration.
+Core models with relationships:
+- **User** — email, password, name, role (customer/admin)
+- **Product** — slug, price, stock, images, belongs to Category, soft delete
+- **Category** — self-referential parent (ParentID), has many Products, soft delete
+- **Order** → **OrderItem** — belongs to User and Address
+- **CartItem** / **Favorite** — User ↔ Product relationships
+- **Address** — belongs to User, has IsDefault
+- **Banner** / **Page** / **Setting** — site content management

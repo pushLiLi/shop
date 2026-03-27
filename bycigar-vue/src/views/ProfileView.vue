@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AddressForm from '../components/AddressForm.vue'
@@ -203,6 +203,75 @@ const tabs = [
 ]
 
 const addressLimit = 5
+
+const captchaId = ref('')
+const captchaImage = ref('')
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+  captchaCode: ''
+})
+const passwordMessage = ref('')
+const passwordLoading = ref(false)
+
+watch(activeTab, (val) => {
+  if (val === 'security') {
+    refreshCaptcha()
+  }
+})
+
+async function refreshCaptcha() {
+  try {
+    const res = await fetch('http://localhost:3000/api/auth/captcha')
+    const data = await res.json()
+    captchaId.value = data.captchaId
+    captchaImage.value = data.captchaImage
+    passwordForm.value.captchaCode = ''
+  } catch (e) {
+    console.error('获取验证码失败:', e)
+  }
+}
+
+async function changePassword() {
+  passwordMessage.value = ''
+  if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
+    passwordMessage.value = '两次输入的新密码不一致'
+    return
+  }
+  if (passwordForm.value.newPassword.length < 6) {
+    passwordMessage.value = '新密码至少需要6个字符'
+    return
+  }
+  passwordLoading.value = true
+  try {
+    const res = await fetch('http://localhost:3000/api/auth/change-password', {
+      method: 'PUT',
+      headers: authStore.getAuthHeaders(),
+      body: JSON.stringify({
+        oldPassword: passwordForm.value.oldPassword,
+        newPassword: passwordForm.value.newPassword,
+        captchaId: captchaId.value,
+        captchaCode: passwordForm.value.captchaCode
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || '密码修改失败')
+    }
+    passwordMessage.value = '密码修改成功，请重新登录'
+    passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '', captchaCode: '' }
+    setTimeout(() => {
+      authStore.logout()
+      router.push('/login')
+    }, 2000)
+  } catch (e) {
+    passwordMessage.value = e.message
+    refreshCaptcha()
+  } finally {
+    passwordLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -316,10 +385,48 @@ const addressLimit = 5
           </div>
         </div>
 
- <div v-if="activeTab === 'security'" class="content-section">
+        <div v-if="activeTab === 'security'" class="content-section">
           <h2>账户安全</h2>
-          <div class="security-info">
-            <p>如需修改密码，请联系管理员。</p>
+          <div class="password-form">
+            <div v-if="passwordMessage" :class="['message', { error: passwordMessage.includes('失败') || passwordMessage.includes('错误') || passwordMessage.includes('不一致') }]">
+              {{ passwordMessage }}
+            </div>
+
+            <div class="form-group">
+              <label>原密码</label>
+              <input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码">
+            </div>
+
+            <div class="form-group">
+              <label>新密码</label>
+              <input v-model="passwordForm.newPassword" type="password" placeholder="至少6个字符">
+            </div>
+
+            <div class="form-group">
+              <label>确认新密码</label>
+              <input v-model="passwordForm.confirmPassword" type="password" placeholder="再次输入新密码">
+            </div>
+
+            <div class="form-group">
+              <label>验证码</label>
+              <div class="captcha-row">
+                <input v-model="passwordForm.captchaCode" type="text" placeholder="请输入验证码" maxlength="4">
+                <img
+                  v-if="captchaImage"
+                  :src="captchaImage"
+                  class="captcha-img"
+                  @click="refreshCaptcha"
+                  title="点击刷新验证码"
+                >
+                <button type="button" class="btn-refresh-captcha" @click="refreshCaptcha">刷新</button>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-save" @click="changePassword" :disabled="passwordLoading">
+                {{ passwordLoading ? '提交中...' : '修改密码' }}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -766,11 +873,51 @@ const addressLimit = 5
   font-size: 16px;
 }
 
-.security-info {
-  color: #888;
-  padding: 20px;
-  background: #1a1a1a;
-  border-radius: 8px;
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 480px;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.captcha-row input {
+  flex: 1;
+}
+
+.captcha-img {
+  height: 44px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #444;
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.captcha-img:hover {
+  border-color: #d4a574;
+}
+
+.btn-refresh-captcha {
+  background: transparent;
+  border: 1px solid #666;
+  color: #aaa;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.btn-refresh-captcha:hover {
+  border-color: #d4a574;
+  color: #d4a574;
 }
 
 .address-header-row {

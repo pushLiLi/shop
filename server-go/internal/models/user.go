@@ -31,3 +31,10 @@ type LoginInput struct {
 type UpdateProfileInput struct {
 	Name string `json:"name"`
 }
+
+type ChangePasswordInput struct {
+	OldPassword string `json:"oldPassword" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required,min=6"`
+	CaptchaId   string `json:"captchaId" binding:"required"`
+	CaptchaCode string `json:"captchaCode" binding:"required"`
+}
