@@ -75,12 +75,8 @@ watch(() => cartStore.isOpen, (isOpen) => {
                   <h3 class="item-name">{{ item.product?.name }}</h3>
                   <div class="item-price">{{ formatPrice(item.product?.price) }}</div>
                   <div class="item-actions">
-                    <div class="quantity-control">
-                      <button @click="cartStore.updateQuantity(item.productId, item.quantity - 1)">-</button>
-                      <span>{{ item.quantity }}</span>
-                      <button @click="cartStore.updateQuantity(item.productId, item.quantity + 1)">+</button>
-                    </div>
-                    <button @click="cartStore.removeItem(item.productId)" class="remove-btn">
+                    <span class="item-quantity">数量: {{ item.quantity }}</span>
+                    <button @click="cartStore.removeItem(item.id)" class="remove-btn">
                       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -261,35 +257,9 @@ watch(() => cartStore.isOpen, (isOpen) => {
   margin-bottom: 8px;
 }
 
-.quantity-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quantity-control button {
-  background: #333;
-  border: 1px solid #444;
-  color: #fff;
-  width: 26px;
-  height: 26px;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.quantity-control button:hover {
-  background: #444;
-}
-
-.quantity-control span {
-  color: #fff;
-  min-width: 24px;
-  text-align: center;
-  font-size: 14px;
+.item-quantity {
+  color: #aaa;
+  font-size: 13px;
 }
 
 .remove-btn {
