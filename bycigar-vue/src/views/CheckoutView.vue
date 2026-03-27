@@ -11,6 +11,7 @@ const authStore = useAuthStore()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
+const totalQuantity = computed(() => items.value.reduce((sum, item) => sum + item.quantity, 0))
 const loading = ref(false)
 const error = ref(null)
 const addresses = ref([])
@@ -150,7 +151,7 @@ function formatPrice(price) {
           <h2 class="section-title">订单汇总</h2>
           <div class="summary-row">
             <span>商品数量:</span>
-            <span>{{ items.length }}</span>
+            <span>{{ totalQuantity }}</span>
           </div>
           <div class="summary-row total-row">
             <span>总计:</span>
