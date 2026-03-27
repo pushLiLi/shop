@@ -1,34 +1,31 @@
 # AGENTS.md - AI Coding Agent Guidelines
 
-Guidelines for AI coding agents (Claude, GPT-4, Copilot, Cursor, etc.) working on this codebase.
+Guidelines for AI coding agents working on the BYCIGAR e-commerce codebase.
 
-## Project Overview
+## Tech Stack
 
-BYCIGAR e-commerce platform with Vue 3 frontend and Go backend.
-
-| Layer       | Technology                                    |
-|-------------|-----------------------------------------------|
-| Frontend    | Vue 3 + Vite + Vue Router + Pinia             |
-| Backend     | Go 1.23 + Gin + GORM + JWT                    |
-| Database    | MySQL 8.4 (Docker)                            |
-| API Docs    | Swagger (swaggo)                              |
+| Layer    | Technology                          |
+|----------|-------------------------------------|
+| Frontend | Vue 3 + Vite + Vue Router + Pinia   |
+| Backend  | Go 1.23 + Gin + GORM + JWT          |
+| Database | MySQL 8.4 (Docker)                  |
+| API Docs | Swagger (swaggo)                    |
 
 ## Project Structure
 
 ```
 shop/
-├── bycigar-vue/           # Vue frontend
-│   ├── src/components/    # Reusable components (ProductCard, Toast)
-│   ├── src/views/         # Page components + admin/
-│   ├── src/stores/        # Pinia stores (auth, cart, favorites, toast)
-│   └── vite.config.js     # Dev server proxy: /api -> localhost:3000
-├── server-go/             # Go backend
-│   ├── cmd/main.go        # Entry point
-│   ├── internal/handlers/ # HTTP handlers (REST API)
-│   ├── internal/middleware/ # CORS, Auth, Admin middleware
-│   ├── internal/models/   # GORM models
-│   └── pkg/utils/         # response.go (ErrorResponse, SuccessResponse)
-└── bycigar_site/          # Legacy static site (reference only)
+├── bycigar-vue/
+│   ├── src/components/     # Reusable components
+│   ├── src/views/          # Page components + admin/
+│   ├── src/stores/         # Pinia stores
+│   └── vite.config.js      # Dev proxy: /api -> localhost:3000
+├── server-go/
+│   ├── cmd/main.go         # Entry point
+│   ├── internal/handlers/  # HTTP handlers
+│   ├── internal/models/    # GORM models + input structs
+│   └── pkg/utils/          # ErrorResponse, SuccessResponse
+└── bycigar_site/           # Legacy static site (reference only)
 ```
 
 ## Build Commands
@@ -39,21 +36,25 @@ npm run dev       # Dev server at http://localhost:5173
 npm run build     # Production build -> dist/
 
 # Backend (server-go/)
-go run cmd/main.go           # Dev server at http://localhost:3000
+go run cmd/main.go              # Dev server at http://localhost:3000
 go build -o server cmd/main.go  # Build executable
-go fmt ./...                 # Format code
+go fmt ./...                    # Format code
 
 # Docker
-docker-compose up -d         # Start all services
-docker-compose up -d mysql   # Start MySQL only
-docker exec -it bycigar-mysql mysql -uroot -p123456 bycigar
+docker-compose up -d mysql      # Start MySQL only
+docker exec -it bycigar-mysql mysql -uroot -p123456 bycigar --default-character-set=utf8mb4
+
+# Swagger docs (after adding new endpoints)
+cd server-go && swag init
 ```
+
+**Note**: No test framework configured yet.
 
 ## Code Style - Vue Components
 
 ```vue
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useToastStore } from '../stores/toast'
@@ -85,110 +86,125 @@ async function handleSubmit() {
 ```
 
 ### Vue Rules
-- Always use `<script setup>` (Composition API)
-- Order: imports -> emit/props -> refs -> computed -> functions
-- Use `defineEmits()` before `defineProps()` (emit first)
+- Use `<script setup>` (Composition API)
+- Order: imports -> emit -> props -> router/stores -> refs -> computed -> functions
 - All styles in `<style scoped>` blocks
-- Component files: PascalCase (`ProductCard.vue`)
+- Use `useToastStore` for notifications, **never** use `alert()`
+- API base: `http://localhost:3000/api`
+- Auth header: `Authorization: Bearer ${token}`
 
 ## Code Style - Go Backend
 
-### Handler Pattern
 ```go
-func GetProducts(c *gin.Context) {
-    page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-    query := database.DB.Model(&models.Product{}).Where("is_active = ?", true)
-    
-    var products []models.Product
-    if err := query.Find(&products).Error; err != nil {
-        utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to fetch")
+package handlers
+
+import (
+    "net/http"
+    "strconv"
+
+    "bycigar-server/internal/database"
+    "bycigar-server/internal/models"
+    "bycigar-server/pkg/utils"
+
+    "github.com/gin-gonic/gin"
+)
+
+func GetProduct(c *gin.Context) {
+    id, err := strconv.Atoi(c.Param("id"))
+    if err != nil {
+        utils.ErrorResponse(c, http.StatusBadRequest, "Invalid product ID")
         return
     }
-    c.JSON(http.StatusOK, gin.H{"products": products})
+
+    var product models.Product
+    if err := database.DB.First(&product, id).Error; err != nil {
+        utils.ErrorResponse(c, http.StatusNotFound, "Product not found")
+        return
+    }
+
+    c.JSON(http.StatusOK, product)
 }
 ```
 
 ### Go Rules
-- Use `gofmt` for formatting
 - Import order: standard -> external -> internal
+- Use `gofmt` for formatting
 - Always use `utils.ErrorResponse()` for error responses
 - Use `gin.H{}` for JSON responses
-- Map frontend camelCase to DB snake_case (e.g., `createdAt` -> `created_at`)
+- Add Swagger comments for new endpoints
+- Map frontend camelCase to DB snake_case (e.g., `categoryId` -> `category_id`)
+
+## Pinia Store Pattern
+
+```javascript
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+const API_BASE = 'http://localhost:3000/api'
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('token')
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : ''
+  }
+}
+
+export const useCartStore = defineStore('cart', () => {
+  const items = ref([])
+  const total = computed(() => items.value.reduce(...))
+  async function fetchCart() { }
+  return { items, total, fetchCart }
+})
+```
+
+## GORM Model Pattern
+
+```go
+type Product struct {
+    ID          uint           `json:"id" gorm:"primaryKey"`
+    Name        string         `json:"name" gorm:"not null"`
+    CategoryID  uint           `json:"categoryId"`
+    Category    Category       `json:"category" gorm:"foreignKey:CategoryID"`
+    CreatedAt   time.Time      `json:"createdAt"`
+    DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+}
+```
 
 ## Naming Conventions
 
-| Type          | Convention              | Example                    |
-|---------------|------------------------|----------------------------|
-| Vue Components| PascalCase             | `ProductCard.vue`          |
-| Views         | PascalCase + "View"    | `HomeView.vue`             |
-| Stores        | camelCase + "Store"    | `useCartStore`             |
-| Props         | camelCase              | `productId`                |
-| CSS Classes   | kebab-case             | `product-card`             |
-| API Endpoints | kebab-case             | `/api/cart-items`          |
-
-## Error Handling
-
-### Frontend
-```javascript
-async function fetchData() {
-  try {
-    loading.value = true
-    const res = await fetch(`${API_BASE}/products`)
-    if (!res.ok) throw new Error('Request failed')
-    products.value = (await res.json()).products || []
-  } catch (e) {
-    error.value = e.message
-    console.error('Fetch failed:', e)
-    toast.error('加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-```
-
-### Backend
-```go
-if err := database.DB.First(&user, id).Error; err != nil {
-    utils.ErrorResponse(c, http.StatusNotFound, "User not found")
-    return
-}
-```
-
-## User Notifications
-
-Use `useToastStore` for non-blocking notifications. **DO NOT** use `alert()`.
-
-```javascript
-import { useToastStore } from '../stores/toast'
-const toast = useToastStore()
-toast.success('操作成功')
-toast.error('操作失败')
-```
-
-## API Endpoints
-
-| Method | Endpoint              | Auth | Description               |
-|--------|----------------------|------|---------------------------|
-| GET    | `/api/products`      | No   | List products (paginated) |
-| GET    | `/api/products/:id`  | No   | Get product detail        |
-| GET    | `/api/categories`    | No   | List categories           |
-| GET    | `/api/cart`          | Yes  | Get user's cart           |
-| POST   | `/api/cart`          | Yes  | Add item to cart          |
-| PUT    | `/api/cart/:id`      | Yes  | Update quantity           |
-| DELETE | `/api/cart/:id`      | Yes  | Remove item               |
-| POST   | `/api/auth/login`    | No   | Login                     |
-| POST   | `/api/auth/register` | No   | Register                  |
-| GET    | `/api/auth/me`       | Yes  | Get current user          |
-
-Query params for `/api/products`: `page`, `limit`, `search`, `category`, `sortBy`, `sortOrder`
+| Type          | Convention           | Example                    |
+|---------------|----------------------|----------------------------|
+| Vue Components| PascalCase           | `ProductCard.vue`          |
+| Views         | PascalCase + View    | `HomeView.vue`             |
+| Stores        | camelCase + Store    | `useCartStore`             |
+| Props         | camelCase            | `productId`                |
+| CSS Classes   | kebab-case           | `product-card`             |
+| API Endpoints | kebab-case           | `/api/cart-items`          |
+| Go Handlers   | PascalCase           | `GetProducts`              |
+| Go Models     | PascalCase           | `Product`                  |
 
 ## Authentication
 
 - Token: `localStorage.getItem('token')`
 - User: `localStorage.getItem('user')` (JSON)
-- Header: `Authorization: Bearer <token>`
 - Protected routes: `meta: { requiresAuth: true }`
 - Admin routes: `meta: { requiresAuth: true, requiresAdmin: true }`
+- Default admin: `admin@admin.com` / `123456`
+
+## API Endpoints
+
+| Method | Endpoint              | Auth | Description               |
+|--------|-----------------------|------|---------------------------|
+| GET    | `/api/products`       | No   | List products (paginated) |
+| GET    | `/api/products/:id`   | No   | Get product detail        |
+| GET    | `/api/categories`     | No   | List categories           |
+| GET    | `/api/cart`           | Yes  | Get user's cart           |
+| POST   | `/api/cart`           | Yes  | Add item to cart          |
+| POST   | `/api/auth/login`     | No   | Login                     |
+| GET    | `/api/auth/me`        | Yes  | Get current user          |
+
+Query params for `/api/products`: `page`, `limit`, `search`, `category`, `sortBy`, `sortOrder`
 
 ## Git Commit Convention
 
@@ -201,8 +217,7 @@ refactor: 重构用户认证逻辑
 
 ## Important Notes
 
-- **No tests yet** - Testing framework not configured
 - **Language**: Communicate with user in Chinese
 - **Simplicity**: Keep code clean, avoid over-engineering
 - **Comments**: Only for complex logic explanations
-- **Step-by-step**: Execute one phase at a time, report success, then proceed
+- **Database charset**: Always use `utf8mb4` for Chinese characters
