@@ -5,7 +5,7 @@ const footerLinks = [
   { name: '关于我们', path: '/about' },
   { name: '服务条款', path: '/services' },
   { name: '隐私政策', path: '/privacy-policy' },
-  { name: '嚴正聲明', path: '/returns-policy' }
+  { name: '严正声明', path: '/returns-policy' }
 ]
 </script>
 
@@ -22,11 +22,6 @@ const footerLinks = [
                     {{ link.name }}
                   </router-link>
                 </div>
-              </div>
-            </div>
-            <div class="col-md-5">
-              <div class="footer-brand">
-                <h4>BYCIGAR | 权威正品雪茄在线购买商城</h4>
               </div>
             </div>
           </div>
