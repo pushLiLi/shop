@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import ProductCard from '../components/ProductCard.vue'
 
 const API_BASE = 'http://localhost:3000/api'
 
@@ -75,11 +76,6 @@ onUnmounted(() => {
     clearInterval(slideInterval)
   }
 })
-
-const formatPrice = (price) => {
-  return `$${price.toFixed(2)}`
-}
-
 </script>
 
 <template>
@@ -115,20 +111,7 @@ const formatPrice = (price) => {
         <h2 class="section-title">{{ config.home_featured_title || '特别推荐' }}</h2>
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else class="products-grid grid-6">
-          <div v-for="product in featuredProducts" :key="product.id" class="product-card">
-            <router-link :to="'/products/' + product.id" class="product-image">
-              <img :src="product.imageUrl" :alt="product.name">
-            </router-link>
-            <div class="product-info">
-              <h3 class="product-name">
-                <router-link :to="'/products/' + product.id">{{ product.name }}</router-link>
-              </h3>
-              <div class="product-bottom">
-                <button class="add-cart-btn">加入购物车</button>
-                <div class="product-price">{{ formatPrice(product.price) }}</div>
-              </div>
-            </div>
-          </div>
+          <ProductCard v-for="product in featuredProducts" :key="product.id" :product="product" />
         </div>
       </div>
     </section>
@@ -144,20 +127,7 @@ const formatPrice = (price) => {
         <h2 class="section-title">{{ config.home_cuban_title || '古巴雪茄推荐' }}</h2>
         <div v-if="loading" class="loading">加载中...</div>
         <div v-else class="products-grid grid-3">
-          <div v-for="product in cubanProducts" :key="product.id" class="product-card">
-            <router-link :to="'/products/' + product.id" class="product-image">
-              <img :src="product.imageUrl" :alt="product.name">
-            </router-link>
-            <div class="product-info">
-              <h3 class="product-name">
-                <router-link :to="'/products/' + product.id">{{ product.name }}</router-link>
-              </h3>
-              <div class="product-bottom">
-                <button class="add-cart-btn">加入购物车</button>
-                <div class="product-price">{{ formatPrice(product.price) }}</div>
-              </div>
-            </div>
-          </div>
+          <ProductCard v-for="product in cubanProducts" :key="product.id" :product="product" />
         </div>
       </div>
     </section>
@@ -295,80 +265,6 @@ const formatPrice = (price) => {
 
 .products-grid.grid-3 {
   grid-template-columns: repeat(3, 1fr);
-}
-
-.product-card {
-  background: #1a1a1a;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(212, 165, 116, 0.1);
-}
-
-.product-image {
-  display: block;
-  background: #fff;
-  padding: 10px;
-}
-
-.product-image img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
-  object-fit: cover;
-}
-
-.product-info {
-  padding: 15px;
-}
-
-.product-name {
-  font-size: 13px;
-  margin: 0 0 10px;
-  line-height: 1.4;
-}
-
-.product-name a {
-  color: #ccc;
-  text-decoration: none;
-  transition: color 0.3s;
-}
-
-.product-name a:hover {
-  color: #d4a574;
-}
-
-.product-bottom {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.add-cart-btn {
-  background: transparent;
-  border: 1px solid #d4a574;
-  color: #d4a574;
-  padding: 6px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-  border-radius: 4px;
-}
-
-.add-cart-btn:hover {
-  background: #d4a574;
-  color: #1a1a1a;
-}
-
-.product-price {
-  color: #d4a574;
-  font-weight: bold;
-  font-size: 14px;
 }
 
 .banner-section {

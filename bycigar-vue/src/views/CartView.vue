@@ -42,11 +42,11 @@ onMounted(() => {
               <div class="item-price">单价: {{ formatPrice(item.product?.price) }}</div>
               <div class="item-actions">
                 <div class="quantity-control">
-                  <button @click="cartStore.updateQuantity(item.productId, item.quantity - 1)">-</button>
-                  <span>{{ item.quantity }}</span>
-                  <button @click="cartStore.updateQuantity(item.productId, item.quantity + 1)">+</button>
-                </div>
-                <button @click="cartStore.removeItem(item.productId)" class="remove-btn">删除</button>
+                   <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
+                   <span>{{ item.quantity }}</span>
+                   <button @click="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
+                 </div>
+                 <button @click="cartStore.removeItem(item.id)" class="remove-btn">删除</button>
               </div>
               <div class="item-total">
                 小计: {{ formatPrice((item.product?.price || 0) * item.quantity) }}
