@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+bycigar-vue/node_modules/
+
+# Build
+bycigar-vue/dist/
+server-go/server
+server-go/bycigar-server
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temp
+tmp/
+temp/
+
+# Upload files (keep directory structure)
+server-go/static/uploads/*
+!server-go/static/uploads/.gitkeep

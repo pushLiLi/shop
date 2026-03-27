@@ -1,0 +1,95 @@
+/* Medium to small screen overrides (max-width: 992px) */
+@media (max-width:992px) {
+    .page-product-content {
+        margin-top: 1.5rem
+    }
+
+    /* Service page styles */
+    .page-service-content .title-box {
+        margin-bottom: 30px
+    }
+    
+    .page-service-content .title-box .title {
+        font-size: 22px;
+        text-align: center
+    }
+
+    .page-service-content .title-box .sub-title {
+        font-size: 12px;
+        text-align: center
+    }
+
+    .page-service-content .service-icon {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px
+    }
+
+    .page-service-content .service-icon img {
+        max-width: 80%
+    }
+
+    .page-service-content .service-item {
+        margin-bottom: 20px
+    }
+
+    .page-about-content .about-text .main-title {
+        font-size: 20px;
+        margin-bottom: 30px
+    }
+
+    header .header-desktop {
+        display: none
+    }
+
+    body.page-product .breadcrumb-wrap {
+        display: none
+    }
+
+    body.page-product .page-product-top .product-left-col {
+        padding: 0
+    }
+
+    body.page-product .page-product-top .product-info .product-info-bottom .quantity-wrap {
+        height: 40px;
+        margin-bottom: 10px
+    }
+
+    body.page-product .page-product-top .product-info .product-info-bottom .product-info-btns {
+        display: flex;
+        height: 40px
+    }
+
+    body.page-product .page-product-top .product-info .product-info-bottom .product-info-btns .btn {
+        width: 50%
+    }
+    
+    /* Product page styles */
+    body.page-product .page-product-top .product-info .product-info-bottom .quantity-wrap {
+        height: 40px;
+        margin-bottom: 10px
+    }
+    
+    body.page-product .page-product-top .product-info .product-info-bottom .product-info-btns {
+        display: flex;
+        height: 40px
+    }
+    
+    body.page-product .page-product-top .product-info .product-info-bottom .product-info-btns .btn {
+        width: 50%
+    }
+    
+    /* Account card minimum height for medium screens */
+    .account-card-box {
+        min-height: 621px;
+    }
+
+    body.page-product .page-product-top .product-images {
+        flex-direction: column;
+        margin-bottom: 10px
+    }
+
+    body.page-product .page-product-top .product-images .main-product-img {
+        margin-top: 15px
+    }
+}

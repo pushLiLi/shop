@@ -1,0 +1,9 @@
+/* Small screen overrides (min-width: 400px) */
+@media (min-width:400px) {
+    /* Login/register page styles */
+    .login-register-box .btn-submit {
+        align-items: center;
+        display: flex;
+        justify-content: space-between
+    }
+}

@@ -1,0 +1,225 @@
+/* 整合后的桌面端媒体查询样式 */
+@media (min-width:768px) {
+    /* 固定头部 */
+    header .header-top {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+    
+    header .header-desktop {
+        position: fixed;
+        top: 40px;
+        left: 0;
+        right: 0;
+        z-index: 999;
+    }
+    
+    body {
+        padding-top: 160px;
+    }
+    /* 表格响应式样式 */
+    .table-response thead {
+        display: table-header-group
+    }
+    
+    .table-response td:before {
+        display: none
+    }
+
+    .table-response td {
+        display: table-cell;
+        text-align: left
+    }
+    
+    /* 标签页相关样式 */
+    .tabs-plus .nav-item {
+        margin-right: 40px
+    }
+    
+    /* 页脚相关样式 */
+    footer {
+        padding-top: 50px
+    }
+    
+    /* 支付成功页面标题样式 */
+    body.page-checkout-success .checkout-success-box .checkout-success-title span {
+        font-size: 30px
+    }
+    
+    /* 筛选器相关样式 */
+    #toggleFilterSidebar {
+        display: none
+    }
+    
+    .brand-filter {
+        max-height: 400px;
+        overflow-y: auto !important;
+    }
+
+    .blog-item {
+        margin-bottom: 30px
+    }
+
+    .blog-item .blog-item-info .blog-title {
+        font-size: 18px
+    }
+
+    body.page-home .module-line {
+        padding-bottom: 40px
+    }
+
+    body.page-cart .products-table .td-image {
+        width: 70px
+    }
+
+    body.page-cart .products-table .product-image {
+        height: 50px;
+        margin-right: 10px;
+        width: 50px
+    }
+
+    body.page-cart .products-table .quantity-wrap {
+        height: 40px;
+        width: 120px
+    }
+
+    body.page-cart .products-table .quantity-wrap>div {
+        font-size: 18px
+    }
+
+    body.page-cart .products-table .mb-price {
+        display: none
+    }
+
+    body.page-checkout .checkout-container {
+        max-width: 100%;
+        padding: 0
+    }
+
+    body.page-checkout .checkout-container>.row {
+        margin: 0
+    }
+
+    body.page-checkout .checkout-container>.row .col-md-7,
+    body.page-checkout .checkout-container>.row>.col-md-5 {
+        padding: 0
+    }
+
+    body.page-checkout .title-wrap>.title {
+        font-size: 18px
+    }
+
+    body.page-checkout .checkout-info {
+        margin-left: auto;
+        max-width: 720px;
+        padding: 40px
+    }
+
+    body.page-checkout .checkout-info .checkout-item {
+        margin-bottom: 40px
+    }
+
+    body.page-checkout .checkout-data {
+        height: 100%;
+        padding: 0 40px
+    }
+
+    body.page-checkout .checkout-data .checkout-data-content {
+        max-width: 430px;
+        padding: 40px 0
+    }
+
+    body.page-checkout-success .checkout-success-box {
+        padding: 30px
+    }
+
+    body.page-checkout-success .checkout-success-box .order-success-icon img {
+        max-width: 200px
+    }
+
+    body.page-checkout-success .checkout-success-box .checkout-success-title {
+        margin-bottom: 30px
+    }
+
+    body.page-checkout-success .checkout-success-box .checkout-success-title span {
+        font-size: 30px
+    }
+    
+    /* 购物车页面样式 */
+    body.page-cart .products-table .mb-price {
+        display: none
+    }
+
+    body.page-news .newest-box .newest-item .item-summary {
+        font-size: 15px
+    }
+    
+    /* 面包屑样式 - Desktop */
+    .breadcrumb-wrap {
+        margin-bottom: 30px;
+        padding: 20px 0
+    }
+    
+    /* 账户卡片样式 - Desktop */
+    .account-card-box {
+        padding: 30px
+    }
+    
+    .account-card-box .account-card-title span {
+        font-size: 20px
+    }
+    
+    /* 账户用户信息样式 - Desktop */
+    .account-sidebar .account-user {
+        margin: 30px;
+        padding-bottom: 30px
+    }
+
+    .account-sidebar .account-links li a {
+        margin: 26px 0;
+        padding: 6px 10px 6px 30px
+    }
+    
+    /* 中等屏幕以上隐藏移动端头部 */
+    header .header-mobile {
+        display: none
+    }
+
+    .tabs-plus .nav-link {
+        font-size: 18px
+    }
+
+    .filter-sidebar .filter-sidebar-item {
+        margin-bottom: 40px
+    }
+
+    footer:before {
+        top: -5%;
+        width: 30%
+    }
+
+    footer:after {
+        bottom: -5%;
+        width: 15%
+    }
+
+    footer .footer-box .footer-top-links {
+        padding: 40px 0
+    }
+
+    footer .footer-box .footer-top-links .footer-link-title {
+        font-size: 18px;
+        margin-bottom: 20px
+    }
+
+    footer .footer-box .footer-top-links .footer-link-title .footer-link-icon {
+        display: none
+    }
+
+    footer .footer-box .footer-top-links .footer-item .footer-item-content {
+        display: block
+    }
+}

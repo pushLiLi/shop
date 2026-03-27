@@ -1,0 +1,123 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+
+	"bycigar-server/internal/database"
+	"bycigar-server/internal/models"
+	"bycigar-server/pkg/utils"
+
+	"github.com/gin-gonic/gin"
+)
+
+func GetOrders(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var orders []models.Order
+	database.DB.Where("user_id = ?", userID).
+		Preload("Items.Product").
+		Preload("Address").
+		Order("created_at desc").
+		Find(&orders)
+
+	c.JSON(http.StatusOK, gin.H{"orders": orders})
+}
+
+func CreateOrder(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var input models.CreateOrderInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if input.AddressID == 0 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "请选择收货地址")
+		return
+	}
+
+	var address models.Address
+	if err := database.DB.Where("id = ? AND user_id = ?", input.AddressID, userID).First(&address).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "地址不存在或无权使用")
+		return
+	}
+
+	var cartItems []models.CartItem
+	database.DB.Where("user_id = ?", userID).Preload("Product").Find(&cartItems)
+
+	if len(cartItems) == 0 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Cart is empty")
+		return
+	}
+
+	var total float64
+	for _, item := range cartItems {
+		if item.Product.ID > 0 {
+			total += item.Product.Price * float64(item.Quantity)
+		}
+	}
+
+	order := models.Order{
+		UserID:    userID.(uint),
+		AddressID: input.AddressID,
+		Total:     total,
+		Remark:    input.Remark,
+		Status:    "pending",
+	}
+
+	if err := database.DB.Create(&order).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "Failed to create order")
+		return
+	}
+
+	for _, item := range cartItems {
+		if item.Product.ID > 0 {
+			orderItem := models.OrderItem{
+				OrderID:   order.ID,
+				ProductID: item.ProductID,
+				Quantity:  item.Quantity,
+				Price:     item.Product.Price,
+			}
+			database.DB.Create(&orderItem)
+		}
+	}
+
+	database.DB.Where("user_id = ?", userID).Delete(&models.CartItem{})
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "orderId": order.ID})
+}
+
+func GetOrder(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid order ID")
+		return
+	}
+
+	var order models.Order
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).
+		Preload("Items.Product").
+		Preload("Address").
+		First(&order).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "Order not found")
+		return
+	}
+
+	c.JSON(http.StatusOK, order)
+}
