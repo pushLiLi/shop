@@ -12,6 +12,7 @@ const favoritesStore = useFavoritesStore()
 const authStore = useAuthStore()
 const toast = useToastStore()
 const isMenuOpen = ref(false)
+const showNotice = ref(!localStorage.getItem('notice_closed'))
 const searchKeyword = ref('')
 const showUserMenu = ref(false)
 const isAdmin = computed(() => authStore.isAdmin)
@@ -67,10 +68,11 @@ const handleCartClick = () => {
 
 <template>
   <header class="site-header">
-    <div class="header-top">
+    <div class="header-top" v-if="showNotice">
       <div class="container">
         <div class="top-notice">
           尊敬的客户，为确保您的购物体验，下单前请仔细阅读我们<a href="/services">服务条款</a>。
+          <button class="notice-close" @click="showNotice = false; localStorage.setItem('notice_closed', '1')">&times;</button>
         </div>
       </div>
     </div>
@@ -200,6 +202,30 @@ const handleCartClick = () => {
 .top-notice a {
   color: #d4a574;
   text-decoration: none;
+}
+
+.top-notice {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.notice-close {
+  position: absolute;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: #999;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 5px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.notice-close:hover {
+  color: #fff;
 }
 
 .top-notice a:hover {
