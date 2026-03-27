@@ -32,23 +32,7 @@ const footerLinks = [
           <p class="service-time"><strong>客服在线时间每周一至周六 9:00到18:00</strong></p>
         </div>
 
-        <div class="footer-bottom">
-          <div class="row align-items-center">
-            <div class="col-md-6">
-              <div class="copyright">
-                Powered By <a href="https://www.innoshop.com/" target="_blank">InnoShop</a>
-                <span class="ms-2">InnoShop &copy; {{ currentYear }} All Rights Reserved</span>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="payment-icons">
-                <img src="/images/demo/payment/logotc.png" alt="Payment" class="payment-icon">
-                <img src="/images/demo/payment/hkyz.png" alt="Payment" class="payment-icon">
-                <img src="/images/demo/payment/paydollar.svg" alt="Payment" class="payment-icon">
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   </footer>
@@ -107,44 +91,6 @@ const footerLinks = [
   color: #28a745;
 }
 
-.footer-bottom {
-  border-top: 1px solid #333;
-  padding-top: 20px;
-  margin-top: 20px;
-}
-
-.copyright {
-  font-size: 13px;
-  color: #888;
-}
-
-.copyright a {
-  color: #d4a574;
-  text-decoration: none;
-}
-
-.copyright a:hover {
-  text-decoration: underline;
-}
-
-.payment-icons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  flex-wrap: wrap;
-}
-
-.payment-icon {
-  height: 30px;
-  width: auto;
-  opacity: 0.8;
-  transition: opacity 0.3s;
-}
-
-.payment-icon:hover {
-  opacity: 1;
-}
-
 @media (max-width: 768px) {
   .footer-links-section .col-6 {
     margin-bottom: 15px;
@@ -154,13 +100,6 @@ const footerLinks = [
     margin-top: 20px;
   }
 
-  .payment-icons {
-    justify-content: flex-start;
-    margin-top: 15px;
-  }
 
-  .copyright {
-    text-align: center;
-  }
 }
 </style>
