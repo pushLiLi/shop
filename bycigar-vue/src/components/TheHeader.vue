@@ -4,11 +4,13 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
 const authStore = useAuthStore()
+const toast = useToastStore()
 const isMenuOpen = ref(false)
 const searchKeyword = ref('')
 const showUserMenu = ref(false)
@@ -52,6 +54,14 @@ const handleSearch = () => {
   } else {
     alert('请输入搜索关键词')
   }
+}
+
+const handleCartClick = () => {
+  if (!authStore.isLoggedIn) {
+    toast.error('请先登录')
+    return
+  }
+  cartStore.openCart()
 }
 </script>
 
@@ -156,14 +166,14 @@ const handleSearch = () => {
                 </svg>
                 <span class="icon-badge" v-if="favoritesStore.items.length">{{ favoritesStore.items.length }}</span>
               </router-link>
-            <router-link to="/cart" class="icon-item" title="购物车">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="9" cy="21" r="1"></circle>
-                <circle cx="20" cy="21" r="1"></circle>
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-              </svg>
-              <span class="icon-badge" v-if="cartStore.items.length">{{ cartStore.items.length }}</span>
-            </router-link>
+            <button @click="handleCartClick" class="icon-item" title="购物车">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="9" cy="21" r="1"></circle>
+                  <circle cx="20" cy="21" r="1"></circle>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                </svg>
+                <span class="icon-badge" v-if="cartStore.items.length">{{ cartStore.items.length }}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -389,6 +399,10 @@ const handleSearch = () => {
   color: #fff;
   text-decoration: none;
   transition: color 0.3s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
 
 .icon-item:hover {

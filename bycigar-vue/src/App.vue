@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import TheHeader from './components/TheHeader.vue'
 import TheFooter from './components/TheFooter.vue'
 import Toast from './components/Toast.vue'
+import CartDrawer from './components/CartDrawer.vue'
 
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
@@ -21,6 +22,7 @@ const isAdminRoute = computed(() => route.path.startsWith('/admin'))
     </main>
     <TheFooter v-if="!isAdminRoute" />
     <Toast />
+    <CartDrawer />
   </div>
 </template>
 

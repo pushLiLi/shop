@@ -13,7 +13,8 @@ function getAuthHeaders() {
 export const useCartStore = defineStore('cart', {
   state: () => ({
     items: [],
-    loading: false
+    loading: false,
+    isOpen: false
   }),
   
   getters: {
@@ -101,6 +102,18 @@ export const useCartStore = defineStore('cart', {
     
     clear() {
       this.items = []
+    },
+    
+    openCart() {
+      this.isOpen = true
+    },
+    
+    closeCart() {
+      this.isOpen = false
+    },
+    
+    toggleCart() {
+      this.isOpen = !this.isOpen
     }
   }
 })
