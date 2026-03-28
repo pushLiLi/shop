@@ -2,7 +2,7 @@
 
 ## Tech Stack
 
-Frontend: Vue 3 + Vite 8 + Vue Router + Pinia 3 + marked (JavaScript only, no TypeScript)
+Frontend: Vue 3 + Vite 8 + Vue Router + Pinia 3 + marked + vue-advanced-cropper (JavaScript only, no TypeScript)
 Backend: Go 1.23 + Gin + GORM + JWT + Swagger (Dockerfile); go.mod says 1.25
 Database: MySQL 8.4 (Docker, utf8mb4) | Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server`
@@ -12,6 +12,7 @@ Module: `bycigar-server`
 ```bash
 npm run dev                     # Frontend dev at :5173 (proxies /api -> :3000, /media -> :9000)
 npm run build                   # Frontend production build
+npm run preview                 # Preview production build locally
 go run ./cmd/main.go            # Backend dev at :3000 (run from server-go/)
 go build -o nul ./...           # Check Go compilation (Windows; use -o /dev/null on Linux/Mac)
 go fmt ./...                    # Format Go code
@@ -32,9 +33,9 @@ Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go back
 bycigar-vue/src/
 ├── main.js, App.vue            # Entry + layout (dark theme, Toast, CartDrawer)
 ├── style.css                   # Global dark theme, grid (.col-2/3/4/6/12), 768px breakpoint
-├── components/                 # 10: ProductCard, CartDrawer, Toast, TheHeader, TheFooter, etc.
+├── components/                 # 10: ProductCard, CartDrawer, Toast, TheHeader, TheFooter, AdminImageUpload, etc.
 ├── composables/                # useCarousel (carousel with autoplay, touch, pause)
-├── views/                      # 12 page views + admin/ (6: AdminLayout, AdminProducts, etc.)
+├── views/                      # 11 public views + admin/ (6: AdminLayout, AdminProducts, etc.)
 ├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
 ├── lib/api/                    # Generated OpenAPI types (openapi.json, v1.d.ts)
 └── router/index.js             # Routes with auth/admin guards
@@ -135,6 +136,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - `Product.Image` and `Banner.Image` have JSON tag `"imageUrl"`. Frontend must send/read `"imageUrl"`.
 - Config API: `GET /api/config` returns `{"key": "value"}` map. Settings API: `GET /api/settings` returns `{"success": true, "data": {...}}`.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"url": "/media/bycigar/xxx.jpg"}`. Max 10MB, jpg/png/gif/webp.
+- `AdminImageUpload.vue` supports optional image cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio (e.g. `1` for products, `7/3` for banners). `null` (default) skips cropping.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
 - Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.
 

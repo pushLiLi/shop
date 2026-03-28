@@ -272,7 +272,7 @@ onMounted(() => { fetchBanners() })
             </div>
             <div class="form-group">
               <label>轮播图片 <span class="required">*</span></label>
-              <AdminImageUpload v-model="form.imageUrl" />
+              <AdminImageUpload v-model="form.imageUrl" :aspect-ratio="7/3" />
             </div>
             <div class="form-group">
               <label>跳转链接</label>

@@ -443,7 +443,7 @@ onMounted(() => {
           <div class="form-section">
             <div class="section-title">商品图片</div>
             <div class="form-group">
-              <AdminImageUpload v-model="form.imageUrl" />
+              <AdminImageUpload v-model="form.imageUrl" :aspect-ratio="1" />
             </div>
           </div>
         </div>
