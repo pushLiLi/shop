@@ -141,7 +141,7 @@ func GetProduct(c *gin.Context) {
 // @Router /categories [get]
 func GetCategories(c *gin.Context) {
 	var categories []models.Category
-	database.DB.Preload("Children").Find(&categories)
+	database.DB.Where("parent_id IS NULL").Preload("Children").Find(&categories)
 
 	type CategoryWithCount struct {
 		models.Category

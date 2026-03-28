@@ -19,16 +19,7 @@ const isAdmin = computed(() => authStore.isAdmin)
 
 const menuItems = [
   { name: '首页', path: '/', children: [] },
-  {
-    name: '全部商品',
-    path: '/products',
-    children: [
-      { name: '古巴雪茄', path: '/category/cuban' },
-      { name: '尼加拉瓜雪茄', path: '/category/nicaraguan' },
-      { name: '多米尼加雪茄', path: '/category/dominican' },
-      { name: '雪茄配件', path: '/category/accessories' }
-    ]
-  },
+  { name: '全部商品', path: '/products', children: [] },
   { name: '关于我们', path: '/about', children: [] }
 ]
 
@@ -87,24 +78,9 @@ const handleCartClick = () => {
             <nav class="header-nav" :class="{ 'is-open': isMenuOpen }">
               <ul class="nav-list">
                 <li v-for="item in menuItems" :key="item.path" class="nav-item">
-                  <router-link v-if="item.children.length === 0" :to="item.path" class="nav-link">
+                  <router-link :to="item.path" class="nav-link">
                     {{ item.name }}
                   </router-link>
-                  <div v-else class="nav-dropdown">
-                    <span class="nav-link">
-                      {{ item.name }}
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px;">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </span>
-                    <ul class="dropdown-menu">
-                      <li v-for="child in item.children" :key="child.path">
-                        <router-link :to="child.path" class="dropdown-link">
-                          {{ child.name }}
-                        </router-link>
-                      </li>
-                    </ul>
-                  </div>
                 </li>
               </ul>
             </nav>
@@ -303,70 +279,6 @@ const handleCartClick = () => {
   transition: color 0.3s ease;
 }
 
-.nav-link:hover {
-  color: #d4a574;
-}
-
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  left: 18px;
-  right: 18px;
-  height: 1px;
-  background: #d4a574;
-  transform: scaleX(0);
-  transition: transform 0.3s ease;
-}
-
-.nav-link:hover::after {
-  transform: scaleX(1);
-}
-
-.nav-dropdown {
-  position: relative;
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 180px;
-  background: #2d2d2d;
-  border-radius: 4px;
-  padding: 10px 0;
-  list-style: none;
-  margin: 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(10px);
-  transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-
-.nav-dropdown:hover .dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-}
-
-.dropdown-link {
-  display: block;
-  padding: 10px 18px;
-  color: #c9a87c;
-  text-decoration: none;
-  font-family: 'Playfair Display', serif;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.dropdown-link:hover {
-  color: #d4a574;
-  background: rgba(212, 165, 116, 0.1);
-}
-
 .header-right {
   display: flex;
   align-items: center;
@@ -561,16 +473,6 @@ const handleCartClick = () => {
 
   .nav-link::after {
     display: none;
-  }
-
-  .dropdown-menu {
-    position: static;
-    opacity: 1;
-    visibility: visible;
-    transform: none;
-    background: transparent;
-    padding-left: 15px;
-    box-shadow: none;
   }
 
   .mobile-menu-btn {

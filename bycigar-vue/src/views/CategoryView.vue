@@ -2,6 +2,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import ProductCard from '../components/ProductCard.vue'
+import CategorySidebar from '../components/CategorySidebar.vue'
 
 const route = useRoute()
 const products = ref([])
@@ -80,67 +81,72 @@ watch([totalCount, pageSize], () => {
 <template>
   <div class="category-page">
     <div class="container">
-      <div class="category-header">
-        <h1 class="page-title">{{ categoryName }}</h1>
-        <p class="product-count" v-if="!loading">共 {{ totalCount }} 个产品</p>
-      </div>
+      <div class="category-layout">
+        <CategorySidebar :activeSlug="categorySlug" />
+        <div class="category-main">
+          <div class="category-header">
+            <h1 class="page-title">{{ categoryName }}</h1>
+            <p class="product-count" v-if="!loading">共 {{ totalCount }} 个产品</p>
+          </div>
 
-      <div class="category-controls" v-if="products.length > 0">
-        <div class="sort-options">
-          <span class="sort-label">排序:</span>
-          <button 
-            class="sort-btn" 
-            :class="{ active: sortBy === 'createdAt' }"
-            @click="changeSort('createdAt')"
-          >最新</button>
-          <button 
-            class="sort-btn" 
-            :class="{ active: sortBy === 'price' }"
-            @click="changeSort('price')"
-          >价格</button>
-          <button 
-            class="sort-btn" 
-            :class="{ active: sortBy === 'name' }"
-            @click="changeSort('name')"
-          >名称</button>
-        </div>
-      </div>
+          <div class="category-controls" v-if="products.length > 0">
+            <div class="sort-options">
+              <span class="sort-label">排序:</span>
+              <button
+                class="sort-btn"
+                :class="{ active: sortBy === 'createdAt' }"
+                @click="changeSort('createdAt')"
+              >最新</button>
+              <button
+                class="sort-btn"
+                :class="{ active: sortBy === 'price' }"
+                @click="changeSort('price')"
+              >价格</button>
+              <button
+                class="sort-btn"
+                :class="{ active: sortBy === 'name' }"
+                @click="changeSort('name')"
+              >名称</button>
+            </div>
+          </div>
 
-      <div v-if="loading" class="loading">加载中...</div>
-      
-      <div v-else-if="error" class="error">
-        <p>{{ error }}</p>
-      </div>
-      
-      <div v-else-if="products.length === 0" class="no-products">
-        <p>该分类暂无产品</p>
-      </div>
-      
-      <div v-else>
-        <div class="products-grid">
-          <ProductCard v-for="product in products" :key="product.id" :product="product" />
-        </div>
+          <div v-if="loading" class="loading">加载中...</div>
 
-        <div class="pagination" v-if="totalPages > 1">
-          <button 
-            class="page-btn" 
-            :disabled="currentPage === 1"
-            @click="changePage(currentPage - 1)"
-          >上一页</button>
-          
-          <button 
-            v-for="page in totalPages" 
-            :key="page"
-            class="page-btn"
-            :class="{ active: page === currentPage }"
-            @click="changePage(page)"
-          >{{ page }}</button>
-          
-          <button 
-            class="page-btn" 
-            :disabled="currentPage === totalPages"
-            @click="changePage(currentPage + 1)"
-          >下一页</button>
+          <div v-else-if="error" class="error">
+            <p>{{ error }}</p>
+          </div>
+
+          <div v-else-if="products.length === 0" class="no-products">
+            <p>该分类暂无产品</p>
+          </div>
+
+          <div v-else>
+            <div class="products-grid">
+              <ProductCard v-for="product in products" :key="product.id" :product="product" />
+            </div>
+
+            <div class="pagination" v-if="totalPages > 1">
+              <button
+                class="page-btn"
+                :disabled="currentPage === 1"
+                @click="changePage(currentPage - 1)"
+              >上一页</button>
+
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                class="page-btn"
+                :class="{ active: page === currentPage }"
+                @click="changePage(page)"
+              >{{ page }}</button>
+
+              <button
+                class="page-btn"
+                :disabled="currentPage === totalPages"
+                @click="changePage(currentPage + 1)"
+              >下一页</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -152,6 +158,17 @@ watch([totalCount, pageSize], () => {
   background: #0f0f0f;
   min-height: 100vh;
   padding: 40px 0 60px;
+}
+
+.category-layout {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+
+.category-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .container {
@@ -271,6 +288,10 @@ watch([totalCount, pageSize], () => {
 @media (max-width: 768px) {
   .products-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .category-layout {
+    flex-direction: column;
   }
 }
 

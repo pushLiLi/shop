@@ -55,6 +55,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
   - Auth required: `/checkout`, `/orders`, `/favorites`, `/profile`
   - Admin (`/admin/*`): requires `role === 'admin'`
 - **Stores** (Pinia): `auth.js` (Composition API), `cart.js` (Options API), `favorites.js` (Options API), `useSettingsStore.js` (Options API), `toast.js` (Composition API). Each store defines its own `getAuthHeaders()` reading `localStorage.getItem('token')` directly. API calls hardcode `http://localhost:3000/api/*` (Vite proxy at `/api` exists in config but stores bypass it).
+- **Category sidebar**: `components/CategorySidebar.vue` — dynamic sidebar on product listing page (`CategoryView.vue`), fetches `GET /api/categories` (returns top-level categories with nested `children`). Mobile: horizontal pill tags.
 - **Global CSS**: `style.css` — dark theme, grid system (.col-2/3/4/6/12), utility classes, 768px responsive breakpoint.
 - **Markdown**: `marked` library renders CMS page content.
 
