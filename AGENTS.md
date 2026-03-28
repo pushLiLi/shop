@@ -2,30 +2,37 @@
 
 ## Tech Stack
 
-Frontend: Vue 3 + Vite 8 + Vue Router + Pinia 3 + marked + vue-advanced-cropper (JavaScript only, no TypeScript)
-Backend: Go 1.23 + Gin + GORM + JWT + Swagger (Dockerfile); go.mod says 1.25
+Frontend: Vue 3.5 + Vite 8 + Vue Router 4 + Pinia 3 + marked + vue-advanced-cropper (JavaScript only, no TypeScript)
+Backend: Go 1.25 + Gin 1.9 + GORM 1.25 + JWT + Swagger (Dockerfile uses golang:1.23-alpine)
 Database: MySQL 8.4 (Docker, utf8mb4) | Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server`
 
 ## Build Commands
 
 ```bash
-npm run dev                     # Frontend dev at :5173 (proxies /api -> :3000, /media -> :9000)
-npm run build                   # Frontend production build
+# Frontend (run from bycigar-vue/)
+npm run dev                     # Dev server at :5173 (proxies /api -> :3000, /media -> :9000)
+npm run build                   # Production build (use this to verify frontend changes)
 npm run preview                 # Preview production build locally
-go run ./cmd/main.go            # Backend dev at :3000 (run from server-go/)
+
+# Backend (run from server-go/)
+go run ./cmd/main.go            # Dev server at :3000
 go build -o nul ./...           # Check Go compilation (Windows; use -o /dev/null on Linux/Mac)
 go fmt ./...                    # Format Go code
-swag init                       # Generate Swagger docs (run from server-go/)
+swag init                       # Generate Swagger docs
+
+# Docker
 docker-compose up -d mysql      # MySQL only (root/123456, db: bycigar)
 docker-compose up -d minio      # MinIO only (minioadmin/minioadmin123, bucket: bycigar)
-docker-compose up --build       # Full stack: MySQL + MinIO + Backend + Frontend
+docker-compose up --build       # Full stack: MySQL + MinIO + Backend + Frontend (:80)
 ```
-**No test or lint framework.** Use `go build` and `npm run build` to verify compilation.
+**No test or lint framework.** No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify compilation.
 
 ## Dev Environment
 
-Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go backend (`:3000`), Vite dev server (`:5173`). Vite proxies `/api` to backend and `/media` to MinIO (with path rewrite stripping `/media` prefix). Production uses nginx (see `bycigar-vue/nginx.conf`). Default admin: `admin@admin.com` / `123456`.
+Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go backend (`:3000`), Vite dev server (`:5173`). Vite proxies `/api` to backend and `/media` to MinIO (with path rewrite stripping `/media` prefix). Production uses nginx (see `bycigar-vue/nginx.conf`). Container max-width: 1400px. Default admin: `admin@admin.com` / `123456`.
+
+Backend startup order: `config.LoadConfig()` -> `database.Connect()` -> `database.Migrate()` -> `database.Seed()` -> `minio.InitMinio()` -> `utils.InitSnowflake(1)` -> `database.BackfillOrderNo()` -> Gin routes.
 
 ## Project Structure
 
@@ -33,24 +40,41 @@ Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go back
 bycigar-vue/src/
 ├── main.js, App.vue            # Entry + layout (dark theme, Toast, CartDrawer)
 ├── style.css                   # Global dark theme, grid (.col-2/3/4/6/12), 768px breakpoint
-├── components/                 # 10: ProductCard, CartDrawer, Toast, TheHeader, TheFooter, AdminImageUpload, etc.
-├── composables/                # useCarousel (carousel with autoplay, touch, pause)
-├── views/                      # 11 public views + admin/ (6: AdminLayout, AdminProducts, etc.)
+├── components/                 # 10 components:
+│   ├── ProductCard.vue         #   Product card with favorite, cart, price
+│   ├── CartDrawer.vue          #   Slide-out cart sidebar
+│   ├── Toast.vue               #   Notification toast
+│   ├── TheHeader.vue           #   Global header/nav
+│   ├── TheFooter.vue           #   Global footer
+│   ├── AdminImageUpload.vue    #   Image upload with optional cropping
+│   ├── AddressForm.vue         #   Address edit form
+│   ├── CategorySidebar.vue     #   Category filter sidebar
+│   ├── EditableImage.vue       #   Inline image editor (admin)
+│   └── EditableText.vue        #   Inline text editor (admin)
+├── composables/                # useCarousel (autoplay, touch, pause)
+├── views/                      # 11 public: Home, Category, ProductDetail, Search, Cart,
+│                               #   Checkout, Orders, Favorites, Login, Profile, Page
+├── views/admin/                # 6 admin: AdminLayout, AdminProducts, AdminBanners,
+│                               #   AdminCategories, AdminPages, AdminSettings
 ├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
 ├── lib/api/                    # Generated OpenAPI types (openapi.json, v1.d.ts)
 └── router/index.js             # Routes with auth/admin guards
 
 server-go/
-├── cmd/main.go                 # Entry: config -> DB -> migrate -> seed -> MinIO -> Gin
+├── cmd/main.go                 # Entry: wires all routes and starts server
 ├── internal/
 │   ├── config/config.go        # Loads .env via godotenv into AppConfig global
 │   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
-│   ├── handlers/               # 14 files: public + admin_*.go
-│   ├── models/                 # 11 GORM model files (models + input structs + response structs)
-│   └── middleware/             # CORS, AuthMiddleware (optional), RequireAuth, AdminOnly
+│   ├── handlers/               # 14 files: product, category, banner, page, auth, captcha,
+│   │                           #   cart, favorite, order, address, config, setting, upload,
+│   │                           #   admin_product, admin_category (+ admin in same files)
+│   ├── models/                 # 11 files, 12 model types: User, Category, Product, CartItem,
+│   │                           #   Favorite, Address, Order, OrderItem, SiteConfig, Banner,
+│   │                           #   Page, Setting (input/response structs alongside models)
+│   └── middleware/             # cors.go, auth.go, admin.go
 └── pkg/
-    ├── minio/minio.go          # MinIO client wrapper
-    └── utils/                  # Response helpers + snowflake order number generation
+    ├── minio/minio.go          # MinIO client wrapper + EnsureBucket
+    └── utils/                  # Response helpers + snowflake order number + UUID upload names
 ```
 
 ## Vue Code Style
@@ -60,7 +84,7 @@ server-go/
 - Use `useToastStore` for notifications, **never** `alert()`
 - CSS: `<style scoped>` with kebab-case class names
 - No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
-- **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`)
+- **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
 
 ## Pinia Store Patterns
 
@@ -116,16 +140,35 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 - Token in `localStorage.getItem('token')`, user JSON in `localStorage.getItem('user')` (has `role`).
 - `AuthMiddleware()`: global, optional JWT parsing, sets `c.Set("userID", ...)`.
 - `RequireAuth()`: per-route, only on `ChangePassword`. Checks userID + DB lookup.
-- `AdminOnly`: group middleware for `/api/admin`, checks userID + role.
+- `AdminOnly`: plain `func(c *gin.Context)` used as group middleware for `/api/admin`.
 - Cart/favorites/addresses/orders check `c.Get("userID")` inline in handlers.
 - Dev bypass: `Authorization: user-{id}` header skips JWT.
+
+## Frontend Routes
+
+| Path | Component | Auth |
+|---|---|---|
+| `/` | HomeView | no |
+| `/products` | CategoryView (all products) | no |
+| `/category/:slug` | CategoryView (filtered) | no |
+| `/products/:id` | ProductDetailView | no |
+| `/search` | SearchView | no |
+| `/cart` | CartView | no |
+| `/checkout` | CheckoutView | yes |
+| `/orders` | OrdersView | yes |
+| `/favorites` | FavoritesView | yes |
+| `/login` | LoginView | no |
+| `/profile` | ProfileView | yes |
+| `/:slug(about\|services\|privacy-policy\|statement)` | PageView | no |
+| `/admin/*` | Admin* | yes + admin |
 
 ## API Endpoints
 
 Public: products, categories, banners, pages, auth/login, auth/register, config, settings, auth/captcha
 Auth-dependent: auth/me, auth/profile, auth/change-password, cart, favorites, orders, addresses
 Admin (AdminOnly): admin/products, admin/categories, admin/banners, admin/pages, admin/upload, admin/settings/:key
-**Note**: `PUT /api/admin/config/:key` is outside admin group -- no role check.
+**Security note**: `PUT /api/admin/config/:key` is outside admin group -- no role check.
+Additional: `r.Static("/static", "./static")`, Swagger UI at `/swagger/index.html`
 Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy` (alias: `sort`), `sortOrder` (alias: `order`), `featured`, `active`
 
 ## Architecture Notes
@@ -135,7 +178,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - `Product.Image` and `Banner.Image` have JSON tag `"imageUrl"`. Frontend must send/read `"imageUrl"`.
 - Config API: `GET /api/config` returns `{"key": "value"}` map. Settings API: `GET /api/settings` returns `{"success": true, "data": {...}}`.
-- Image upload: `POST /api/admin/upload` multipart `file` -> `{"url": "/media/bycigar/xxx.jpg"}`. Max 10MB, jpg/png/gif/webp.
+- Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/{bucket}/{timestamp}_{uuid}{ext}"}`. Max 10MB, jpg/png/gif/webp.
 - `AdminImageUpload.vue` supports optional image cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio (e.g. `1` for products, `7/3` for banners). `null` (default) skips cropping.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
 - Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.

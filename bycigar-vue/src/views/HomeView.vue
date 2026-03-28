@@ -32,8 +32,8 @@ async function fetchData() {
     loading.value = true
     const [configRes, featuredRes, cubanRes, bannersRes] = await Promise.all([
       fetch(`${API_BASE}/config`),
-      fetch(`${API_BASE}/products?featured=true&limit=6`),
-      fetch(`${API_BASE}/products?category=cuban&limit=3`),
+      fetch(`${API_BASE}/products?featured=true&limit=12`),
+      fetch(`${API_BASE}/products?category=cuban&limit=6`),
       fetch(`${API_BASE}/banners`)
     ])
     
@@ -181,7 +181,7 @@ onMounted(() => { fetchData() })
 .slide img {
   width: 100%;
   height: auto;
-  max-height: 600px;
+  aspect-ratio: 3/1;
   object-fit: cover;
   display: block;
 }
@@ -257,11 +257,11 @@ onMounted(() => { fetchData() })
 }
 
 .products-grid.grid-6 {
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 
 .products-grid.grid-3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
 .banner-section {
@@ -281,36 +281,12 @@ onMounted(() => { fetchData() })
   padding: 40px;
 }
 
-@media (max-width: 1200px) {
-  .products-grid.grid-6 {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (max-width: 992px) {
-  .products-grid.grid-6 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  
-  .products-grid.grid-3 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-    .products-grid.grid-6 {
-    grid-template-columns: repeat(2, 1fr);
+  .slide img {
+    aspect-ratio: 2/1;
   }
-  
-    .products-grid.grid-3 {
-    grid-template-columns: 1fr;
-  }
-  
-    .slide img {
-    max-height: 300px;
-  }
-  
-    .slider-btn {
+
+  .slider-btn {
     padding: 10px 15px;
     font-size: 18px;
   }
