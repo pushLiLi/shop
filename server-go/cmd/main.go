@@ -103,7 +103,7 @@ func main() {
 		admin.PUT("/categories/:id", handlers.UpdateCategory)
 		admin.DELETE("/categories/:id", handlers.DeleteCategory)
 
-		admin.GET("/banners", handlers.GetBanners)
+		admin.GET("/banners", handlers.GetAdminBanners)
 		admin.POST("/banners", handlers.CreateBanner)
 		admin.PUT("/banners/:id", handlers.UpdateBanner)
 		admin.DELETE("/banners/:id", handlers.DeleteBanner)

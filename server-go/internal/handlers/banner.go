@@ -25,6 +25,22 @@ func GetBanners(c *gin.Context) {
 	c.JSON(http.StatusOK, banners)
 }
 
+// GetAdminBanners godoc
+// @Summary 获取所有轮播图（管理端）
+// @Description 获取所有轮播图，包括禁用的
+// @Tags admin-banners
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.Banner
+// @Router /admin/banners [get]
+func GetAdminBanners(c *gin.Context) {
+	var banners []models.Banner
+	database.DB.Order("sort_order asc, id desc").Find(&banners)
+
+	c.JSON(http.StatusOK, banners)
+}
+
 // CreateBanner godoc
 // @Summary 创建轮播图
 // @Description 创建新的轮播图
