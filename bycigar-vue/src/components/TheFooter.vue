@@ -21,18 +21,15 @@ onMounted(() => {
   <footer class="site-footer">
     <div class="container">
       <div class="footer-content">
-        <div class="footer-links-section">
-          <div class="row">
-            <div class="col-md-7">
-              <div class="row">
-                <div v-for="link in footerLinks" :key="link.path" class="col-6 col-md-3">
-                  <router-link :to="link.path" class="footer-link">
-                    {{ link.name }}
-                  </router-link>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="footer-links">
+          <router-link
+            v-for="link in footerLinks"
+            :key="link.path"
+            :to="link.path"
+            class="footer-link"
+          >
+            {{ link.name }}
+          </router-link>
         </div>
 
         <div class="footer-description">
@@ -60,13 +57,14 @@ onMounted(() => {
   gap: 30px;
 }
 
-.footer-links-section {
+.footer-links {
+  display: flex;
+  justify-content: space-between;
   border-bottom: 1px solid #333;
   padding-bottom: 30px;
 }
 
 .footer-link {
-  display: block;
   color: #ccc;
   text-decoration: none;
   padding: 5px 0;
@@ -100,14 +98,10 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .footer-links-section .col-6 {
-    margin-bottom: 15px;
+  .footer-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px 40px;
   }
-
-  .footer-brand {
-    margin-top: 20px;
-  }
-
-
 }
 </style>
