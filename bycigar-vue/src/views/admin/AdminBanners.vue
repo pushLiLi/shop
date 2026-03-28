@@ -68,22 +68,40 @@ const closeModal = () => {
   showModal.value = false
 }
 
+const moveSortUp = () => {
+  form.value.sortOrder = Math.max(0, form.value.sortOrder - 1)
+}
+
+const moveSortDown = () => {
+  form.value.sortOrder++
+}
+
+const validateLink = (link) => {
+  if (!link) return true
+  return link.startsWith('/') || /^https?:\/\//.test(link)
+}
+
 const saveBanner = async () => {
   if (!form.value.imageUrl) {
     alert('请上传轮播图片')
     return
   }
 
+  if (form.value.link && !validateLink(form.value.link)) {
+    alert('跳转链接格式不正确，请输入站内路径（如 /category/cohiba）或完整 URL（如 https://...）')
+    return
+  }
+
   saving.value = true
   try {
-    const url = modalMode.value === 'create' 
+    const url = modalMode.value === 'create'
       ? `${API_BASE}/admin/banners`
       : `${API_BASE}/admin/banners/${form.value.id}`
-    
+
     const body = {
       title: form.value.title,
       image: form.value.imageUrl,
-      link: form.value.link || '#',
+      link: form.value.link || '',
       sortOrder: parseInt(form.value.sortOrder) || 0,
       isActive: form.value.isActive
     }
@@ -176,17 +194,16 @@ onMounted(() => {
         </div>
         <div class="banner-info">
           <div class="banner-title">{{ banner.title || '无标题' }}</div>
-          <div class="banner-link">{{ banner.link || '-' }}</div>
           <div class="banner-meta">
-            <span>排序: {{ banner.sortOrder || 0 }}</span>
-            <span 
-              class="badge" 
-              :class="banner.isActive ? 'badge-success' : 'badge-danger'"
-              @click="toggleActive(banner)"
-              style="cursor: pointer"
-            >
-              {{ banner.isActive ? '启用' : '禁用' }}
-            </span>
+            <span class="meta-sort">排序: {{ banner.sortOrder || 0 }}</span>
+            <div class="switch-item" @click="toggleActive(banner)">
+              <span class="switch-label">状态</span>
+              <label class="switch" @click.stop>
+                <input type="checkbox" :checked="banner.isActive" @change="toggleActive(banner)">
+                <span class="slider"></span>
+              </label>
+              <span class="switch-value">{{ banner.isActive ? '启用' : '禁用' }}</span>
+            </div>
           </div>
         </div>
         <div class="banner-actions">
@@ -217,18 +234,29 @@ onMounted(() => {
           </div>
           <div class="form-group">
             <label>跳转链接</label>
-            <input v-model="form.link" type="text" placeholder="如: /category/cohiba 或 https://...">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>排序（数字越小越靠前）</label>
-              <input v-model.number="form.sortOrder" type="number" min="0" placeholder="0">
+            <div class="input-group">
+              <span class="input-prefix">链接</span>
+              <input v-model="form.link" type="text" placeholder="留空或输入 /category/cohiba、https://...">
             </div>
-            <div class="form-group checkbox-group">
-              <label class="checkbox-label">
+          </div>
+          <div class="form-group">
+            <label>排序权重</label>
+            <div class="sort-control">
+              <button type="button" class="sort-btn" @click="moveSortUp">-</button>
+              <input v-model.number="form.sortOrder" type="number" min="0" placeholder="0">
+              <button type="button" class="sort-btn" @click="moveSortDown">+</button>
+            </div>
+            <div class="field-hint">数字越小排序越靠前</div>
+          </div>
+          <div class="form-section">
+            <div class="section-title">显示状态</div>
+            <div class="switch-item">
+              <span class="switch-label">启用轮播</span>
+              <label class="switch">
                 <input type="checkbox" v-model="form.isActive">
-                启用
+                <span class="slider"></span>
               </label>
+              <span class="switch-value">{{ form.isActive ? '启用' : '禁用' }}</span>
             </div>
           </div>
         </div>
@@ -333,43 +361,26 @@ onMounted(() => {
 
 .banner-title {
   font-weight: 600;
-  margin-bottom: 5px;
-}
-
-.banner-link {
-  color: #666;
-  font-size: 13px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .banner-meta {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
   font-size: 13px;
   color: #999;
 }
 
-.badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.badge-success {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.badge-danger {
-  background: #ffebee;
-  color: #c62828;
+.meta-sort {
+  font-size: 13px;
+  color: #999;
 }
 
 .banner-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .btn-edit,
@@ -458,7 +469,7 @@ onMounted(() => {
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
@@ -483,35 +494,166 @@ onMounted(() => {
   border-color: #d4a574;
 }
 
-.form-row {
-  display: flex;
-  gap: 15px;
-}
-
-.form-row .form-group {
-  flex: 1;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: flex-end;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 10px 0;
-}
-
-.checkbox-label input {
-  width: auto;
-}
-
 .required {
   color: #dc3545;
+}
+
+.input-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.input-group input {
+  flex: 1;
+  border-radius: 0 4px 4px 0;
+}
+
+.input-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  color: #666;
+  font-size: 14px;
+}
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-control input {
+  width: 48px;
+  height: 32px;
+  text-align: center;
+  padding: 0;
+  border-radius: 4px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  color: #333;
+  -moz-appearance: textfield;
+}
+
+.sort-control input::-webkit-outer-spin-button,
+.sort-control input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.sort-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #ddd;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 16px;
+  color: #555;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.sort-btn:hover {
+  border-color: #d4a574;
+  color: #d4a574;
+}
+
+.field-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+}
+
+.form-section {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  padding-left: 10px;
+  border-left: 3px solid #d4a574;
+  margin-bottom: 15px;
+}
+
+.switch-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.switch-label {
+  font-size: 14px;
+  color: #666;
+  min-width: 60px;
+}
+
+.switch-value {
+  font-size: 13px;
+  color: #999;
+  min-width: 24px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider {
+  background-color: #d4a574;
+}
+
+.switch input:checked + .slider:before {
+  transform: translateX(20px);
 }
 
 .modal-footer {

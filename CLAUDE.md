@@ -88,6 +88,9 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **API base**: All frontend API calls hardcode `http://localhost:3000/api/*` in stores. Production uses nginx to proxy `/api` to backend (see `bycigar-vue/nginx.conf`).
 - **Stock sorting**: Product listings always sort `stock > 0` items first, regardless of user-selected sort order (done in SQL via CASE expression).
 - **Order numbers**: Orders use snowflake IDs as display order numbers. `GetOrder` endpoint accepts both numeric ID and string orderNo. Existing orders backfilled on startup.
+- **Admin vs Public API separation**: Admin list endpoints must return ALL records (no `is_active` filter). Public endpoints filter by `is_active`. Each needs its own handler — never reuse the public handler on admin routes.
+- **Admin panel design patterns**: All admin pages use consistent patterns from `AdminProducts.vue`: switch toggle for boolean fields, `.form-section` with `.section-title` (left border accent) for grouping, `.input-group` with `.input-prefix`/`.input-suffix` for decorated inputs, `.badge-success`/`.badge-danger` for status display. CSS is scoped per component with no shared stylesheet — styles are duplicated across admin pages.
+- **Admin panel theme**: Light theme (`#fff`/`#f5f5f5` background) separate from storefront dark theme. Accent color `#d4a574`.
 
 ## Data Models
 
@@ -98,4 +101,5 @@ Core models with relationships:
 - **Order** → **OrderItem** — Order has snowflake-generated `OrderNo` (unique, user-facing), auto-increment `ID` is internal. Belongs to User and Address.
 - **CartItem** / **Favorite** — User ↔ Product relationships
 - **Address** — belongs to User, has IsDefault
-- **Banner** / **Page** / **Setting** — site content management
+- **Banner** — Go field `Image` has JSON tag `"imageUrl"`. Frontend must send `image` in request body but reads `imageUrl` from response.
+- **Page** / **Setting** — site content management
