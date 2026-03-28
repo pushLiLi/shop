@@ -610,8 +610,30 @@ const handleOverlayClick = (e) => {
     display: none;
   }
 
+  .header-right {
+    flex-shrink: 0;
+  }
+
   .header-icons {
     gap: 5px;
+  }
+
+  .icon-item {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .icon-item svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .icon-badge {
+    top: -2px;
+    right: -6px;
+    font-size: 9px;
+    padding: 1px 4px;
+    min-width: 14px;
   }
 }
 

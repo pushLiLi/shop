@@ -137,9 +137,6 @@ const switchTab = (tab) => {
           {{ loading ? '登录中...' : '登录' }}
         </button>
 
-        <div class="demo-account">
-          <p>演示账号：admin@bycigar.com / admin123</p>
-        </div>
       </form>
 
       <form v-else @submit.prevent="handleRegister" class="login-form">
@@ -324,16 +321,5 @@ const switchTab = (tab) => {
   cursor: not-allowed;
 }
 
-.demo-account {
-  text-align: center;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid #444;
-}
 
-.demo-account p {
-  color: #888;
-  font-size: 13px;
-  margin: 0;
-}
 </style>

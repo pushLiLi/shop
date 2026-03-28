@@ -173,4 +173,75 @@ async function toggleFavorite(e) {
   font-weight: bold;
   font-size: 14px;
 }
+
+@media (max-width: 768px) {
+  .product-card {
+    display: flex;
+    flex-direction: row;
+    background: #1a1a1a;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .product-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .product-image {
+    flex-shrink: 0;
+    width: 140px;
+    height: 140px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .product-image img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: unset;
+    object-fit: cover;
+  }
+
+  .favorite-btn {
+    top: 6px;
+    right: 6px;
+    padding: 5px;
+  }
+
+  .product-info {
+    flex: 1;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .product-name {
+    font-size: 14px;
+    margin: 0 0 8px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .product-bottom {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .add-cart-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .product-price {
+    font-size: 15px;
+  }
+}
 </style>
