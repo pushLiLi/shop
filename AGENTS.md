@@ -19,7 +19,7 @@ npm run preview                 # Preview production build locally
 go run ./cmd/main.go            # Dev server at :3000
 go build -o nul ./...           # Check Go compilation (Windows; use -o /dev/null on Linux/Mac)
 go fmt ./...                    # Format Go code
-swag init                       # Generate Swagger docs
+swag init                       # Generate Swagger docs (run from server-go/)
 
 # Docker
 docker-compose up -d mysql      # MySQL only (root/123456, db: bycigar)
@@ -28,36 +28,21 @@ docker-compose up --build       # Full stack: MySQL + MinIO + Backend + Frontend
 ```
 **No test or lint framework.** No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify compilation.
 
-## Dev Environment
-
-Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go backend (`:3000`), Vite dev server (`:5173`). Vite proxies `/api` to backend and `/media` to MinIO (with path rewrite stripping `/media` prefix). Production uses nginx (see `bycigar-vue/nginx.conf`). Container max-width: 1400px. Default admin: `admin@admin.com` / `123456`.
-
-Backend startup order: `config.LoadConfig()` -> `database.Connect()` -> `database.Migrate()` -> `database.Seed()` -> `minio.InitMinio()` -> `minio.EnsureBucket()` -> `utils.InitSnowflake(1)` -> `database.BackfillOrderNo()` -> Gin routes.
-
 ## Project Structure
 
 ```
 bycigar-vue/src/
 ├── main.js, App.vue            # Entry + layout (dark theme, Toast, CartDrawer)
 ├── style.css                   # Global dark theme, grid (.col-2/3/4/6/12), 768px breakpoint
-├── components/                 # 10 components:
-│   ├── ProductCard.vue         #   Product card with favorite, cart, price
-│   ├── CartDrawer.vue          #   Slide-out cart sidebar
-│   ├── Toast.vue               #   Notification toast
-│   ├── TheHeader.vue           #   Global header/nav
-│   ├── TheFooter.vue           #   Global footer
-│   ├── AdminImageUpload.vue    #   Image upload with optional cropping
-│   ├── AddressForm.vue         #   Address edit form
-│   ├── CategorySidebar.vue     #   Category filter sidebar
-│   ├── EditableImage.vue       #   Inline image editor (admin)
-│   └── EditableText.vue        #   Inline text editor (admin)
+├── components/                 # ProductCard, CartDrawer, Toast, TheHeader, TheFooter,
+│                               #   AdminImageUpload, AddressForm, CategorySidebar,
+│                               #   EditableImage, EditableText
 ├── composables/                # useCarousel (autoplay, touch, pause)
 ├── views/                      # 11 public: Home, Category, ProductDetail, Search, Cart,
 │                               #   Checkout, Orders, Favorites, Login, Profile, Page
 ├── views/admin/                # 6 admin: AdminLayout, AdminProducts, AdminBanners,
 │                               #   AdminCategories, AdminPages, AdminSettings
 ├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
-├── lib/api/                    # Generated OpenAPI types (openapi.json, v1.d.ts)
 └── router/index.js             # Routes with auth/admin guards
 
 server-go/
@@ -65,12 +50,11 @@ server-go/
 ├── internal/
 │   ├── config/config.go        # Loads .env via godotenv into AppConfig global
 │   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
-│   ├── handlers/               # 14 files: product (includes GetCategories), banner, page, auth,
-│   │                           #   captcha, cart, favorite, order, address, config, setting, upload,
+│   ├── handlers/               # product, banner, page, auth, captcha, cart, favorite,
+│   │                           #   order, address, config, setting, upload,
 │   │                           #   admin_product, admin_category
-│   ├── models/                 # 11 files, 12 model types: User, Category, Product, CartItem,
-│   │                           #   Favorite, Address, Order, OrderItem, SiteConfig, Banner,
-│   │                           #   Page, Setting (input/response structs alongside models)
+│   ├── models/                 # User, Category, Product, CartItem, Favorite, Address,
+│   │                           #   Order, OrderItem, SiteConfig, Banner, Page, Setting
 │   └── middleware/             # cors.go, auth.go, admin.go
 └── pkg/
     ├── minio/minio.go          # MinIO client wrapper + EnsureBucket
@@ -82,9 +66,10 @@ server-go/
 - `<script setup>` Composition API only. No TypeScript.
 - Declaration order: imports -> `defineEmits` -> `defineProps` -> stores -> refs/computed -> functions
 - Use `useToastStore` for notifications, **never** `alert()`
-- CSS: `<style scoped>` with kebab-case class names
+- CSS: `<style scoped>` with kebab-case class names. Storefront dark theme (#0f0f0f), admin light theme (#fff).
 - No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
 - **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
+- **All API calls use relative paths** (`'/api/...'`), never hardcoded `http://localhost:3000/api/...`. The Vite proxy handles routing in dev; nginx handles it in production.
 
 ## Pinia Store Patterns
 
@@ -144,31 +129,12 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 - Cart/favorites/addresses/orders check `c.Get("userID")` inline in handlers.
 - Dev bypass: `Authorization: user-{id}` header skips JWT.
 
-## Frontend Routes
-
-| Path | Component | Auth |
-|---|---|---|
-| `/` | HomeView | no |
-| `/products` | CategoryView (all products) | no |
-| `/category/:slug` | CategoryView (filtered) | no |
-| `/products/:id` | ProductDetailView | no |
-| `/search` | SearchView | no |
-| `/cart` | CartView | no |
-| `/checkout` | CheckoutView | yes |
-| `/orders` | OrdersView | yes |
-| `/favorites` | FavoritesView | yes |
-| `/login` | LoginView | no |
-| `/profile` | ProfileView | yes |
-| `/:slug(about\|services\|privacy-policy\|statement)` | PageView | no |
-| `/admin/*` | Admin* | yes + admin |
-
 ## API Endpoints
 
 Public: products, categories, banners, pages, auth/login, auth/register, config, settings, auth/captcha
 Auth-dependent: auth/me, auth/profile, auth/change-password, cart, favorites, orders, addresses
 Admin (AdminOnly): admin/products, admin/categories, admin/banners, admin/pages, admin/upload, admin/settings/:key
 **Security note**: `PUT /api/admin/config/:key` is outside admin group -- no role check.
-Additional: `r.Static("/static", "./static")`, Swagger UI at `/swagger/index.html`
 Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy` (alias: `sort`), `sortOrder` (alias: `order`), `featured`, `active`
 
 ## Architecture Notes
@@ -182,6 +148,8 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - `AdminImageUpload.vue` supports optional image cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio (e.g. `1` for products, `7/3` for banners). `null` (default) skips cropping.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
 - Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.
+- **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (where `isCompact = window.innerWidth <= 992`) to show left-image/right-text layout on tablet/mobile. HomeView and ProductDetailView do not pass it (vertical cards). Horizontal styles use `.product-card.horizontal` class with `@media (max-width: 768px)` for smaller image size (120px vs 180px).
+- **Responsive grids**: CategoryView/SearchView use `grid-template-columns: 1fr` at ≤992px for horizontal cards; HomeView uses `repeat(2, 1fr)` at ≤768px for vertical cards. When using `flex-direction: column` on a parent flex container, always set `align-items: stretch` so children fill the full width.
 
 ## Git Commits
 
@@ -199,4 +167,5 @@ refactor: 简化购物车侧边栏逻辑
 - **Simplicity**: Avoid over-engineering
 - **Error handling**: Frontend uses toast, backend uses `utils.ErrorResponse()`
 - **Database**: Always `utf8mb4`, `parseTime=True&loc=Local` in DSN
+- **API paths**: Frontend always uses relative `/api/...` paths, never hardcoded localhost URLs
 - **Concise responses**: Keep responses under 4 lines

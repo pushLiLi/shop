@@ -1,9 +1,18 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import ProductCard from '../components/ProductCard.vue'
 
 const route = useRoute()
+
+const isCompact = ref(window.innerWidth <= 992)
+
+function onResize() {
+  isCompact.value = window.innerWidth <= 992
+}
+
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 const products = ref([])
 const loading = ref(false)
 const error = ref(null)
@@ -115,7 +124,7 @@ watch([totalCount, pageSize], () => {
       
       <div v-else-if="products.length > 0">
         <div class="products-grid">
-          <ProductCard v-for="product in products" :key="product.id" :product="product" />
+          <ProductCard v-for="product in products" :key="product.id" :product="product" :horizontal="isCompact" />
         </div>
 
         <div class="pagination" v-if="totalPages > 1">
@@ -273,19 +282,14 @@ watch([totalCount, pageSize], () => {
 
 @media (max-width: 992px) {
   .products-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
 @media (max-width: 768px) {
   .products-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .products-grid {
-    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 </style>

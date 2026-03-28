@@ -12,6 +12,10 @@ const props = defineProps({
   product: {
     type: Object,
     required: true
+  },
+  horizontal: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -56,7 +60,7 @@ async function toggleFavorite(e) {
 </script>
 
 <template>
-  <div class="product-card">
+  <div class="product-card" :class="{ horizontal: horizontal }">
     <router-link :to="'/products/' + product.id" class="product-image">
       <img :src="product.imageUrl" :alt="product.name">
       <button class="favorite-btn" @click="toggleFavorite" :class="{ active: isFavorite }">
@@ -174,73 +178,104 @@ async function toggleFavorite(e) {
   font-size: 14px;
 }
 
+.product-card.horizontal {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-card.horizontal:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.product-card.horizontal .product-image {
+  flex-shrink: 0;
+  width: 180px;
+  height: 180px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-card.horizontal .product-image img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: unset;
+  object-fit: cover;
+}
+
+.product-card.horizontal .favorite-btn {
+  top: 8px;
+  right: 8px;
+  padding: 6px;
+}
+
+.product-card.horizontal .product-info {
+  flex: 1;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.product-card.horizontal .product-name {
+  font-size: 15px;
+  margin: 0 0 8px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-card.horizontal .product-bottom {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.product-card.horizontal .add-cart-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.product-card.horizontal .product-price {
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
-  .product-card {
-    display: flex;
-    flex-direction: row;
-    background: #1a1a1a;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-
-  .product-card:hover {
-    transform: none;
-    box-shadow: none;
-  }
-
-  .product-image {
-    flex-shrink: 0;
-    width: 140px;
-    height: 140px;
+  .product-card.horizontal .product-image {
+    width: 120px;
+    height: 120px;
     padding: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
-  .product-image img {
-    width: 100%;
-    height: 100%;
-    aspect-ratio: unset;
-    object-fit: cover;
-  }
-
-  .favorite-btn {
+  .product-card.horizontal .favorite-btn {
     top: 6px;
     right: 6px;
     padding: 5px;
   }
 
-  .product-info {
-    flex: 1;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
+  .product-card.horizontal .product-info {
+    padding: 10px;
   }
 
-  .product-name {
+  .product-card.horizontal .product-name {
     font-size: 14px;
-    margin: 0 0 8px;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    margin: 0 0 6px;
   }
 
-  .product-bottom {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .add-cart-btn {
+  .product-card.horizontal .add-cart-btn {
     padding: 5px 10px;
     font-size: 11px;
   }
 
-  .product-price {
+  .product-card.horizontal .product-price {
     font-size: 15px;
   }
 }

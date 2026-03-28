@@ -1,10 +1,19 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import ProductCard from '../components/ProductCard.vue'
 import CategorySidebar from '../components/CategorySidebar.vue'
 
 const route = useRoute()
+
+const isCompact = ref(window.innerWidth <= 992)
+
+function onResize() {
+  isCompact.value = window.innerWidth <= 992
+}
+
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 const products = ref([])
 const category = ref(null)
 const loading = ref(true)
@@ -126,7 +135,7 @@ watch([totalCount, pageSize], () => {
 
           <div v-else>
             <div class="products-grid">
-              <ProductCard v-for="product in products" :key="product.id" :product="product" />
+              <ProductCard v-for="product in products" :key="product.id" :product="product" :horizontal="isCompact" />
             </div>
 
             <div class="pagination" v-if="totalPages > 1">
@@ -290,18 +299,19 @@ watch([totalCount, pageSize], () => {
 
 @media (max-width: 992px) {
   .products-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .products-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
   .category-layout {
     flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 768px) {
+  .products-grid {
+    gap: 10px;
   }
 }
 </style>
