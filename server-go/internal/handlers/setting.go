@@ -33,7 +33,7 @@ func GetSettings(c *gin.Context) {
 		result[s.Key] = s.Value
 	}
 
-	utils.SuccessResponse(c, result)
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 }
 
 // UpdateSetting godoc
@@ -56,7 +56,7 @@ func UpdateSetting(c *gin.Context) {
 	}
 
 	var setting models.Setting
-	result := database.DB.Where("key = ?", key).First(&setting)
+	result := database.DB.Where("`key` = ?", key).First(&setting)
 
 	if result.Error != nil {
 		setting = models.Setting{
