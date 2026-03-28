@@ -266,12 +266,13 @@ onMounted(() => { fetchData() })
   }
 
   .slider-dots {
-    bottom: 12px;
+    bottom: 10px;
+    gap: 6px;
   }
 
   .dot {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     min-width: 44px;
     min-height: 44px;
     display: flex;
@@ -283,8 +284,8 @@ onMounted(() => { fetchData() })
 
   .dot::after {
     content: '';
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: rgba(255,255,255,0.5);
     position: absolute;
