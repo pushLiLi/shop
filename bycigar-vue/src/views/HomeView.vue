@@ -47,9 +47,9 @@ async function fetchData() {
     
     const bannersData = await bannersRes.json()
     banners.value = bannersData.length > 0 ? bannersData : [
-      { imageUrl: '/static/media/微信图片_20260303152810_1_341(2).jpg', link: '/brand-gl-pease' },
-      { imageUrl: '/static/media/banner-4.png', link: '#' },
-      { imageUrl: '/static/media/banner-5.jpg', link: '#' }
+      { imageUrl: '/media/bycigar/微信图片_20260303152810_1_341(2).jpg', link: '/brand-gl-pease' },
+      { imageUrl: '/media/bycigar/banner-4.png', link: '#' },
+      { imageUrl: '/media/bycigar/banner-5.jpg', link: '#' }
     ]
   } catch (e) {
     error.value = e.message

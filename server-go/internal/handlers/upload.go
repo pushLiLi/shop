@@ -1,21 +1,23 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	miniopkg "bycigar-server/pkg/minio"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 )
 
 // UploadImage godoc
 // @Summary 上传图片
-// @Description 上传图片文件到服务器
+// @Description 上传图片文件到MinIO
 // @Tags admin-upload
 // @Accept multipart/form-data
 // @Produce json
@@ -48,24 +50,28 @@ func UploadImage(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "图片大小不能超过 10MB"})
 		return
 	}
-	uploadDir := "./static/media"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建上传目录失败"})
-		return
-	}
+
 	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String(), ext)
-	dstPath := filepath.Join(uploadDir, filename)
-	dst, err := os.Create(dstPath)
+	objectName := filename
+	contentType := header.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	_, err = miniopkg.Client.PutObject(
+		context.Background(),
+		miniopkg.Bucket,
+		objectName,
+		file,
+		header.Size,
+		minio.PutObjectOptions{ContentType: contentType},
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "上传文件到MinIO失败"})
 		return
 	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, file); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存文件失败"})
-		return
-	}
-	url := fmt.Sprintf("/static/media/%s", filename)
+
+	url := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, filename)
 	c.JSON(http.StatusOK, gin.H{
 		"url":     url,
 		"success": true,

@@ -136,9 +136,9 @@ func SeedSettings() {
 
 func SeedSiteConfig() {
 	defaultConfigs := []models.SiteConfig{
-		{ConfigKey: "home_banner_1", ConfigValue: "/static/media/banner-1.png"},
-		{ConfigKey: "home_banner_2", ConfigValue: "/static/media/banner-2.png"},
-		{ConfigKey: "home_banner_3", ConfigValue: "/static/media/banner-3.png"},
+		{ConfigKey: "home_banner_1", ConfigValue: "/media/bycigar/banner-1.png"},
+		{ConfigKey: "home_banner_2", ConfigValue: "/media/bycigar/banner-2.png"},
+		{ConfigKey: "home_banner_3", ConfigValue: "/media/bycigar/banner-3.png"},
 	}
 
 	for _, cfg := range defaultConfigs {

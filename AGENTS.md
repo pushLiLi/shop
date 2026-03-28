@@ -3,15 +3,16 @@
 ## Tech Stack
 
 Frontend: Vue 3 + Vite + Vue Router + Pinia + marked (JavaScript only, no TypeScript)
-Backend: Go 1.23 + Gin + GORM + JWT + Swagger
+Backend: Go 1.25 + Gin + GORM + JWT + Swagger
 Database: MySQL 8.4 (Docker, utf8mb4 charset)
+Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server` (Go module name)
 
 ## Build Commands
 
 ```bash
 # Frontend (bycigar-vue/)
-npm run dev       # Dev at http://localhost:5173 (proxies /api + /static -> localhost:3000)
+npm run dev       # Dev at http://localhost:5173 (proxies /api -> localhost:3000, /media -> localhost:9000)
 npm run build     # Production build to dist/
 
 # Backend (server-go/)
@@ -21,10 +22,11 @@ go build -o /dev/null ./...       # Check compilation (use -o nul on Windows)
 
 # Docker & Swagger
 docker-compose up -d mysql        # Start MySQL only (root/123456, database: bycigar)
+docker-compose up -d minio        # Start MinIO only (minioadmin/minioadmin123, bucket: bycigar)
 swag init                         # Generate Swagger docs (run from server-go/)
 
 # Full stack
-docker-compose up --build         # MySQL:3306 + Backend:3000 + Frontend:80
+docker-compose up --build         # MySQL:3306 + MinIO:9000 + Backend:3000 + Frontend:80
 ```
 
 **No test or lint framework is configured.** Use `go build` and `npm run build` to verify compilation.
@@ -43,14 +45,16 @@ bycigar-vue/src/
 └── router/index.js          # Routes with auth/admin guards
 
 server-go/
-├── cmd/main.go              # Entry: config -> DB -> migrate -> seed -> snowflake -> Gin
+├── cmd/main.go              # Entry: config -> DB -> migrate -> seed -> MinIO -> snowflake -> Gin
 ├── internal/
 │   ├── config/config.go     # Loads .env via godotenv into AppConfig global
 │   ├── database/database.go # Connect, Migrate, Seed (admin, pages, settings, siteconfig), BackfillOrderNo
 │   ├── handlers/            # Public handlers + admin_*.go for admin endpoints
 │   ├── models/              # GORM models with json/gorm struct tags
 │   └── middleware/          # CORS, AuthMiddleware (optional), RequireAuth, AdminOnly
-└── pkg/utils/               # Response helpers + snowflake order number generation
+├── pkg/
+│   ├── minio/minio.go       # MinIO client wrapper (InitMinio, EnsureBucket, exposes Client+Bucket)
+│   └── utils/               # Response helpers + snowflake order number generation
 ```
 
 ## Vue Code Style
@@ -156,7 +160,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 
 ## Vite Proxy Configuration
 
-`vite.config.js` proxies both `/api` and `/static` to `http://localhost:3000`. The `/static` proxy is required for uploaded images (`/static/media/*`) to load during development. Both Go backend and Vite dev server must be running simultaneously.
+`vite.config.js` proxies `/api` to `http://localhost:3000` and `/media` to `http://localhost:9000` (MinIO). The `/media` proxy serves uploaded images during development. Both Go backend and MinIO must be running alongside Vite dev server.
 
 ## Architecture Notes
 
@@ -166,7 +170,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - **Banner JSON tag**: Go field `Image` has JSON tag `"imageUrl"`. Frontend must send `"imageUrl"` in request bodies and reads `"imageUrl"` from responses.
 - **Config API**: `GET /api/config` returns flat `map[string]string`. Update via `PUT /api/admin/config/:key` with body `{"value": "..."}`.
 - **Settings API**: `GET /api/settings` returns `{"success": true, "data": {...}}`. Update via `PUT /api/admin/settings/:key`.
-- **Image upload**: `POST /api/admin/upload` returns `{"url": "/static/media/xxx.jpg", "success": true}`. Images served via Go's `r.Static("/static", "./static")`.
+- **Image upload**: `POST /api/admin/upload` returns `{"url": "/media/bycigar/xxx.jpg", "success": true}`. Images stored in MinIO, served via nginx/Vite reverse proxy `/media/` → MinIO. Go backend handles writes only; reads go directly to MinIO through the proxy.
 - **CMS pages**: Slugs `about`, `services`, `privacy-policy`, `statement`. Content rendered as Markdown via `marked` library.
 - **Auto-migration**: All tables auto-migrate on backend startup. Admin user and default data seeded on first run.
 

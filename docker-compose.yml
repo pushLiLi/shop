@@ -17,6 +17,24 @@ services:
       timeout: 5s
       retries: 10
 
+  minio:
+    image: minio/minio:latest
+    container_name: bycigar-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./server-go
     container_name: bycigar-backend
@@ -30,8 +48,15 @@ services:
       DB_NAME: bycigar
       JWT_SECRET: your-super-secret-jwt-key-change-in-production
       SERVER_PORT: 3000
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET: bycigar
+      MINIO_USE_SSL: "false"
     depends_on:
       mysql:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   frontend:
@@ -44,3 +69,4 @@ services:
 
 volumes:
   mysql_data:
+  minio_data:

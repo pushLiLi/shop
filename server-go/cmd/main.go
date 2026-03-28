@@ -8,6 +8,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
+	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,8 @@ func main() {
 	database.Connect()
 	database.Migrate()
 	database.Seed()
+	miniopkg.InitMinio()
+	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
 	utils.InitSnowflake(1)
 	database.BackfillOrderNo()
 
