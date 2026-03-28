@@ -150,6 +150,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.
 - **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (where `isCompact = window.innerWidth <= 992`) to show left-image/right-text layout on tablet/mobile. HomeView and ProductDetailView do not pass it (vertical cards). Horizontal styles use `.product-card.horizontal` class with `@media (max-width: 768px)` for smaller image size (120px vs 180px).
 - **Responsive grids**: CategoryView/SearchView use `grid-template-columns: 1fr` at ≤992px for horizontal cards; HomeView uses `repeat(2, 1fr)` at ≤768px for vertical cards. When using `flex-direction: column` on a parent flex container, always set `align-items: stretch` so children fill the full width.
+- **CategorySidebar mobile drawer**: On mobile (≤768px), CategorySidebar shows a button that opens a bottom drawer via `<Teleport to="body">`. Uses `drawerOpen` ref + `openDrawer()`/`closeDrawer()` methods. Drawer has overlay (`rgba(0,0,0,0.6)`), slides up with `transform: translateY(100%)` animation. Categories with children expand inline via `expandedCategories` Set. Always set `document.body.style.overflow = 'hidden'` when drawer opens to prevent background scroll.
 
 ## Git Commits
 
