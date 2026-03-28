@@ -141,10 +141,17 @@ const handleLogout = () => {
 }
 
 .logo {
+  font-family: 'Playfair Display', serif;
   font-size: 20px;
   font-weight: 600;
   color: #d4a574;
   text-decoration: none;
+  letter-spacing: 3px;
+  transition: all 0.3s ease;
+}
+
+.logo:hover {
+  color: #e8c49a;
   letter-spacing: 4px;
 }
 
