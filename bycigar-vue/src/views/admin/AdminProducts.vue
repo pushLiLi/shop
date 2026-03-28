@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminImageUpload from '../../components/AdminImageUpload.vue'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 const products = ref([])
 const categories = ref([])

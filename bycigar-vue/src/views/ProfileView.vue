@@ -49,7 +49,7 @@ onMounted(async () => {
 async function fetchOrders() {
   loading.value = true;
   try {
-    const res = await fetch("http://localhost:3000/api/orders", {
+    const res = await fetch("/api/orders", {
       headers: authStore.getAuthHeaders(),
     });
     if (res.ok) {
@@ -65,7 +65,7 @@ async function fetchOrders() {
 
 async function fetchAddresses() {
   try {
-    const res = await fetch("http://localhost:3000/api/addresses", {
+    const res = await fetch("/api/addresses", {
       headers: authStore.getAuthHeaders(),
     });
     if (res.ok) {
@@ -93,7 +93,7 @@ async function saveProfile() {
   message.value = "";
   loading.value = true;
   try {
-    const res = await fetch("http://localhost:3000/api/auth/profile", {
+    const res = await fetch("/api/auth/profile", {
       method: "PUT",
       headers: authStore.getAuthHeaders(),
       body: JSON.stringify(editForm.value),
@@ -139,8 +139,8 @@ async function handleSaveAddress(formData) {
   try {
     const url =
       addressFormMode.value === "edit"
-        ? `http://localhost:3000/api/addresses/${editingAddress.value.id}`
-        : "http://localhost:3000/api/addresses";
+        ? `/api/addresses/${editingAddress.value.id}`
+        : "/api/addresses";
     const method = addressFormMode.value === "edit" ? "PUT" : "POST";
 
     const res = await fetch(url, {
@@ -163,7 +163,7 @@ async function deleteAddress(id) {
   if (!confirm("确定要删除这个地址吗？")) return;
 
   try {
-    const res = await fetch(`http://localhost:3000/api/addresses/${id}`, {
+    const res = await fetch(`/api/addresses/${id}`, {
       method: "DELETE",
       headers: authStore.getAuthHeaders(),
     });
@@ -178,7 +178,7 @@ async function deleteAddress(id) {
 async function setDefaultAddress(id) {
   try {
     const res = await fetch(
-      `http://localhost:3000/api/addresses/${id}/default`,
+      `/api/addresses/${id}/default`,
       {
         method: "PUT",
         headers: authStore.getAuthHeaders(),
@@ -227,7 +227,7 @@ watch(activeTab, (val) => {
 
 async function refreshCaptcha() {
   try {
-    const res = await fetch("http://localhost:3000/api/auth/captcha");
+    const res = await fetch("/api/auth/captcha");
     const data = await res.json();
     captchaId.value = data.captchaId;
     captchaImage.value = data.captchaImage;
@@ -249,7 +249,7 @@ async function changePassword() {
   }
   passwordLoading.value = true;
   try {
-    const res = await fetch("http://localhost:3000/api/auth/change-password", {
+    const res = await fetch("/api/auth/change-password", {
       method: "PUT",
       headers: authStore.getAuthHeaders(),
       body: JSON.stringify({

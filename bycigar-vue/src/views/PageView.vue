@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { marked } from 'marked'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 const route = useRoute()
 const page = ref(null)

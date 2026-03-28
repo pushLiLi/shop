@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCarousel } from '../composables/useCarousel'
 import ProductCard from '../components/ProductCard.vue'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 const loading = ref(true)
 const error = ref(null)

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { useToastStore } from './toast'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 const pendingUpdates = new Map()
 
 function getAuthHeaders() {

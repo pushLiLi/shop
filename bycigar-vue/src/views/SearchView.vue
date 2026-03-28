@@ -33,7 +33,7 @@ async function searchProducts() {
       sortOrder: sortOrder.value
     })
     
-    const res = await fetch(`http://localhost:3000/api/products?${params}`)
+    const res = await fetch(`/api/products?${params}`)
     const data = await res.json()
     
     products.value = data.products || []

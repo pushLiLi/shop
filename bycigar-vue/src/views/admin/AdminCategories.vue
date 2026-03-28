@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 const categories = ref([])
 const loading = ref(false)

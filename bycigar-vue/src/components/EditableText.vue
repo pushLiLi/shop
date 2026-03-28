@@ -20,7 +20,7 @@ const canEdit = computed(() => authStore.isAdmin)
 async function saveEdit() {
   if (editValue.value !== props.modelValue) {
     try {
-      const res = await fetch(`http://localhost:3000/api/admin/config/${props.configKey}`, {
+      const res = await fetch(`/api/admin/config/${props.configKey}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

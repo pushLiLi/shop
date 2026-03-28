@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { marked } from 'marked'
 import { useToastStore } from '../../stores/toast'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 const toast = useToastStore()
 
 const pages = ref([])

@@ -37,7 +37,7 @@ onMounted(async () => {
 
 async function fetchAddresses() {
   try {
-    const res = await fetch('http://localhost:3000/api/addresses', {
+    const res = await fetch('/api/addresses', {
       headers: authStore.getAuthHeaders()
     })
     if (res.ok) {
@@ -71,7 +71,7 @@ async function createOrder() {
       addressId: selectedAddressId.value,
       remark: remark.value
     }
-    const res = await fetch('http://localhost:3000/api/orders', {
+    const res = await fetch('/api/orders', {
       method: 'POST',
       headers: authStore.getAuthHeaders(),
       body: JSON.stringify(orderData)

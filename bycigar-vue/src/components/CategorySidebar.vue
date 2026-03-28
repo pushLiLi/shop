@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 const props = defineProps({
   activeSlug: { type: String, default: '' }

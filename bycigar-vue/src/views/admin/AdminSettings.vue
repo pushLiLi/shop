@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useToastStore } from '../../stores/toast'
 import AdminImageUpload from '../../components/AdminImageUpload.vue'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 const toast = useToastStore()
 
 const loading = ref(false)

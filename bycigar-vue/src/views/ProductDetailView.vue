@@ -33,14 +33,14 @@ async function fetchProduct() {
     loading.value = true
     error.value = null
     
-    const res = await fetch(`http://localhost:3000/api/products/${productId.value}`)
+    const res = await fetch(`/api/products/${productId.value}`)
     if (!res.ok) throw new Error('产品不存在')
     
     const data = await res.json()
     product.value = data
     
     if (data.category?.id) {
-      const relatedRes = await fetch(`http://localhost:3000/api/products?categoryId=${data.category.id}&limit=4`)
+      const relatedRes = await fetch(`/api/products?categoryId=${data.category.id}&limit=4`)
       const relatedData = await relatedRes.json()
       relatedProducts.value = relatedData.products?.filter(p => p.id !== data.id) || []
     }

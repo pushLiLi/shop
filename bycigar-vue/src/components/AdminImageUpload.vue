@@ -16,7 +16,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 const dragOver = ref(false)
 const uploading = ref(false)
 const error = ref('')

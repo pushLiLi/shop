@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = '/api'
 
 function getAuthHeaders() {
   const token = localStorage.getItem('token')

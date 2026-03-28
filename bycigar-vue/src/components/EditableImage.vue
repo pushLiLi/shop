@@ -23,7 +23,7 @@ async function handleUpload(event) {
   formData.append('file', file)
 
   try {
-    const res = await fetch('http://localhost:3000/api/admin/upload', {
+    const res = await fetch('/api/admin/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${authStore.token}`
