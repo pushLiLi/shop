@@ -53,7 +53,7 @@ func UploadImage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建上传目录失败"})
 		return
 	}
-	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String()+ext)
+	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String(), ext)
 	dstPath := filepath.Join(uploadDir, filename)
 	dst, err := os.Create(dstPath)
 	if err != nil {

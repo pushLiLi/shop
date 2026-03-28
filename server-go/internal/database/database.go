@@ -73,6 +73,7 @@ func Seed() {
 	SeedAdminUser()
 	SeedPages()
 	SeedSettings()
+	SeedSiteConfig()
 }
 
 func SeedAdminUser() {
@@ -129,6 +130,21 @@ func SeedSettings() {
 		var existing models.Setting
 		if err := DB.Where("key = ?", setting.Key).First(&existing).Error; err != nil {
 			DB.Create(&setting)
+		}
+	}
+}
+
+func SeedSiteConfig() {
+	defaultConfigs := []models.SiteConfig{
+		{ConfigKey: "home_banner_1", ConfigValue: "/static/media/banner-1.png"},
+		{ConfigKey: "home_banner_2", ConfigValue: "/static/media/banner-2.png"},
+		{ConfigKey: "home_banner_3", ConfigValue: "/static/media/banner-3.png"},
+	}
+
+	for _, cfg := range defaultConfigs {
+		var existing models.SiteConfig
+		if err := DB.Where("config_key = ?", cfg.ConfigKey).First(&existing).Error; err != nil {
+			DB.Create(&cfg)
 		}
 	}
 }

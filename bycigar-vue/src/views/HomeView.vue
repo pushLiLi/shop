@@ -115,9 +115,9 @@ onMounted(() => { fetchData() })
       </div>
     </section>
 
-    <section class="banner-section">
+    <section class="banner-section" v-if="config.home_banner_1">
       <div class="container">
-        <img src="/static/media/banner-1.png" alt="Banner" class="full-width-banner">
+        <img :src="config.home_banner_1" alt="Banner" class="full-width-banner">
       </div>
     </section>
 
@@ -131,15 +131,15 @@ onMounted(() => { fetchData() })
       </div>
     </section>
 
-    <section class="banner-section">
+    <section class="banner-section" v-if="config.home_banner_3">
       <div class="container">
-        <img src="/static/media/banner-3.png" alt="Banner" class="full-width-banner">
+        <img :src="config.home_banner_3" alt="Banner" class="full-width-banner">
       </div>
     </section>
 
-    <section class="banner-section">
+    <section class="banner-section" v-if="config.home_banner_2">
       <div class="container">
-        <img src="/static/media/banner-2.png" alt="Banner" class="full-width-banner">
+        <img :src="config.home_banner_2" alt="Banner" class="full-width-banner">
       </div>
     </section>
   </main>

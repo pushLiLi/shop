@@ -107,7 +107,7 @@ const saveBanner = async () => {
 
     const body = {
       title: form.value.title,
-      image: form.value.imageUrl,
+      imageUrl: form.value.imageUrl,
       link: form.value.link || '',
       sortOrder: parseInt(form.value.sortOrder) || 0,
       isActive: form.value.isActive
@@ -157,7 +157,7 @@ const toggleActive = async (banner) => {
       headers: authHeaders(),
       body: JSON.stringify({
         title: banner.title,
-        image: banner.imageUrl,
+        imageUrl: banner.imageUrl,
         link: banner.link,
         sortOrder: banner.sortOrder,
         isActive: !banner.isActive
@@ -187,7 +187,7 @@ const onDrop = async (dropIndex) => {
     fetch(`${API_BASE}/admin/banners/${b.id}`, {
       method: 'PUT',
       headers: authHeaders(),
-      body: JSON.stringify({ title: b.title, image: b.imageUrl, link: b.link, sortOrder: i, isActive: b.isActive })
+      body: JSON.stringify({ title: b.title, imageUrl: b.imageUrl, link: b.link, sortOrder: i, isActive: b.isActive })
     })
   )
   try {
@@ -443,6 +443,7 @@ onMounted(() => { fetchBanners() })
   object-fit: cover;
   border-radius: 6px;
   transition: transform 0.2s;
+  background: #f0f0f0;
 }
 
 .banner-image img:hover {

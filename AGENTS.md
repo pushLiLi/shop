@@ -11,7 +11,7 @@ Module: `bycigar-server` (Go module name)
 
 ```bash
 # Frontend (bycigar-vue/)
-npm run dev       # Dev at http://localhost:5173 (proxies /api -> localhost:3000)
+npm run dev       # Dev at http://localhost:5173 (proxies /api + /static -> localhost:3000)
 npm run build     # Production build to dist/
 
 # Backend (server-go/)
@@ -40,13 +40,13 @@ bycigar-vue/src/
 ├── utils/                   # Pure helpers: states.js (US state lookup)
 ├── views/                   # Page views + admin/ (light theme, accent #d4a574)
 ├── stores/                  # Pinia: auth, cart, favorites, toast, useSettingsStore
-└── router/index.js          # 17 routes with auth/admin guards
+└── router/index.js          # Routes with auth/admin guards
 
 server-go/
 ├── cmd/main.go              # Entry: config -> DB -> migrate -> seed -> snowflake -> Gin
 ├── internal/
 │   ├── config/config.go     # Loads .env via godotenv into AppConfig global
-│   ├── database/database.go # Connect, Migrate, Seed, BackfillOrderNo
+│   ├── database/database.go # Connect, Migrate, Seed (admin, pages, settings, siteconfig), BackfillOrderNo
 │   ├── handlers/            # Public handlers + admin_*.go for admin endpoints
 │   ├── models/              # GORM models with json/gorm struct tags
 │   └── middleware/          # CORS, AuthMiddleware (optional), RequireAuth, AdminOnly
@@ -63,6 +63,7 @@ server-go/
 - CSS: `<style scoped>` with kebab-case class names
 - No TypeScript, no code comments
 - Inline event handlers use named `async function` declarations, not arrow functions
+- When sending JSON to backend, **match the Go model's JSON tags exactly** (e.g. `"imageUrl"` not `"image"`)
 
 ## Pinia Store Patterns
 
@@ -101,7 +102,7 @@ type Model struct {
     ID        uint           `json:"id" gorm:"primaryKey"`
     CreatedAt time.Time      `json:"createdAt"`
     UpdatedAt time.Time      `json:"updatedAt"`
-    DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`  // soft delete where applicable
+    DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 }
 ```
 
@@ -139,7 +140,7 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid") // 4xx {"error": "msg"}
 - User JSON in `localStorage.getItem('user')` (contains `role` field)
 - `AuthMiddleware()`: optional JWT parsing, sets `c.Set("userID", ...)` in Gin context
 - `RequireAuth()`: wraps routes requiring any authenticated user (returns 401)
-- `AdminOnly`: standalone function (not wrapped), checks `userID` + DB lookup + `role === "admin"`, sets `c.Set("user", user)`
+- `AdminOnly`: standalone middleware, checks `userID` + DB lookup + `role === "admin"`, sets `c.Set("user", user)`
 - Dev bypass: `Authorization: user-{id}` header skips JWT validation
 - Default admin: `admin@admin.com` / `123456`
 
@@ -149,16 +150,23 @@ Public: `/api/products`, `/api/products/:id`, `/api/categories`, `/api/banners`,
 
 Authenticated: `/api/auth/me`, `/api/auth/profile`, `/api/auth/change-password`, `/api/cart`, `/api/favorites`, `/api/orders`, `/api/addresses`
 
-Admin: `/api/admin/products`, `/api/admin/categories`, `/api/admin/banners`, `/api/admin/pages`, `/api/admin/upload`
+Admin: `/api/admin/products`, `/api/admin/categories`, `/api/admin/banners`, `/api/admin/pages`, `/api/admin/upload`, `/api/admin/config/:key`, `/api/admin/settings/:key`
 
 Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy`, `sortOrder`, `featured`, `active`
+
+## Vite Proxy Configuration
+
+`vite.config.js` proxies both `/api` and `/static` to `http://localhost:3000`. The `/static` proxy is required for uploaded images (`/static/media/*`) to load during development. Both Go backend and Vite dev server must be running simultaneously.
 
 ## Architecture Notes
 
 - **Admin vs Public endpoints**: Admin list endpoints return ALL records (no `is_active` filter); public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
 - **Stock sorting**: Public product listings always sort `stock > 0` items first via SQL CASE expression, regardless of user-selected sort.
 - **Order numbers**: Snowflake-generated `OrderNo` (user-facing) separate from auto-increment `ID` (internal). `GetOrder` accepts both.
-- **Banner field mismatch**: Go field `Image` has JSON tag `"imageUrl"`. Frontend sends `image` in request but reads `imageUrl` from response.
+- **Banner JSON tag**: Go field `Image` has JSON tag `"imageUrl"`. Frontend must send `"imageUrl"` in request bodies and reads `"imageUrl"` from responses.
+- **Config API**: `GET /api/config` returns flat `map[string]string`. Update via `PUT /api/admin/config/:key` with body `{"value": "..."}`.
+- **Settings API**: `GET /api/settings` returns `{"success": true, "data": {...}}`. Update via `PUT /api/admin/settings/:key`.
+- **Image upload**: `POST /api/admin/upload` returns `{"url": "/static/media/xxx.jpg", "success": true}`. Images served via Go's `r.Static("/static", "./static")`.
 - **CMS pages**: Slugs `about`, `services`, `privacy-policy`, `statement`. Content rendered as Markdown via `marked` library.
 - **Auto-migration**: All tables auto-migrate on backend startup. Admin user and default data seeded on first run.
 

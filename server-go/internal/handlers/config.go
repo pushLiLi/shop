@@ -54,7 +54,7 @@ func UpdateConfig(c *gin.Context) {
 
 	var config models.SiteConfig
 	result := database.DB.Where("config_key = ?", key).First(&config)
-	if result.Error == nil {
+	if result.Error != nil {
 		config = models.SiteConfig{
 			ConfigKey:   key,
 			ConfigValue: input.Value,

@@ -125,7 +125,9 @@ const removeImage = () => {
     </div>
 
     <div v-else class="preview-area">
-      <img :src="imageUrl" alt="Preview" class="preview-image">
+      <div class="preview-image-wrap">
+        <img :src="imageUrl" alt="Preview" class="preview-image">
+      </div>
       <div class="preview-actions">
         <button class="btn-replace" @click="$refs.fileInput.click()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -133,14 +135,14 @@ const removeImage = () => {
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          替换
+          替换图片
         </button>
         <button class="btn-remove" @click="removeImage">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
-          删除
+          删除图片
         </button>
       </div>
       <input 
@@ -231,10 +233,18 @@ const removeImage = () => {
 }
 
 .preview-area {
-  position: relative;
   border-radius: 8px;
   overflow: hidden;
   background: #f5f5f5;
+  border: 1px solid #eee;
+}
+
+.preview-image-wrap {
+  min-height: 150px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preview-image {
@@ -245,42 +255,46 @@ const removeImage = () => {
 }
 
 .preview-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   display: flex;
   gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #eee;
+  background: #fafafa;
 }
 
 .btn-replace,
 .btn-remove {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   border: none;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-replace {
-  background: rgba(255,255,255,0.9);
+  background: #fff;
   color: #333;
+  border: 1px solid #ddd;
 }
 
 .btn-replace:hover {
-  background: #fff;
+  background: #f5f5f5;
+  border-color: #d4a574;
 }
 
 .btn-remove {
-  background: rgba(220, 53, 69, 0.9);
-  color: #fff;
+  background: #fff;
+  color: #dc3545;
+  border: 1px solid #ddd;
 }
 
 .btn-remove:hover {
-  background: #dc3545;
+  background: #fff5f5;
+  border-color: #dc3545;
 }
 
 .error-text {

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useToastStore } from '../../stores/toast'
+import AdminImageUpload from '../../components/AdminImageUpload.vue'
 
 const API_BASE = 'http://localhost:3000/api'
 const toast = useToastStore()
@@ -13,6 +14,18 @@ const form = ref({
   footer_service_time: ''
 })
 
+const banners = ref({
+  home_banner_1: '',
+  home_banner_2: '',
+  home_banner_3: ''
+})
+
+const bannerLabels = {
+  home_banner_1: '横幅图 1（特别推荐下方）',
+  home_banner_2: '横幅图 2（古巴推荐下方）',
+  home_banner_3: '横幅图 3（页面底部）'
+}
+
 const authHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -21,12 +34,21 @@ const authHeaders = () => ({
 const fetchSettings = async () => {
   loading.value = true
   try {
-    const res = await fetch(`${API_BASE}/settings`)
-    const data = await res.json()
-    if (data.success) {
-      form.value.footer_description = data.data.footer_description || ''
-      form.value.footer_service_time = data.data.footer_service_time || ''
+    const [settingsRes, configRes] = await Promise.all([
+      fetch(`${API_BASE}/settings`),
+      fetch(`${API_BASE}/config`)
+    ])
+
+    const settingsData = await settingsRes.json()
+    if (settingsData.success) {
+      form.value.footer_description = settingsData.data.footer_description || ''
+      form.value.footer_service_time = settingsData.data.footer_service_time || ''
     }
+
+    const configData = await configRes.json()
+    banners.value.home_banner_1 = configData.home_banner_1 || ''
+    banners.value.home_banner_2 = configData.home_banner_2 || ''
+    banners.value.home_banner_3 = configData.home_banner_3 || ''
   } catch (e) {
     toast.error('获取设置失败')
   } finally {
@@ -47,6 +69,21 @@ const saveSettings = async () => {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ value: form.value.footer_service_time })
+      }),
+      fetch(`${API_BASE}/admin/config/home_banner_1`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: banners.value.home_banner_1 })
+      }),
+      fetch(`${API_BASE}/admin/config/home_banner_2`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: banners.value.home_banner_2 })
+      }),
+      fetch(`${API_BASE}/admin/config/home_banner_3`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: banners.value.home_banner_3 })
       })
     ]
 
@@ -71,6 +108,15 @@ onMounted(fetchSettings)
     <div v-if="loading" class="loading">加载中...</div>
 
     <form v-else class="settings-form" @submit.prevent="saveSettings">
+      <div class="form-section">
+        <h3>首页横幅图</h3>
+
+        <div v-for="(label, key) in bannerLabels" :key="key" class="form-group">
+          <label>{{ label }}</label>
+          <AdminImageUpload v-model="banners[key]" />
+        </div>
+      </div>
+
       <div class="form-section">
         <h3>页脚设置</h3>
         
