@@ -13,7 +13,8 @@ export default defineConfig({
       },
       '/media': {
         target: 'http://localhost:9000',
-        changeOrigin: true
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/media/, '')
       }
     }
   }
