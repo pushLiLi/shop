@@ -15,15 +15,11 @@ const form = ref({
 })
 
 const banners = ref({
-  home_banner_1: '',
-  home_banner_2: '',
-  home_banner_3: ''
+  home_banner_1: ''
 })
 
 const bannerLabels = {
-  home_banner_1: '横幅图 1（特别推荐下方）',
-  home_banner_2: '横幅图 2（古巴推荐下方）',
-  home_banner_3: '横幅图 3（页面底部）'
+  home_banner_1: '横幅图 1（特别推荐下方）'
 }
 
 const authHeaders = () => ({
@@ -47,8 +43,6 @@ const fetchSettings = async () => {
 
     const configData = await configRes.json()
     banners.value.home_banner_1 = configData.home_banner_1 || ''
-    banners.value.home_banner_2 = configData.home_banner_2 || ''
-    banners.value.home_banner_3 = configData.home_banner_3 || ''
   } catch (e) {
     toast.error('获取设置失败')
   } finally {
@@ -74,16 +68,6 @@ const saveSettings = async () => {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ value: banners.value.home_banner_1 })
-      }),
-      fetch(`${API_BASE}/admin/config/home_banner_2`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ value: banners.value.home_banner_2 })
-      }),
-      fetch(`${API_BASE}/admin/config/home_banner_3`, {
-        method: 'PUT',
-        headers: authHeaders(),
-        body: JSON.stringify({ value: banners.value.home_banner_3 })
       })
     ]
 

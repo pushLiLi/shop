@@ -32,7 +32,7 @@ docker-compose up --build       # Full stack: MySQL + MinIO + Backend + Frontend
 
 Four services must run simultaneously: MySQL (`:3306`), MinIO (`:9000`), Go backend (`:3000`), Vite dev server (`:5173`). Vite proxies `/api` to backend and `/media` to MinIO (with path rewrite stripping `/media` prefix). Production uses nginx (see `bycigar-vue/nginx.conf`). Container max-width: 1400px. Default admin: `admin@admin.com` / `123456`.
 
-Backend startup order: `config.LoadConfig()` -> `database.Connect()` -> `database.Migrate()` -> `database.Seed()` -> `minio.InitMinio()` -> `utils.InitSnowflake(1)` -> `database.BackfillOrderNo()` -> Gin routes.
+Backend startup order: `config.LoadConfig()` -> `database.Connect()` -> `database.Migrate()` -> `database.Seed()` -> `minio.InitMinio()` -> `minio.EnsureBucket()` -> `utils.InitSnowflake(1)` -> `database.BackfillOrderNo()` -> Gin routes.
 
 ## Project Structure
 
@@ -65,9 +65,9 @@ server-go/
 ├── internal/
 │   ├── config/config.go        # Loads .env via godotenv into AppConfig global
 │   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
-│   ├── handlers/               # 14 files: product, category, banner, page, auth, captcha,
-│   │                           #   cart, favorite, order, address, config, setting, upload,
-│   │                           #   admin_product, admin_category (+ admin in same files)
+│   ├── handlers/               # 14 files: product (includes GetCategories), banner, page, auth,
+│   │                           #   captcha, cart, favorite, order, address, config, setting, upload,
+│   │                           #   admin_product, admin_category
 │   ├── models/                 # 11 files, 12 model types: User, Category, Product, CartItem,
 │   │                           #   Favorite, Address, Order, OrderItem, SiteConfig, Banner,
 │   │                           #   Page, Setting (input/response structs alongside models)

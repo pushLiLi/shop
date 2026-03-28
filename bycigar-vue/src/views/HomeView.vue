@@ -10,7 +10,6 @@ const loading = ref(true)
 const error = ref(null)
 const config = ref({})
 const featuredProducts = ref([])
-const cubanProducts = ref([])
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
@@ -30,10 +29,9 @@ const {
 async function fetchData() {
   try {
     loading.value = true
-    const [configRes, featuredRes, cubanRes, bannersRes] = await Promise.all([
+    const [configRes, featuredRes, bannersRes] = await Promise.all([
       fetch(`${API_BASE}/config`),
       fetch(`${API_BASE}/products?featured=true&limit=12`),
-      fetch(`${API_BASE}/products?category=cuban&limit=6`),
       fetch(`${API_BASE}/banners`)
     ])
     
@@ -41,9 +39,6 @@ async function fetchData() {
     
     const featuredData = await featuredRes.json()
     featuredProducts.value = featuredData.products || []
-    
-    const cubanData = await cubanRes.json()
-    cubanProducts.value = cubanData.products || []
     
     const bannersData = await bannersRes.json()
     banners.value = bannersData.length > 0 ? bannersData : [
@@ -118,28 +113,6 @@ onMounted(() => { fetchData() })
     <section class="banner-section" v-if="config.home_banner_1">
       <div class="container">
         <img :src="config.home_banner_1" alt="Banner" class="full-width-banner">
-      </div>
-    </section>
-
-    <section class="products-section">
-      <div class="container">
-        <h2 class="section-title">{{ config.home_cuban_title || '古巴雪茄推荐' }}</h2>
-        <div v-if="loading" class="loading">加载中...</div>
-        <div v-else class="products-grid grid-3">
-          <ProductCard v-for="product in cubanProducts" :key="product.id" :product="product" />
-        </div>
-      </div>
-    </section>
-
-    <section class="banner-section" v-if="config.home_banner_3">
-      <div class="container">
-        <img :src="config.home_banner_3" alt="Banner" class="full-width-banner">
-      </div>
-    </section>
-
-    <section class="banner-section" v-if="config.home_banner_2">
-      <div class="container">
-        <img :src="config.home_banner_2" alt="Banner" class="full-width-banner">
       </div>
     </section>
   </main>
@@ -258,10 +231,6 @@ onMounted(() => { fetchData() })
 
 .products-grid.grid-6 {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-}
-
-.products-grid.grid-3 {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
 .banner-section {
