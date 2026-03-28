@@ -256,8 +256,46 @@ onMounted(() => { fetchData() })
   }
 
   .slider-btn {
-    padding: 10px 15px;
+    padding: 12px 14px;
     font-size: 18px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .slider-dots {
+    bottom: 12px;
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    position: relative;
+  }
+
+  .dot::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    position: absolute;
+  }
+
+  .dot.active::after {
+    background: #d4a574;
+  }
+
+  .products-grid.grid-6 {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

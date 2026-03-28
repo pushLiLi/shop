@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
@@ -12,8 +12,10 @@ const favoritesStore = useFavoritesStore()
 const authStore = useAuthStore()
 const toast = useToastStore()
 const isMenuOpen = ref(false)
+const showMobileSearch = ref(false)
 const showNotice = ref(!localStorage.getItem('notice_closed'))
 const searchKeyword = ref('')
+const mobileSearchKeyword = ref('')
 const showUserMenu = ref(false)
 const isAdmin = computed(() => authStore.isAdmin)
 
@@ -22,6 +24,16 @@ const menuItems = [
   { name: '全部商品', path: '/products', children: [] },
   { name: '关于我们', path: '/about', children: [] }
 ]
+
+watch(isMenuOpen, (val) => {
+  document.body.style.overflow = val ? 'hidden' : ''
+})
+
+watch(showMobileSearch, (val) => {
+  if (val) {
+    isMenuOpen.value = false
+  }
+})
 
 onMounted(() => {
   if (authStore.isLoggedIn) {
@@ -40,11 +52,21 @@ const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
 }
 
+const closeMenu = () => {
+  isMenuOpen.value = false
+}
+
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
     router.push('/search?q=' + encodeURIComponent(searchKeyword.value.trim()))
-  } else {
-    alert('请输入搜索关键词')
+  }
+}
+
+const handleMobileSearch = () => {
+  if (mobileSearchKeyword.value.trim()) {
+    router.push('/search?q=' + encodeURIComponent(mobileSearchKeyword.value.trim()))
+    showMobileSearch.value = false
+    mobileSearchKeyword.value = ''
   }
 }
 
@@ -54,6 +76,12 @@ const handleCartClick = () => {
     return
   }
   cartStore.openCart()
+}
+
+const handleOverlayClick = (e) => {
+  if (e.target === e.currentTarget) {
+    closeMenu()
+  }
 }
 </script>
 
@@ -72,25 +100,28 @@ const handleCartClick = () => {
       <div class="container">
         <div class="header-content">
           <div class="header-left">
-            <router-link to="/" class="logo">
-              HUAUGE
-            </router-link>
-            <nav class="header-nav" :class="{ 'is-open': isMenuOpen }">
-              <ul class="nav-list">
-                <li v-for="item in menuItems" :key="item.path" class="nav-item">
-                  <router-link :to="item.path" class="nav-link">
-                    {{ item.name }}
-                  </router-link>
-                </li>
-              </ul>
-            </nav>
-            <button class="mobile-menu-btn" @click="toggleMenu">
+            <button class="mobile-menu-btn" @click="toggleMenu" aria-label="打开菜单">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
               </svg>
             </button>
+            <router-link to="/" class="logo">
+              HUAUGE
+            </router-link>
+            <nav class="header-nav" :class="{ 'is-open': isMenuOpen }">
+              <ul class="nav-list">
+                <li v-for="item in menuItems" :key="item.path" class="nav-item">
+                  <router-link :to="item.path" class="nav-link" @click="closeMenu">
+                    {{ item.name }}
+                  </router-link>
+                </li>
+              </ul>
+            </nav>
+            <Transition name="overlay-fade">
+              <div v-if="isMenuOpen" class="menu-overlay" @click="closeMenu"></div>
+            </Transition>
           </div>
 
           <div class="header-center">
@@ -112,22 +143,30 @@ const handleCartClick = () => {
 
           <div class="header-right">
             <div class="header-icons">
+              <button class="icon-item mobile-search-btn" @click="showMobileSearch = !showMobileSearch" aria-label="搜索">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </button>
               <template v-if="authStore.isLoggedIn">
-                <div class="user-menu-wrapper" @mouseleave="showUserMenu = false">
-                  <button class="icon-item user-btn" @mouseenter="showUserMenu = true">
+                <div class="user-menu-wrapper">
+                  <button class="icon-item user-btn" @click="showUserMenu = !showUserMenu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                       <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                     <span class="user-name">{{ authStore.userName }}</span>
                   </button>
-                  <div v-if="showUserMenu" class="user-dropdown">
-                    <router-link to="/profile" class="dropdown-item">个人信息</router-link>
-                    <router-link to="/orders" class="dropdown-item">我的订单</router-link>
-                    <router-link to="/favorites" class="dropdown-item">我的收藏</router-link>
-                    <router-link v-if="isAdmin" to="/admin" class="dropdown-item admin-link">后台管理</router-link>
-                    <button class="dropdown-item logout-btn" @click="handleLogout">退出登录</button>
-                  </div>
+                  <Transition name="dropdown">
+                    <div v-if="showUserMenu" class="user-dropdown">
+                      <router-link to="/profile" class="dropdown-item" @click="showUserMenu = false">个人信息</router-link>
+                      <router-link to="/orders" class="dropdown-item" @click="showUserMenu = false">我的订单</router-link>
+                      <router-link to="/favorites" class="dropdown-item" @click="showUserMenu = false">我的收藏</router-link>
+                      <router-link v-if="isAdmin" to="/admin" class="dropdown-item admin-link" @click="showUserMenu = false">后台管理</router-link>
+                      <button class="dropdown-item logout-btn" @click="handleLogout">退出登录</button>
+                    </div>
+                  </Transition>
                 </div>
               </template>
               <template v-else>
@@ -144,7 +183,7 @@ const handleCartClick = () => {
                 </svg>
                 <span class="icon-badge" v-if="favoritesStore.items.length">{{ favoritesStore.items.length }}</span>
               </router-link>
-            <button @click="handleCartClick" class="icon-item" title="购物车">
+              <button @click="handleCartClick" class="icon-item" title="购物车">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <circle cx="9" cy="21" r="1"></circle>
                   <circle cx="20" cy="21" r="1"></circle>
@@ -155,6 +194,22 @@ const handleCartClick = () => {
             </div>
           </div>
         </div>
+
+        <Transition name="search-slide">
+          <div v-if="showMobileSearch" class="mobile-search">
+            <form class="mobile-search-form" @submit.prevent="handleMobileSearch">
+              <input 
+                v-model="mobileSearchKeyword" 
+                type="text" 
+                class="mobile-search-input" 
+                placeholder="搜索商品..."
+                ref="mobileSearchInput"
+                autofocus
+              >
+              <button type="submit" class="mobile-search-submit">搜索</button>
+            </form>
+          </div>
+        </Transition>
       </div>
     </div>
   </header>
@@ -341,6 +396,11 @@ const handleCartClick = () => {
   border: none;
   cursor: pointer;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .icon-item:hover {
@@ -437,10 +497,22 @@ const handleCartClick = () => {
   border: none;
   color: #fff;
   cursor: pointer;
-  padding: 5px;
+  padding: 10px;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
 }
 
 @media (max-width: 992px) {
+  .header-left {
+    gap: 10px;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+
   .header-nav {
     position: fixed;
     top: 0;
@@ -450,7 +522,7 @@ const handleCartClick = () => {
     background: #1a1a1a;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 60px 20px 20px;
+    padding: 20px 0;
     transition: left 0.3s;
     z-index: 1001;
   }
@@ -463,6 +535,7 @@ const handleCartClick = () => {
     flex-direction: column;
     width: 100%;
     gap: 0;
+    padding: 10px 20px;
   }
 
   .nav-link {
@@ -475,12 +548,106 @@ const handleCartClick = () => {
     display: none;
   }
 
-  .mobile-menu-btn {
-    display: block;
+  .menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
   }
 
   .header-center {
     display: none;
   }
+
+  .mobile-search-btn {
+    display: flex;
+  }
+
+  .mobile-search {
+    padding: 0 0 15px;
+  }
+
+  .mobile-search-form {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mobile-search-input {
+    flex: 1;
+    background: #2d2d2d;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 10px 15px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .mobile-search-input::placeholder {
+    color: #888;
+  }
+
+  .mobile-search-input:focus {
+    border-color: #d4a574;
+  }
+
+  .mobile-search-submit {
+    background: #d4a574;
+    color: #1a1a1a;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .user-name {
+    display: none;
+  }
+
+  .header-icons {
+    gap: 5px;
+  }
+}
+
+.mobile-search-btn {
+  display: none;
+}
+
+.search-slide-enter-active,
+.search-slide-leave-active {
+  transition: all 0.3s ease;
+}
+
+.search-slide-enter-from,
+.search-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
 }
 </style>
