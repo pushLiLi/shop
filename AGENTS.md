@@ -2,62 +2,75 @@
 
 ## Tech Stack
 
-Frontend: Vue 3 + Vite + Vue Router + Pinia + marked
+Frontend: Vue 3 + Vite + Vue Router + Pinia + marked (JavaScript only, no TypeScript)
 Backend: Go 1.23 + Gin + GORM + JWT + Swagger
-Database: MySQL 8.4 (Docker)
+Database: MySQL 8.4 (Docker, utf8mb4 charset)
+Module: `bycigar-server` (Go module name)
 
 ## Build Commands
 
 ```bash
 # Frontend (bycigar-vue/)
-npm run dev       # Dev at http://localhost:5173
-npm run build     # Production build
+npm run dev       # Dev at http://localhost:5173 (proxies /api -> localhost:3000)
+npm run build     # Production build to dist/
 
 # Backend (server-go/)
-go run cmd/main.go              # Dev at http://localhost:3000
-go fmt ./...                    # Format code
-go build -o /dev/null ./...     # Check compilation
+go run ./cmd/main.go              # Dev at http://localhost:3000
+go fmt ./...                      # Format code
+go build -o /dev/null ./...       # Check compilation (use -o nul on Windows)
 
 # Docker & Swagger
-docker-compose up -d mysql      # Start MySQL only
-cd server-go && swag init       # Generate API docs at /swagger/index.html
+docker-compose up -d mysql        # Start MySQL only (root/123456, database: bycigar)
+swag init                         # Generate Swagger docs (run from server-go/)
+
+# Full stack
+docker-compose up --build         # MySQL:3306 + Backend:3000 + Frontend:80
 ```
 
-**Note**: No lint or test framework configured.
+**No test or lint framework is configured.** Use `go build` and `npm run build` to verify compilation.
 
 ## Project Structure
 
 ```
 bycigar-vue/src/
-├── components/     # ProductCard, CartDrawer, Toast, TheFooter
-├── views/          # Page components + admin/
-├── stores/         # cart, auth, toast, favorites
-└── router/         # Vue Router
+├── main.js, App.vue        # Entry + layout (dark theme, Toast, CartDrawer)
+├── style.css               # Global dark theme, grid (.col-2/3/4/6/12), 768px breakpoint
+├── components/              # ProductCard, CartDrawer, Toast, AdminImageUpload, TheHeader/TheFooter
+├── composables/             # Reusable logic: useCarousel (carousel with autoplay, touch, pause)
+├── utils/                   # Pure helpers: states.js (US state lookup)
+├── views/                   # Page views + admin/ (light theme, accent #d4a574)
+├── stores/                  # Pinia: auth, cart, favorites, toast, useSettingsStore
+└── router/index.js          # 17 routes with auth/admin guards
 
 server-go/
-├── cmd/main.go             # Entry point
+├── cmd/main.go              # Entry: config -> DB -> migrate -> seed -> snowflake -> Gin
 ├── internal/
-│   ├── handlers/           # HTTP handlers (public + admin_*)
-│   ├── models/             # GORM models
-│   ├── middleware/         # Auth, CORS, AdminOnly
-│   ├── database/           # DB connection + migrations + seeds
-│   └── config/             # App config from .env
-└── pkg/utils/              # Response helpers
+│   ├── config/config.go     # Loads .env via godotenv into AppConfig global
+│   ├── database/database.go # Connect, Migrate, Seed, BackfillOrderNo
+│   ├── handlers/            # Public handlers + admin_*.go for admin endpoints
+│   ├── models/              # GORM models with json/gorm struct tags
+│   └── middleware/          # CORS, AuthMiddleware (optional), RequireAuth, AdminOnly
+└── pkg/utils/               # Response helpers + snowflake order number generation
 ```
 
-## Vue Rules
+## Vue Code Style
 
 - `<script setup>` Composition API only
-- Order: imports → emit → props → stores → refs → computed → functions
+- Declaration order: imports → `defineEmits` → `defineProps` → stores → refs/computed → functions
 - Use `useToastStore` for notifications, **never** `alert()`
-- API base: `http://localhost:3000/api`
-- CSS: scoped + kebab-case class names
-- No TypeScript
+- Composables go in `src/composables/`, named `use` + PascalCase, return reactive state and handlers
+- API base: `http://localhost:3000/api` (hardcoded in stores, Vite proxy also configured)
+- CSS: `<style scoped>` with kebab-case class names
+- No TypeScript, no code comments
+- Inline event handlers use named `async function` declarations, not arrow functions
 
-## Pinia Store Rules
+## Pinia Store Patterns
 
-- Options API style (`state`, `getters`, `actions`)
-- Extract `getAuthHeaders()` at module level:
+Two styles exist in the codebase:
+- **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
+- **Options API** (`cart.js`, `favorites.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
+
+Both define `getAuthHeaders()` at module level:
 ```javascript
 const API_BASE = 'http://localhost:3000/api'
 function getAuthHeaders() {
@@ -69,62 +82,85 @@ function getAuthHeaders() {
 }
 ```
 
-## Go Rules
+## Go Code Style
 
-- Import order: standard → external → internal
-- Use `utils.ErrorResponse()` for all error responses
-- Add Swagger comments (`godoc`) for all handlers
-- Early return pattern for error handling
-- Admin handlers prefixed with `admin_*.go`
+- Import order: standard library → blank line → external → blank line → internal
+- Early return pattern for all error handling
+- Handler functions are PascalCase (`GetProducts`, `CreateProduct`)
+- Helper/utility functions are camelCase (`generateSlug`, `getEnv`)
+- Admin handlers live in separate `admin_*.go` files with separate handler functions
+- Add Swagger `godoc` comments on all handler functions
+- No code comments except Swagger annotations
+- Use `utils.ErrorResponse(c, statusCode, "message")` for error responses
+- Some handlers use `c.JSON()` directly with `gin.H{}` for inline responses
 
-## GORM Model
-
-- Use `uint` for IDs | Always include `CreatedAt` | JSON tags use camelCase | Soft delete with `DeletedAt`
-
-## Response Utilities
+## GORM Models
 
 ```go
-utils.SuccessResponse(c, data)                              // 200 OK with data
-utils.CreatedResponse(c, data)                              // 201 Created
-utils.Success(c)                                            // 200 { success: true }
-utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")    // 4xx with error
+type Model struct {
+    ID        uint           `json:"id" gorm:"primaryKey"`
+    CreatedAt time.Time      `json:"createdAt"`
+    UpdatedAt time.Time      `json:"updatedAt"`
+    DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`  // soft delete where applicable
+}
+```
+
+- `uint` for all IDs | JSON tags use camelCase | GORM tags use snake_case column names
+- Always include `CreatedAt` and `UpdatedAt` | Use `DeletedAt` for soft-delete models
+- Input structs (`ProductInput`, `CreateOrderInput`) defined in handler files, not model files
+- Preload associations: `database.DB.Preload("Category").Find(&products)`
+
+## Response Utilities (pkg/utils/response.go)
+
+```go
+utils.SuccessResponse(c, data)                           // 200 + data
+utils.CreatedResponse(c, data)                           // 201 + data
+utils.Success(c)                                         // 200 {"success": true}
+utils.ErrorResponse(c, http.StatusBadRequest, "Invalid") // 4xx {"error": "msg"}
 ```
 
 ## Naming Conventions
 
-| Type            | Convention         | Example             |
-|-----------------|--------------------|---------------------|
-| Vue Components  | PascalCase         | `ProductCard.vue`   |
-| Views           | PascalCase + View  | `HomeView.vue`      |
-| Admin Views     | Admin + Pascal     | `AdminProducts.vue` |
-| Stores          | use + camel + Store| `useCartStore`      |
-| CSS Classes     | kebab-case         | `.product-card`     |
-| Go Handlers     | PascalCase         | `GetProducts`       |
-| Go Functions    | camelCase          | `getAuthHeaders`    |
+| Type            | Convention          | Example              |
+|-----------------|---------------------|----------------------|
+| Vue Components  | PascalCase          | `ProductCard.vue`    |
+| Views           | PascalCase + View   | `HomeView.vue`       |
+| Admin Views     | Admin + Pascal      | `AdminProducts.vue`  |
+| Stores          | use + camel + Store | `useCartStore`       |
+| Composables     | use + PascalCase    | `useCarousel`        |
+| CSS Classes     | kebab-case          | `.product-card`      |
+| Go Handlers     | PascalCase          | `GetProducts`        |
+| Go Helpers      | camelCase           | `generateSlug`       |
+| Go Files        | snake_case          | `admin_product.go`   |
 
-## Authentication
+## Authentication Flow
 
-- Token: `localStorage.getItem('token')`
-- User: `localStorage.getItem('user')` (JSON with `role` field)
-- Protected routes: `meta: { requiresAuth: true }`
-- Admin routes: `meta: { requiresAuth: true, requiresAdmin: true }`
+- Token stored in `localStorage.getItem('token')`
+- User JSON in `localStorage.getItem('user')` (contains `role` field)
+- `AuthMiddleware()`: optional JWT parsing, sets `c.Set("userID", ...)` in Gin context
+- `RequireAuth()`: wraps routes requiring any authenticated user (returns 401)
+- `AdminOnly`: standalone function (not wrapped), checks `userID` + DB lookup + `role === "admin"`, sets `c.Set("user", user)`
+- Dev bypass: `Authorization: user-{id}` header skips JWT validation
 - Default admin: `admin@admin.com` / `123456`
-- JWT middleware sets `c.Get("userID")` in context
 
 ## API Endpoints
 
-### Public: `/api/products`, `/api/products/:id`, `/api/categories`, `/api/banners`, `/api/pages/:slug`, `/api/auth/login`, `/api/auth/register`
+Public: `/api/products`, `/api/products/:id`, `/api/categories`, `/api/banners`, `/api/pages/:slug`, `/api/auth/login`, `/api/auth/register`, `/api/config`, `/api/settings`
 
-### Authenticated: `/api/auth/me`, `/api/cart`, `/api/favorites`, `/api/orders`, `/api/addresses`
+Authenticated: `/api/auth/me`, `/api/auth/profile`, `/api/auth/change-password`, `/api/cart`, `/api/favorites`, `/api/orders`, `/api/addresses`
 
-### Admin: `/api/admin/products`, `/api/admin/categories`, `/api/admin/banners`, `/api/admin/pages`, `/api/admin/upload`
+Admin: `/api/admin/products`, `/api/admin/categories`, `/api/admin/banners`, `/api/admin/pages`, `/api/admin/upload`
 
-Query params: `page`, `limit`, `search`, `category`, `categoryId`, `sortBy`, `sortOrder`
+Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy`, `sortOrder`, `featured`, `active`
 
-## CMS Pages
+## Architecture Notes
 
-Slugs: `about`, `services`, `privacy-policy`, `statement`
-Frontend uses `marked` library to render Markdown content.
+- **Admin vs Public endpoints**: Admin list endpoints return ALL records (no `is_active` filter); public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
+- **Stock sorting**: Public product listings always sort `stock > 0` items first via SQL CASE expression, regardless of user-selected sort.
+- **Order numbers**: Snowflake-generated `OrderNo` (user-facing) separate from auto-increment `ID` (internal). `GetOrder` accepts both.
+- **Banner field mismatch**: Go field `Image` has JSON tag `"imageUrl"`. Frontend sends `image` in request but reads `imageUrl` from response.
+- **CMS pages**: Slugs `about`, `services`, `privacy-policy`, `statement`. Content rendered as Markdown via `marked` library.
+- **Auto-migration**: All tables auto-migrate on backend startup. Admin user and default data seeded on first run.
 
 ## Git Commits
 
@@ -134,11 +170,12 @@ fix: 修复购物车数量计算错误
 refactor: 简化购物车侧边栏逻辑
 ```
 
-## Important
+## Important Rules
 
-- **Language**: 中文沟通
-- **Simplicity**: 避免过度设计
-- **Database**: `utf8mb4` 字符集
-- **Error handling**: 前端 toast，后端 `utils.ErrorResponse()`
-- **No comments**: 不添加代码注释
-- **Concise responses**: 回复不超过4行
+- **Language**: Communicate in Chinese (中文沟通)
+- **No comments**: Do not add code comments in source files
+- **No tests**: No test framework configured, use build to verify correctness
+- **Simplicity**: Avoid over-engineering, keep implementations simple
+- **Error handling**: Frontend uses toast notifications, backend uses `utils.ErrorResponse()`
+- **Database**: Always use `utf8mb4` charset, `parseTime=True&loc=Local` in DSN
+- **Concise responses**: Keep responses under 4 lines

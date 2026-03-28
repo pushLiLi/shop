@@ -1,38 +1,31 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { useCarousel } from '../composables/useCarousel'
 import ProductCard from '../components/ProductCard.vue'
 
 const API_BASE = 'http://localhost:3000/api'
 
-const currentSlide = ref(0)
 const loading = ref(true)
 const error = ref(null)
 const config = ref({})
 const featuredProducts = ref([])
 const cubanProducts = ref([])
-const banners = ref([])
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
 
-let slideInterval = null
-
-const nextSlide = () => {
-  if (banners.value.length > 0) {
-    currentSlide.value = (currentSlide.value + 1) % banners.value.length
-  }
-}
-
-const prevSlide = () => {
-  if (banners.value.length > 0) {
-    currentSlide.value = (currentSlide.value - 1 + banners.value.length) % banners.value.length
-  }
-}
-
-const goToSlide = (index) => {
-  currentSlide.value = index
-}
+const {
+  currentIndex,
+  slides: banners,
+  next: nextSlide,
+  prev: prevSlide,
+  goTo: goToSlide,
+  onMouseEnter,
+  onMouseLeave,
+  onTouchStart,
+  onTouchEnd
+} = useCarousel({ autoplay: true, interval: 4000, pauseOnHover: true })
 
 async function fetchData() {
   try {
@@ -66,40 +59,46 @@ async function fetchData() {
   }
 }
 
-onMounted(() => {
-  fetchData()
-  slideInterval = setInterval(nextSlide, 3000)
-})
-
-onUnmounted(() => {
-  if (slideInterval) {
-    clearInterval(slideInterval)
-  }
-})
+onMounted(() => { fetchData() })
 </script>
 
 <template>
   <main class="home-page">
     <section class="hero-slider">
-      <div class="slider-container">
-        <div 
-          v-for="(banner, index) in banners" 
-          :key="index"
-          class="slide"
-          :class="{ active: index === currentSlide }"
+      <div
+        class="slider-container"
+        @mouseenter="onMouseEnter"
+        @mouseleave="onMouseLeave"
+        @touchstart="onTouchStart"
+        @touchend="onTouchEnd"
+      >
+        <div
+          class="slider-track"
+          :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
         >
-          <router-link :to="banner.link || '#'">
-            <img :src="banner.imageUrl" :alt="banner.title || 'Banner ' + (index + 1)">
-          </router-link>
+          <div
+            v-for="(banner, index) in banners"
+            :key="index"
+            class="slide"
+          >
+            <router-link :to="banner.link || '#'">
+              <img
+                :src="banner.imageUrl"
+                :alt="banner.title || 'Banner ' + (index + 1)"
+                :loading="index > 1 ? 'lazy' : 'eager'"
+                :fetchpriority="index === 0 ? 'high' : 'auto'"
+              >
+            </router-link>
+          </div>
         </div>
         <button class="slider-btn prev" @click="prevSlide">&#10094;</button>
         <button class="slider-btn next" @click="nextSlide">&#10095;</button>
         <div class="slider-dots">
-          <button 
-            v-for="(_, index) in banners" 
+          <button
+            v-for="(_, index) in banners"
             :key="index"
             class="dot"
-            :class="{ active: index === currentSlide }"
+            :class="{ active: index === currentIndex }"
             @click="goToSlide(index)"
           ></button>
         </div>
@@ -165,20 +164,18 @@ onUnmounted(() => {
 .slider-container {
   position: relative;
   overflow: hidden;
+  touch-action: pan-y;
+}
+
+.slider-track {
+  display: flex;
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
 }
 
 .slide {
-  position: absolute;
-  top: 0;
-  left: 0;
+  flex: 0 0 100%;
   width: 100%;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.slide.active {
-  position: relative;
-  opacity: 1;
 }
 
 .slide img {
