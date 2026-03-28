@@ -81,9 +81,10 @@ func GetProducts(c *gin.Context) {
 	var total int64
 	query.Count(&total)
 
-	orderClause := sortColumn + " " + sortOrder
-	if sortOrder != "asc" {
-		orderClause = sortColumn + " DESC"
+	stockPriority := "(CASE WHEN stock > 0 THEN 1 ELSE 0 END) DESC, "
+	orderClause := stockPriority + sortColumn + " DESC"
+	if sortOrder == "asc" {
+		orderClause = stockPriority + sortColumn + " ASC"
 	}
 
 	var products []models.Product
