@@ -8,6 +8,7 @@ const route = useRoute()
 const products = ref([])
 const category = ref(null)
 const loading = ref(true)
+const initialLoading = ref(true)
 const error = ref(null)
 const totalCount = ref(0)
 const currentPage = ref(1)
@@ -20,8 +21,10 @@ const categoryName = ref('')
 
 async function fetchProducts() {
   try {
-    loading.value = true
     error.value = null
+    if (products.value.length === 0) {
+      loading.value = true
+    }
     
     const params = new URLSearchParams({
       page: currentPage.value,
@@ -45,6 +48,7 @@ async function fetchProducts() {
     error.value = e.message
   } finally {
     loading.value = false
+    initialLoading.value = false
   }
 }
 
@@ -110,7 +114,7 @@ watch([totalCount, pageSize], () => {
             </div>
           </div>
 
-          <div v-if="loading" class="loading">加载中...</div>
+          <div v-if="initialLoading" class="loading">加载中...</div>
 
           <div v-else-if="error" class="error">
             <p>{{ error }}</p>
