@@ -61,7 +61,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 
 ### Backend (`server-go/`)
 
-- **Entry**: `cmd/main.go` — loads config, connects MySQL, runs migrations, seeds, sets up Gin router
+- **Entry**: `cmd/main.go` — loads config → connects MySQL → migrations → seeds → InitSnowflake → BackfillOrderNo → Gin router
 - **Structure**: `internal/config/`, `internal/database/`, `internal/models/`, `internal/handlers/`, `internal/middleware/`
 - **Config**: `.env` file (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET, SERVER_PORT)
 - **Auth middleware** (`internal/middleware/auth.go`):
@@ -70,6 +70,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
   - `AdminOnly` — standalone function (not wrapped). Checks `userID`, does DB lookup, verifies `role === 'admin'`, sets `c.Set("user", user)`.
 - **Captcha**: `internal/handlers/captcha.go` — `base64Captcha` library generates 4-digit numeric image captcha with 5-min TTL.
 - **Response helpers** (`pkg/utils/response.go`): `SuccessResponse`, `CreatedResponse`, `ErrorResponse`, `Success` — standard JSON response wrappers.
+- **Snowflake ID** (`pkg/utils/snowflake.go`): `InitSnowflake(nodeID)` and `GenerateOrderNo()` — generates unique order numbers using `bwmarrin/snowflake` library.
 - **Static files**: `static/` — uploaded images at `/static/uploads/`, original site assets at `/static/themes/`
 - **Swagger docs**: Generated in `docs/`, served at `/swagger/index.html`
 
@@ -85,6 +86,8 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **Pinia stores**: Mix of Composition API (`auth.js`, `toast.js`) and Options API (`cart.js`, `favorites.js`, `useSettingsStore.js`). Each defines its own `getAuthHeaders()` helper reading from `localStorage` directly.
 - **Image paths**: Stored as relative paths, served from `static/` directory
 - **API base**: All frontend API calls hardcode `http://localhost:3000/api/*` in stores. Production uses nginx to proxy `/api` to backend (see `bycigar-vue/nginx.conf`).
+- **Stock sorting**: Product listings always sort `stock > 0` items first, regardless of user-selected sort order (done in SQL via CASE expression).
+- **Order numbers**: Orders use snowflake IDs as display order numbers. `GetOrder` endpoint accepts both numeric ID and string orderNo. Existing orders backfilled on startup.
 
 ## Data Models
 
@@ -92,7 +95,7 @@ Core models with relationships:
 - **User** — email, password, name, role (customer/admin)
 - **Product** — slug, price, stock, images, belongs to Category, soft delete
 - **Category** — self-referential parent (ParentID), has many Products, soft delete
-- **Order** → **OrderItem** — belongs to User and Address
+- **Order** → **OrderItem** — Order has snowflake-generated `OrderNo` (unique, user-facing), auto-increment `ID` is internal. Belongs to User and Address.
 - **CartItem** / **Favorite** — User ↔ Product relationships
 - **Address** — belongs to User, has IsDefault
 - **Banner** / **Page** / **Setting** — site content management

@@ -8,6 +8,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
+	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -38,6 +39,8 @@ func main() {
 	database.Connect()
 	database.Migrate()
 	database.Seed()
+	utils.InitSnowflake(1)
+	database.BackfillOrderNo()
 
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())

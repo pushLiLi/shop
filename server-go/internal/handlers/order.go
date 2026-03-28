@@ -90,6 +90,7 @@ func CreateOrder(c *gin.Context) {
 	}
 
 	order := models.Order{
+		OrderNo:   utils.GenerateOrderNo(),
 		UserID:    userID.(uint),
 		AddressID: input.AddressID,
 		Total:     total,
@@ -116,7 +117,7 @@ func CreateOrder(c *gin.Context) {
 
 	database.DB.Where("user_id = ?", userID).Delete(&models.CartItem{})
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "orderId": order.ID})
+	c.JSON(http.StatusOK, gin.H{"success": true, "orderId": order.ID, "orderNo": order.OrderNo})
 }
 
 // GetOrder godoc
@@ -139,17 +140,18 @@ func GetOrder(c *gin.Context) {
 		return
 	}
 
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "Invalid order ID")
-		return
-	}
+	param := c.Param("id")
 
 	var order models.Order
-	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).
-		Preload("Items.Product").
-		Preload("Address").
-		First(&order).Error; err != nil {
+	query := database.DB.Where("user_id = ?", userID)
+
+	if id, err := strconv.Atoi(param); err == nil {
+		query = query.Where("id = ?", id)
+	} else {
+		query = query.Where("order_no = ?", param)
+	}
+
+	if err := query.Preload("Items.Product").Preload("Address").First(&order).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "Order not found")
 		return
 	}

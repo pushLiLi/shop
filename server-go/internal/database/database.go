@@ -7,6 +7,7 @@ import (
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
+	"bycigar-server/pkg/utils"
 
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
@@ -129,5 +130,16 @@ func SeedSettings() {
 		if err := DB.Where("key = ?", setting.Key).First(&existing).Error; err != nil {
 			DB.Create(&setting)
 		}
+	}
+}
+
+func BackfillOrderNo() {
+	var orders []models.Order
+	DB.Where("order_no = '' OR order_no IS NULL").Find(&orders)
+	for _, order := range orders {
+		DB.Model(&order).Update("order_no", utils.GenerateOrderNo())
+	}
+	if len(orders) > 0 {
+		log.Printf("Backfilled order_no for %d orders", len(orders))
 	}
 }

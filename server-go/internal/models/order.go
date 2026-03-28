@@ -6,6 +6,7 @@ import (
 
 type Order struct {
 	ID        uint        `json:"id" gorm:"primaryKey"`
+	OrderNo   string      `json:"orderNo" gorm:"uniqueIndex;size:64;not null"`
 	UserID    uint        `json:"userId" gorm:"not null;index"`
 	AddressID uint        `json:"addressId" gorm:"not null"`
 	Address   Address     `json:"address" gorm:"foreignKey:AddressID"`

@@ -1,275 +1,284 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import AddressForm from '../components/AddressForm.vue'
-import { getStateName } from '../utils/states'
+import { ref, onMounted, computed, watch } from "vue";
+import { useRouter } from "vue-router";
+import { useAuthStore } from "../stores/auth";
+import AddressForm from "../components/AddressForm.vue";
+import { getStateName } from "../utils/states";
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
+const authStore = useAuthStore();
 
-const activeTab = ref('info')
-const loading = ref(false)
-const orders = ref([])
-const message = ref('')
+const activeTab = ref("info");
+const loading = ref(false);
+const orders = ref([]);
+const message = ref("");
 
-const user = computed(() => authStore.user)
+const user = computed(() => authStore.user);
 
-const editMode = ref(false)
+const editMode = ref(false);
 const editForm = ref({
-  name: '',
-  email: ''
-})
+  name: "",
+  email: "",
+});
 
-const addresses = ref([])
-const showAddressForm = ref(false)
-const editingAddress = ref(null)
-const addressFormMode = ref('add')
+const addresses = ref([]);
+const showAddressForm = ref(false);
+const editingAddress = ref(null);
+const addressFormMode = ref("add");
 
 onMounted(async () => {
   if (!authStore.isLoggedIn) {
-    router.push('/login')
-    return
+    router.push("/login");
+    return;
   }
-  
-  const isValid = await authStore.validateToken()
+
+  const isValid = await authStore.validateToken();
   if (!isValid) {
-    router.push('/login')
-    return
+    router.push("/login");
+    return;
   }
-  
+
   editForm.value = {
-    name: user.value?.name || '',
-    email: user.value?.email || ''
-  }
-  fetchOrders()
-  fetchAddresses()
-})
+    name: user.value?.name || "",
+    email: user.value?.email || "",
+  };
+  fetchOrders();
+  fetchAddresses();
+});
 
 async function fetchOrders() {
-  loading.value = true
+  loading.value = true;
   try {
-    const res = await fetch('http://localhost:3000/api/orders', {
-      headers: authStore.getAuthHeaders()
-    })
+    const res = await fetch("http://localhost:3000/api/orders", {
+      headers: authStore.getAuthHeaders(),
+    });
     if (res.ok) {
-      const data = await res.json()
-      orders.value = data.orders || []
+      const data = await res.json();
+      orders.value = data.orders || [];
     }
   } catch (e) {
-    console.error('获取订单失败:', e)
+    console.error("获取订单失败:", e);
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 async function fetchAddresses() {
   try {
-    const res = await fetch('http://localhost:3000/api/addresses', {
-      headers: authStore.getAuthHeaders()
-    })
+    const res = await fetch("http://localhost:3000/api/addresses", {
+      headers: authStore.getAuthHeaders(),
+    });
     if (res.ok) {
-      const data = await res.json()
-      addresses.value = data.addresses || []
+      const data = await res.json();
+      addresses.value = data.addresses || [];
     }
   } catch (e) {
-    console.error('获取地址失败:', e)
+    console.error("获取地址失败:", e);
   }
 }
 
 function startEdit() {
-  editMode.value = true
+  editMode.value = true;
   editForm.value = {
-    name: user.value?.name || '',
-    email: user.value?.email || ''
-  }
+    name: user.value?.name || "",
+    email: user.value?.email || "",
+  };
 }
 
 function cancelEdit() {
-  editMode.value = false
+  editMode.value = false;
 }
 
 async function saveProfile() {
-  message.value = ''
-  loading.value = true
+  message.value = "";
+  loading.value = true;
   try {
-    const res = await fetch('http://localhost:3000/api/auth/profile', {
-      method: 'PUT',
+    const res = await fetch("http://localhost:3000/api/auth/profile", {
+      method: "PUT",
       headers: authStore.getAuthHeaders(),
-      body: JSON.stringify(editForm.value)
-    })
-    const data = await res.json()
+      body: JSON.stringify(editForm.value),
+    });
+    const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || '更新失败')
+      throw new Error(data.error || "更新失败");
     }
-    authStore.user = { ...authStore.user, ...editForm.value }
-    localStorage.setItem('user', JSON.stringify(authStore.user))
-    message.value = '保存成功'
-    editMode.value = false
+    authStore.user = { ...authStore.user, ...editForm.value };
+    localStorage.setItem("user", JSON.stringify(authStore.user));
+    message.value = "保存成功";
+    editMode.value = false;
   } catch (e) {
-    message.value = e.message
+    message.value = e.message;
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function handleLogout() {
-  authStore.logout()
-  router.push('/')
+  authStore.logout();
+  router.push("/");
 }
 
 function openAddAddress() {
-  editingAddress.value = null
-  addressFormMode.value = 'add'
-  showAddressForm.value = true
+  editingAddress.value = null;
+  addressFormMode.value = "add";
+  showAddressForm.value = true;
 }
 
 function openEditAddress(address) {
-  editingAddress.value = address
-  addressFormMode.value = 'edit'
-  showAddressForm.value = true
+  editingAddress.value = address;
+  addressFormMode.value = "edit";
+  showAddressForm.value = true;
 }
 
 function closeAddressForm() {
-  showAddressForm.value = false
-  editingAddress.value = null
+  showAddressForm.value = false;
+  editingAddress.value = null;
 }
 
 async function handleSaveAddress(formData) {
   try {
-    const url = addressFormMode.value === 'edit' 
-      ? `http://localhost:3000/api/addresses/${editingAddress.value.id}`
-      : 'http://localhost:3000/api/addresses'
-    const method = addressFormMode.value === 'edit' ? 'PUT' : 'POST'
-    
+    const url =
+      addressFormMode.value === "edit"
+        ? `http://localhost:3000/api/addresses/${editingAddress.value.id}`
+        : "http://localhost:3000/api/addresses";
+    const method = addressFormMode.value === "edit" ? "PUT" : "POST";
+
     const res = await fetch(url, {
       method,
       headers: authStore.getAuthHeaders(),
-      body: JSON.stringify(formData)
-    })
-    const data = await res.json()
+      body: JSON.stringify(formData),
+    });
+    const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || '保存失败')
+      throw new Error(data.error || "保存失败");
     }
-    await fetchAddresses()
-    closeAddressForm()
+    await fetchAddresses();
+    closeAddressForm();
   } catch (e) {
-    throw e
+    throw e;
   }
 }
 
 async function deleteAddress(id) {
-  if (!confirm('确定要删除这个地址吗？')) return
-  
+  if (!confirm("确定要删除这个地址吗？")) return;
+
   try {
     const res = await fetch(`http://localhost:3000/api/addresses/${id}`, {
-      method: 'DELETE',
-      headers: authStore.getAuthHeaders()
-    })
+      method: "DELETE",
+      headers: authStore.getAuthHeaders(),
+    });
     if (res.ok) {
-      await fetchAddresses()
+      await fetchAddresses();
     }
   } catch (e) {
-    console.error('删除地址失败:', e)
+    console.error("删除地址失败:", e);
   }
 }
 
 async function setDefaultAddress(id) {
   try {
-    const res = await fetch(`http://localhost:3000/api/addresses/${id}/default`, {
-      method: 'PUT',
-      headers: authStore.getAuthHeaders()
-    })
+    const res = await fetch(
+      `http://localhost:3000/api/addresses/${id}/default`,
+      {
+        method: "PUT",
+        headers: authStore.getAuthHeaders(),
+      },
+    );
     if (res.ok) {
-      await fetchAddresses()
+      await fetchAddresses();
     }
   } catch (e) {
-    console.error('设置默认地址失败:', e)
+    console.error("设置默认地址失败:", e);
   }
 }
 
 function formatAddress(addr) {
-  let str = addr.addressLine1
-  if (addr.addressLine2) str += `, ${addr.addressLine2}`
-  str += `, ${addr.city}, ${getStateName(addr.state)} ${addr.zipCode}`
-  return str
+  let str = addr.addressLine1;
+  if (addr.addressLine2) str += `, ${addr.addressLine2}`;
+  str += `, ${addr.city}, ${getStateName(addr.state)} ${addr.zipCode}`;
+  return str;
 }
 
 const tabs = [
-  { id: 'info', label: '个人信息' },
-  { id: 'addresses', label: '地址管理' },
-  { id: 'orders', label: '我的订单' },
-  { id: 'security', label: '账户安全' }
-]
+  { id: "info", label: "个人信息" },
+  { id: "addresses", label: "地址管理" },
+  { id: "orders", label: "我的订单" },
+  { id: "security", label: "账户安全" },
+];
 
-const addressLimit = 5
+const addressLimit = 5;
 
-const captchaId = ref('')
-const captchaImage = ref('')
+const captchaId = ref("");
+const captchaImage = ref("");
 const passwordForm = ref({
-  oldPassword: '',
-  newPassword: '',
-  confirmPassword: '',
-  captchaCode: ''
-})
-const passwordMessage = ref('')
-const passwordLoading = ref(false)
+  oldPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+  captchaCode: "",
+});
+const passwordMessage = ref("");
+const passwordLoading = ref(false);
 
 watch(activeTab, (val) => {
-  if (val === 'security') {
-    refreshCaptcha()
+  if (val === "security") {
+    refreshCaptcha();
   }
-})
+});
 
 async function refreshCaptcha() {
   try {
-    const res = await fetch('http://localhost:3000/api/auth/captcha')
-    const data = await res.json()
-    captchaId.value = data.captchaId
-    captchaImage.value = data.captchaImage
-    passwordForm.value.captchaCode = ''
+    const res = await fetch("http://localhost:3000/api/auth/captcha");
+    const data = await res.json();
+    captchaId.value = data.captchaId;
+    captchaImage.value = data.captchaImage;
+    passwordForm.value.captchaCode = "";
   } catch (e) {
-    console.error('获取验证码失败:', e)
+    console.error("获取验证码失败:", e);
   }
 }
 
 async function changePassword() {
-  passwordMessage.value = ''
+  passwordMessage.value = "";
   if (passwordForm.value.newPassword !== passwordForm.value.confirmPassword) {
-    passwordMessage.value = '两次输入的新密码不一致'
-    return
+    passwordMessage.value = "两次输入的新密码不一致";
+    return;
   }
   if (passwordForm.value.newPassword.length < 6) {
-    passwordMessage.value = '新密码至少需要6个字符'
-    return
+    passwordMessage.value = "新密码至少需要6个字符";
+    return;
   }
-  passwordLoading.value = true
+  passwordLoading.value = true;
   try {
-    const res = await fetch('http://localhost:3000/api/auth/change-password', {
-      method: 'PUT',
+    const res = await fetch("http://localhost:3000/api/auth/change-password", {
+      method: "PUT",
       headers: authStore.getAuthHeaders(),
       body: JSON.stringify({
         oldPassword: passwordForm.value.oldPassword,
         newPassword: passwordForm.value.newPassword,
         captchaId: captchaId.value,
-        captchaCode: passwordForm.value.captchaCode
-      })
-    })
-    const data = await res.json()
+        captchaCode: passwordForm.value.captchaCode,
+      }),
+    });
+    const data = await res.json();
     if (!res.ok) {
-      throw new Error(data.error || '密码修改失败')
+      throw new Error(data.error || "密码修改失败");
     }
-    passwordMessage.value = '密码修改成功，请重新登录'
-    passwordForm.value = { oldPassword: '', newPassword: '', confirmPassword: '', captchaCode: '' }
+    passwordMessage.value = "密码修改成功，请重新登录";
+    passwordForm.value = {
+      oldPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+      captchaCode: "",
+    };
     setTimeout(() => {
-      authStore.logout()
-      router.push('/login')
-    }, 2000)
+      authStore.logout();
+      router.push("/login");
+    }, 2000);
   } catch (e) {
-    passwordMessage.value = e.message
-    refreshCaptcha()
+    passwordMessage.value = e.message;
+    refreshCaptcha();
   } finally {
-    passwordLoading.value = false
+    passwordLoading.value = false;
   }
 }
 </script>
@@ -279,17 +288,27 @@ async function changePassword() {
     <div class="profile-container">
       <div class="profile-sidebar">
         <div class="user-avatar">
-          <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
         </div>
-        <div class="user-name">{{ user?.name || user?.email?.split('@')[0] || '用户' }}</div>
+        <div class="user-name">
+          {{ user?.name || user?.email?.split("@")[0] || "用户" }}
+        </div>
         <div class="user-email">{{ user?.email }}</div>
-        
+
         <nav class="profile-nav">
-          <button 
-            v-for="tab in tabs" 
+          <button
+            v-for="tab in tabs"
             :key="tab.id"
             :class="['nav-item', { active: activeTab === tab.id }]"
             @click="activeTab = tab.id"
@@ -305,24 +324,36 @@ async function changePassword() {
       <div class="profile-content">
         <div v-if="activeTab === 'info'" class="content-section">
           <h2>个人信息</h2>
-          
-          <div v-if="message" :class="['message', { error: message.includes('失败') }]">
+
+          <div
+            v-if="message"
+            :class="['message', { error: message.includes('失败') }]"
+          >
             {{ message }}
           </div>
 
           <div v-if="editMode" class="edit-form">
             <div class="form-group">
               <label>用户名</label>
-              <input v-model="editForm.name" type="text" placeholder="请输入用户名">
+              <input
+                v-model="editForm.name"
+                type="text"
+                placeholder="请输入用户名"
+              />
             </div>
             <div class="form-group">
               <label>邮箱</label>
-              <input v-model="editForm.email" type="email" placeholder="请输入邮箱" disabled>
+              <input
+                v-model="editForm.email"
+                type="email"
+                placeholder="请输入邮箱"
+                disabled
+              />
             </div>
             <div class="form-actions">
               <button class="btn-cancel" @click="cancelEdit">取消</button>
               <button class="btn-save" @click="saveProfile" :disabled="loading">
-                {{ loading ? '保存中...' : '保存' }}
+                {{ loading ? "保存中..." : "保存" }}
               </button>
             </div>
           </div>
@@ -330,7 +361,7 @@ async function changePassword() {
           <div v-else class="info-list">
             <div class="info-item">
               <span class="info-label">用户名</span>
-              <span class="info-value">{{ user?.name || '未设置' }}</span>
+              <span class="info-value">{{ user?.name || "未设置" }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">邮箱</span>
@@ -338,7 +369,9 @@ async function changePassword() {
             </div>
             <div class="info-item">
               <span class="info-label">账户角色</span>
-              <span class="info-value">{{ user?.role === 'admin' ? '管理员' : '普通用户' }}</span>
+              <span class="info-value">{{
+                user?.role === "admin" ? "管理员" : "普通用户"
+              }}</span>
             </div>
             <button class="btn-edit" @click="startEdit">编辑信息</button>
           </div>
@@ -346,12 +379,22 @@ async function changePassword() {
 
         <div v-if="activeTab === 'orders'" class="content-section">
           <h2>我的订单</h2>
-          
+
           <div v-if="loading" class="loading">加载中...</div>
-          
+
           <div v-else-if="orders.length === 0" class="empty-state">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1"
+            >
+              <path
+                d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+              ></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="16" y1="13" x2="8" y2="13"></line>
               <line x1="16" y1="17" x2="8" y2="17"></line>
@@ -364,22 +407,37 @@ async function changePassword() {
           <div v-else class="orders-list">
             <div v-for="order in orders" :key="order.id" class="order-card">
               <div class="order-header">
-                <span class="order-id">订单号: #{{ order.id }}</span>
-                <span class="order-date">{{ new Date(order.createdAt).toLocaleDateString() }}</span>
-                <span :class="['order-status', order.status]">{{ order.status }}</span>
+                <span class="order-id">订单号: {{ order.orderNo }}</span>
+                <span class="order-date">{{
+                  new Date(order.createdAt).toLocaleDateString()
+                }}</span>
+                <span :class="['order-status', order.status]">{{
+                  order.status
+                }}</span>
               </div>
               <div class="order-items">
-                <div v-for="item in order.items" :key="item.id" class="order-item">
-                  <img :src="item.product?.imageUrl" :alt="item.product?.name">
+                <div
+                  v-for="item in order.items"
+                  :key="item.id"
+                  class="order-item"
+                >
+                  <img
+                    :src="item.product?.imageUrl"
+                    :alt="item.product?.name"
+                  />
                   <div class="item-info">
                     <span class="item-name">{{ item.product?.name }}</span>
                     <span class="item-qty">x{{ item.quantity }}</span>
                   </div>
-                  <span class="item-price">${{ Number(item.price).toFixed(2) }}</span>
+                  <span class="item-price"
+                    >${{ Number(item.price).toFixed(2) }}</span
+                  >
                 </div>
               </div>
               <div class="order-footer">
-                <span class="order-total">合计: ${{ Number(order.total).toFixed(2) }}</span>
+                <span class="order-total"
+                  >合计: ${{ Number(order.total).toFixed(2) }}</span
+                >
               </div>
             </div>
           </div>
@@ -388,43 +446,81 @@ async function changePassword() {
         <div v-if="activeTab === 'security'" class="content-section">
           <h2>账户安全</h2>
           <div class="password-form">
-            <div v-if="passwordMessage" :class="['message', { error: passwordMessage.includes('失败') || passwordMessage.includes('错误') || passwordMessage.includes('不一致') }]">
+            <div
+              v-if="passwordMessage"
+              :class="[
+                'message',
+                {
+                  error:
+                    passwordMessage.includes('失败') ||
+                    passwordMessage.includes('错误') ||
+                    passwordMessage.includes('不一致'),
+                },
+              ]"
+            >
               {{ passwordMessage }}
             </div>
 
             <div class="form-group">
               <label>原密码</label>
-              <input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码">
+              <input
+                v-model="passwordForm.oldPassword"
+                type="password"
+                placeholder="请输入原密码"
+              />
             </div>
 
             <div class="form-group">
               <label>新密码</label>
-              <input v-model="passwordForm.newPassword" type="password" placeholder="至少6个字符">
+              <input
+                v-model="passwordForm.newPassword"
+                type="password"
+                placeholder="至少6个字符"
+              />
             </div>
 
             <div class="form-group">
               <label>确认新密码</label>
-              <input v-model="passwordForm.confirmPassword" type="password" placeholder="再次输入新密码">
+              <input
+                v-model="passwordForm.confirmPassword"
+                type="password"
+                placeholder="再次输入新密码"
+              />
             </div>
 
             <div class="form-group">
               <label>验证码</label>
               <div class="captcha-row">
-                <input v-model="passwordForm.captchaCode" type="text" placeholder="请输入验证码" maxlength="4">
+                <input
+                  v-model="passwordForm.captchaCode"
+                  type="text"
+                  placeholder="请输入验证码"
+                  maxlength="4"
+                />
                 <img
                   v-if="captchaImage"
                   :src="captchaImage"
                   class="captcha-img"
                   @click="refreshCaptcha"
                   title="点击刷新验证码"
+                />
+                <button
+                  type="button"
+                  class="btn-refresh-captcha"
+                  @click="refreshCaptcha"
                 >
-                <button type="button" class="btn-refresh-captcha" @click="refreshCaptcha">刷新</button>
+                  刷新
+                </button>
               </div>
             </div>
 
             <div class="form-actions">
-              <button class="btn-save" @click="changePassword" :disabled="passwordLoading">
-                {{ passwordLoading ? '提交中...' : '修改密码' }}
+              <button
+                class="btn-save"
+                @click="changePassword"
+                :disabled="passwordLoading"
+              >
+                {{ passwordLoading ? "提交中..." : "修改密码" }}
               </button>
             </div>
           </div>
@@ -432,7 +528,7 @@ async function changePassword() {
 
         <div v-if="activeTab === 'addresses'" class="content-section">
           <h2>地址管理</h2>
-          
+
           <div v-if="showAddressForm" class="address-form-overlay">
             <AddressForm
               :address="editingAddress"
@@ -444,8 +540,10 @@ async function changePassword() {
 
           <div v-else>
             <div class="address-header-row">
-              <span class="address-count">{{ addresses.length }} / {{ addressLimit }} 个地址</span>
-              <button 
+              <span class="address-count"
+                >{{ addresses.length }} / {{ addressLimit }} 个地址</span
+              >
+              <button
                 v-if="addresses.length < addressLimit"
                 class="btn-add-address"
                 @click="openAddAddress"
@@ -455,19 +553,31 @@ async function changePassword() {
             </div>
 
             <div v-if="addresses.length === 0" class="empty-address">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M21 10c-1.34-.065-.765-.235-1.485-.45A2.07 2 2.07H6a2 2 0 0-2 2v16a2 2 0 0 2 2h12a2 2 0 0 2-2V8z"></path>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path
+                  d="M21 10c-1.34-.065-.765-.235-1.485-.45A2.07 2 2.07H6a2 2 0 0-2 2v16a2 2 0 0 2 2h12a2 2 0 0 2-2V8z"
+                ></path>
                 <polyline points="21 10 15 7 15 7 15 7-3 3 3-3 3z"></polyline>
               </svg>
               <p>您还没有保存任何收货地址</p>
               <p class="hint">最多可保存 {{ addressLimit }} 个地址</p>
-              <button class="btn-add-address" @click="openAddAddress">添加地址</button>
+              <button class="btn-add-address" @click="openAddAddress">
+                添加地址
+              </button>
             </div>
 
             <div v-else class="address-list">
-              <div 
-                v-for="addr in addresses" 
-                :key="addr.id" 
+              <div
+                v-for="addr in addresses"
+                :key="addr.id"
                 :class="['address-card', { default: addr.isDefault }]"
               >
                 <div class="card-header">
@@ -476,26 +586,82 @@ async function changePassword() {
                 </div>
                 <div class="card-body">
                   <div class="address-line">
-                    <svg class="addr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <span class="addr-label">详细地址：</span>{{ addr.addressLine1 }}
+                    <svg
+                      class="addr-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                      />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span class="addr-label">详细地址：</span
+                    >{{ addr.addressLine1 }}
                   </div>
                   <div v-if="addr.addressLine2" class="address-line">
-                    <svg class="addr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <span class="addr-label">公寓单元：</span>{{ addr.addressLine2 }}
+                    <svg
+                      class="addr-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                      />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span class="addr-label">公寓单元：</span
+                    >{{ addr.addressLine2 }}
                   </div>
                   <div class="address-line">
-                    <svg class="addr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
-                    <span class="addr-label">城市邮编：</span>{{ addr.city }}, {{ getStateName(addr.state) }} {{ addr.zipCode }}
+                    <svg
+                      class="addr-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4" />
+                    </svg>
+                    <span class="addr-label">城市邮编：</span>{{ addr.city }},
+                    {{ getStateName(addr.state) }} {{ addr.zipCode }}
                   </div>
                   <div class="address-phone">
-                    <svg class="addr-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <svg
+                      class="addr-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <path
+                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"
+                      />
+                    </svg>
                     <span class="addr-label">联系电话：</span>{{ addr.phone }}
                   </div>
                 </div>
                 <div class="card-actions">
-                  <button v-if="!addr.isDefault" class="btn-set-default" @click="setDefaultAddress(addr.id)">设为默认</button>
-                  <button class="btn-edit-addr" @click="openEditAddress(addr)">编辑</button>
-                  <button class="btn-delete-addr" @click="deleteAddress(addr.id)">删除</button>
+                  <button
+                    v-if="!addr.isDefault"
+                    class="btn-set-default"
+                    @click="setDefaultAddress(addr.id)"
+                  >
+                    设为默认
+                  </button>
+                  <button class="btn-edit-addr" @click="openEditAddress(addr)">
+                    编辑
+                  </button>
+                  <button
+                    class="btn-delete-addr"
+                    @click="deleteAddress(addr.id)"
+                  >
+                    删除
+                  </button>
                 </div>
               </div>
             </div>
@@ -697,7 +863,8 @@ async function changePassword() {
   margin-top: 10px;
 }
 
-.btn-cancel, .btn-save {
+.btn-cancel,
+.btn-save {
   padding: 12px 24px;
   border-radius: 6px;
   cursor: pointer;
@@ -1123,24 +1290,24 @@ async function changePassword() {
   .profile-container {
     grid-template-columns: 1fr;
   }
-  
+
   .profile-sidebar {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  
+
   .profile-nav {
     width: 100%;
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .nav-item {
     text-align: center;
   }
-  
+
   .address-header-row {
     flex-direction: column;
     gap: 10px;
