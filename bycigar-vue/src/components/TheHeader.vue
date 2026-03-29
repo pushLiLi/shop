@@ -5,12 +5,15 @@ import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
+import { useNotificationsStore } from '../stores/notifications'
+import NotificationPanel from './NotificationPanel.vue'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
 const authStore = useAuthStore()
 const toast = useToastStore()
+const notificationsStore = useNotificationsStore()
 const isMenuOpen = ref(false)
 const showMobileSearch = ref(false)
 const showNotice = ref(!localStorage.getItem('notice_closed'))
@@ -39,6 +42,7 @@ onMounted(() => {
   if (authStore.isLoggedIn) {
     cartStore.fetchCart()
     favoritesStore.fetchFavorites()
+    notificationsStore.fetchUnreadCount()
   }
   document.addEventListener('click', handleClickOutside)
 })
@@ -189,6 +193,13 @@ onUnmounted(() => {
                   </svg>
                 </router-link>
               </template>
+              <button v-if="authStore.isLoggedIn" @click="notificationsStore.openPanel()" class="icon-item" title="通知">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+                <span class="icon-badge" v-if="notificationsStore.unreadCount">{{ notificationsStore.unreadCount }}</span>
+              </button>
               <router-link to="/favorites" class="icon-item" title="收藏">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -224,6 +235,7 @@ onUnmounted(() => {
         </Transition>
       </div>
     </div>
+    <NotificationPanel />
   </header>
 </template>
 

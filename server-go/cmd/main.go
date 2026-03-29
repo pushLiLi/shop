@@ -84,6 +84,12 @@ func main() {
 	r.POST("/api/orders", handlers.CreateOrder)
 	r.GET("/api/orders/:id", handlers.GetOrder)
 
+	r.GET("/api/notifications", middleware.RequireAuth(), handlers.GetNotifications)
+	r.GET("/api/notifications/unread-count", middleware.RequireAuth(), handlers.GetUnreadCount)
+	r.GET("/api/notifications/:id", middleware.RequireAuth(), handlers.GetNotification)
+	r.PUT("/api/notifications/:id/read", middleware.RequireAuth(), handlers.MarkAsRead)
+	r.PUT("/api/notifications/read-all", middleware.RequireAuth(), handlers.MarkAllRead)
+
 	r.GET("/api/auth/me", handlers.GetProfile)
 	r.PUT("/api/auth/profile", handlers.UpdateProfile)
 	r.GET("/api/auth/captcha", handlers.GetCaptcha)

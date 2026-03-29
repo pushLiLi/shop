@@ -111,6 +111,9 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
+	oldStock := product.Stock
+	oldPrice := product.Price
+
 	product.Name = input.Name
 	if input.Slug != "" {
 		product.Slug = input.Slug
@@ -128,6 +131,44 @@ func UpdateProduct(c *gin.Context) {
 	if err := database.DB.Save(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新商品失败"})
 		return
+	}
+
+	if oldStock <= 0 && input.Stock > 0 {
+		var favorites []models.Favorite
+		database.DB.Where("product_id = ?", uint(id)).Find(&favorites)
+		notifications := make([]models.Notification, 0, len(favorites))
+		for _, fav := range favorites {
+			notifications = append(notifications, models.Notification{
+				UserID:    fav.UserID,
+				Type:      models.NotificationTypeBackInStock,
+				Title:     "商品到货通知",
+				Content:   "您收藏的商品「" + product.Name + "」已到货",
+				Link:      "/products/" + strconv.Itoa(int(product.ID)),
+				ProductID: &product.ID,
+			})
+		}
+		if len(notifications) > 0 {
+			database.DB.Create(&notifications)
+		}
+	}
+
+	if input.Price < oldPrice {
+		var favorites []models.Favorite
+		database.DB.Where("product_id = ?", uint(id)).Find(&favorites)
+		notifications := make([]models.Notification, 0, len(favorites))
+		for _, fav := range favorites {
+			notifications = append(notifications, models.Notification{
+				UserID:    fav.UserID,
+				Type:      models.NotificationTypePriceDrop,
+				Title:     "商品降价通知",
+				Content:   "您收藏的商品「" + product.Name + "」价格已下调",
+				Link:      "/products/" + strconv.Itoa(int(product.ID)),
+				ProductID: &product.ID,
+			})
+		}
+		if len(notifications) > 0 {
+			database.DB.Create(&notifications)
+		}
 	}
 
 	c.JSON(http.StatusOK, product)

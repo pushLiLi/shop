@@ -151,10 +151,34 @@ func UpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
+	oldStatus := order.Status
 	order.Status = input.Status
 	database.DB.Save(&order)
 
 	database.DB.Preload("Items.Product").Preload("Address").First(&order, id)
+
+	if oldStatus != input.Status {
+		statusMap := map[string]string{
+			"pending":    "待处理",
+			"processing": "处理中",
+			"shipped":    "已发货",
+			"completed":  "已完成",
+			"cancelled":  "已取消",
+		}
+		statusText := statusMap[input.Status]
+		if statusText == "" {
+			statusText = input.Status
+		}
+		notification := models.Notification{
+			UserID:  order.UserID,
+			Type:    models.NotificationTypeOrderStatus,
+			Title:   "订单状态更新",
+			Content: "您的订单 " + order.OrderNo + " 状态已更新为「" + statusText + "」",
+			Link:    "/orders",
+			OrderID: &order.ID,
+		}
+		database.DB.Create(&notification)
+	}
 
 	c.JSON(http.StatusOK, order)
 }

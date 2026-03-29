@@ -10,6 +10,7 @@ import FavoritesView from '../views/FavoritesView.vue'
 import PageView from '../views/PageView.vue'
 import LoginView from '../views/LoginView.vue'
 import ProfileView from '../views/ProfileView.vue'
+import NotificationDetailView from '../views/NotificationDetailView.vue'
 import AdminLayout from '../views/admin/AdminLayout.vue'
 import AdminProducts from '../views/admin/AdminProducts.vue'
 import AdminBanners from '../views/admin/AdminBanners.vue'
@@ -85,6 +86,12 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: ProfileView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/notifications/:id',
+      name: 'notification-detail',
+      component: NotificationDetailView,
       meta: { requiresAuth: true }
     },
     {
