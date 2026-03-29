@@ -33,7 +33,7 @@ const authHeaders = () => ({
 
 const roleLabels = {
   admin: '超级管理员',
-  service: '客服',
+  service: '管理员',
   customer: '客户'
 }
 
@@ -202,7 +202,7 @@ onMounted(() => fetchUsers())
             <td class="time-cell">{{ formatDate(user.createdAt) }}</td>
             <td>
               <button class="btn-view" @click="openDetail(user)">详情</button>
-              <button class="btn-reset-pwd" @click="openResetModal(user)">重置密码</button>
+              <button v-if="authStore.isSuperAdmin || user.role !== 'admin'" class="btn-reset-pwd" @click="openResetModal(user)">重置密码</button>
               <button v-if="authStore.isSuperAdmin" class="btn-role" @click="openRoleModal(user)">角色</button>
             </td>
           </tr>
@@ -287,7 +287,7 @@ onMounted(() => fetchUsers())
             <label>新角色</label>
             <select v-model="selectedRole">
               <option value="customer">客户</option>
-              <option value="service">客服</option>
+              <option value="service">管理员</option>
               <option value="admin">超级管理员</option>
             </select>
           </div>

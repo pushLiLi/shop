@@ -123,6 +123,13 @@ func ResetUserPassword(c *gin.Context) {
 		return
 	}
 
+	currentUser, _ := c.Get("user")
+	currentRole := currentUser.(models.User).Role
+	if currentRole == "service" && user.Role == "admin" {
+		utils.ErrorResponse(c, http.StatusForbidden, "无权修改超级管理员密码")
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "密码重置失败")

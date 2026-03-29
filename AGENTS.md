@@ -46,56 +46,19 @@ go test ./test/... -v -count=1 -run "TestProductSuite/TestGetProductsDefaultPagi
 ```
 Frontend tests are unit tests (no backend needed). Backend tests are integration tests hitting real MySQL + MinIO.
 
-## Project Structure
-
-```
-bycigar-vue/src/
-├── main.js, App.vue            # Entry + layout (dark theme, Toast, CartDrawer, page transitions)
-├── style.css                   # Global dark theme, grid (.col-2/3/4/6/12), utils, 768px breakpoint
-├── components/                 # ProductCard, CartDrawer, Toast, TheHeader, TheFooter,
-│                               #   AdminImageUpload, AddressForm, CategorySidebar,
-│                               #   EditableImage, EditableText
-├── composables/                # useCarousel (autoplay, touch, pause)
-├── views/                      # Home, Category, ProductDetail, Search, Cart,
-│                               #   Checkout, Orders, Favorites, Login, Profile, Page
-├── views/admin/                # AdminLayout + Dashboard, Products, Orders, Users,
-│                               #   Banners, Categories, Pages, Settings
-├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
-│                               #   (+ colocated .spec.js test files)
-└── router/index.js             # Routes with auth/admin/superAdmin guards (createWebHistory)
-
-server-go/
-├── cmd/main.go                 # Entry: LoadConfig -> Connect -> Migrate -> Seed -> routes -> Run
-├── internal/
-│   ├── config/config.go        # Loads .env via godotenv into AppConfig global
-│   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
-│   ├── database/seed_data.go   # SeedTestData: clears + re-inserts all test data on startup
-│   ├── handlers/               # product, banner, page, auth, captcha, cart, favorite,
-│   │                           #   order, address, config, setting, upload, testing,
-│   │                           #   admin_product, admin_category, admin_order,
-│   │                           #   admin_dashboard, admin_user
-│   ├── models/                 # User, Category, Product, CartItem, Favorite, Address,
-│   │                           #   Order, OrderItem, SiteConfig, Banner, Page, Setting
-│   └── middleware/             # cors.go, auth.go, admin.go (AdminOnly + SuperAdminOnly)
-├── test/                       # Integration tests: helpers.go + 12 *_test.go files
-└── pkg/
-    ├── image/thumbnail.go      # Image processing: resize (max 1200px), thumbnail (300x300), JPEG conversion
-    ├── minio/minio.go          # MinIO client wrapper + EnsureBucket
-    └── utils/                  # Response helpers + snowflake order number + UUID upload names
-```
-
 ## Roles & Authorization
 
-Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (customer service), `"customer"` (regular user).
+Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Role priority: admin > service > customer.
 
 ### Backend Middleware
 - **`AdminOnly`**: Allows `admin` + `service` — shared admin routes (products, categories, orders, dashboard, users, upload)
 - **`SuperAdminOnly`**: Allows `admin` only — restricted routes (banners, pages, config, settings, user role changes)
+- **Role-based action guards**: `ResetUserPassword` checks current user role — `service` cannot reset `admin` password
 
 ### Frontend Auth Store (`useAuthStore`)
 - `isAdmin`: `role === 'admin' || role === 'service'` — can access admin panel
 - `isSuperAdmin`: `role === 'admin'` — can see revenue data, banners, pages, settings menus
-- `isService`: `role === 'service'` — for conditional UI in shared views
+- `isService`: `role === 'service'` — for conditional UI in shared views (e.g. hide reset password button for super admin users)
 
 ### Frontend Route Guards
 - `meta.requiresAdmin`: allows admin + service (applied to parent `/admin` route)
@@ -109,7 +72,7 @@ Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (cus
 | Categories CRUD | ✅ | ✅ | ❌ |
 | Orders (view + status) | ✅ | ✅ | ❌ |
 | Users (view + detail) | ✅ | ✅ | ❌ |
-| Reset user password | ✅ | ✅ | ❌ |
+| Reset user password | ✅ | ✅ (not admin) | ❌ |
 | Change user role | ✅ | ❌ | ❌ |
 | Banners | ✅ | ❌ | ❌ |
 | Pages | ✅ | ❌ | ❌ |
@@ -174,7 +137,6 @@ Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (cus
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
-- Server-side image processing: original resized to max 1200px wide, 300x300 JPEG thumbnail generated. GIF originals preserved.
 - **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors this with proxy_cache (500MB, 30d).
 - **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted.
 - **Captcha**: Register always requires captcha. Login uses progressive captcha (3 failures -> required). Password change requires captcha.
