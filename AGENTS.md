@@ -49,35 +49,30 @@ Frontend tests are unit tests (no backend needed). Backend tests are integration
 
 ## Roles & Authorization
 
-Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Role priority: admin > service > customer.
+Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Priority: admin > service > customer.
 
-### Backend Middleware
-- **`AdminOnly`**: Allows `admin` + `service` — shared admin routes (products, categories, orders, dashboard, users, upload)
-- **`SuperAdminOnly`**: Allows `admin` only — restricted routes (banners, pages, config, settings, user role changes)
-- **`RequireAuth`**: Requires any logged-in user — used for cart, favorites, addresses, orders, notifications
-- **Role-based action guards**: `ResetUserPassword` checks current user role — `service` cannot reset `admin` password
+### Middleware
+- **`AdminOnly`**: admin + service — products, categories, orders, dashboard, users, upload
+- **`SuperAdminOnly`**: admin only — banners, pages, config, settings, user role changes
+- **`RequireAuth`**: any logged-in user — cart, favorites, addresses, orders, notifications
 
-### Frontend Auth Store (`useAuthStore`)
-- `isAdmin`: `role === 'admin' || role === 'service'` — can access admin panel
-- `isSuperAdmin`: `role === 'admin'` — can see revenue data, banners, pages, settings menus
-- `isService`: `role === 'service'` — for conditional UI in shared views
+### Frontend Auth (`useAuthStore`)
+- `isAdmin`: `role === 'admin' || role === 'service'`
+- `isSuperAdmin`: `role === 'admin'`
+- `isService`: `role === 'service'`
 
-### Frontend Route Guards
-- `meta.requiresAuth`: requires logged-in user (cart, checkout, orders, favorites, profile, notifications)
-- `meta.requiresAdmin`: allows admin + service (applied to parent `/admin` route)
-- `meta.requiresSuperAdmin`: allows admin only (applied to banners, pages, settings child routes)
+### Route Guards
+- `meta.requiresAuth`: logged-in user (cart, checkout, orders, favorites, profile, notifications)
+- `meta.requiresAdmin`: admin + service (parent `/admin` route)
+- `meta.requiresSuperAdmin`: admin only (banners, pages, settings child routes)
 
 ### Permission Matrix
 | Module | admin | service | customer |
 |---|---|---|---|
-| Dashboard (full) | ✅ | ✅ (no revenue) | ❌ |
-| Products CRUD | ✅ | ✅ | ❌ |
-| Categories CRUD | ✅ | ✅ | ❌ |
-| Orders (view + status) | ✅ | ✅ | ❌ |
-| Users (view + detail) | ✅ | ✅ | ❌ |
+| Dashboard | ✅ | ✅ (no revenue) | ❌ |
+| Products / Categories / Orders / Users CRUD | ✅ | ✅ | ❌ |
 | Reset user password | ✅ | ✅ (not admin) | ❌ |
-| Change user role | ✅ | ❌ | ❌ |
-| Banners / Pages / Config / Settings | ✅ | ❌ | ❌ |
+| Change user role / Banners / Pages / Config / Settings | ✅ | ❌ | ❌ |
 
 ## Vue Code Style
 
@@ -88,18 +83,18 @@ Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` 
 - No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
 - **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
 - **All API calls use relative paths** (`'/api/...'`), never hardcoded localhost URLs.
-- **Auth guard pattern**: Before cart/favorites actions, check `authStore.isLoggedIn`. If false, `router.push('/login')`.
-- **Images in list views**: Use `product.thumbnailUrl || product.imageUrl` with `loading="lazy"`. Detail pages use full `imageUrl`.
+- **Auth guard**: Before cart/favorites actions, check `authStore.isLoggedIn`. If false, `router.push('/login')`.
+- **Images**: List views use `product.thumbnailUrl || product.imageUrl` with `loading="lazy"`. Detail pages use full `imageUrl`.
 
 ## Go Code Style
 
 - Import order: stdlib -> blank line -> external -> blank line -> internal
 - Early return for all error handling. Handlers: PascalCase. Helpers: camelCase.
-- Admin handlers in separate `admin_*.go` files. SuperAdmin handlers (banners, pages, config, settings) live in their domain files (`banner.go`, `page.go`, etc.) alongside public handlers.
+- Admin handlers in `admin_*.go` files. SuperAdmin handlers live in their domain files alongside public handlers.
 - Swagger `godoc` comments on all handlers. No other code comments.
 - Error responses: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`.
-- Input structs live in model files; exception: `ProductInput` in `admin_product.go`.
-- **Notification creation**: When admin actions affect users (order status change, product stock/price change), create `models.Notification` records. Use batch `database.DB.Create(&notifications)` for multiple recipients.
+- Input structs in model files; exception: `ProductInput` in `admin_product.go`.
+- **Notification creation**: When admin actions affect users, create `models.Notification` records via batch `database.DB.Create(&notifications)`.
 
 ## Pinia Stores
 
@@ -121,7 +116,7 @@ Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` 
 ## Test Patterns
 
 ### Frontend (Vitest)
-- Test files colocated: `Component.spec.js` next to `Component.vue` in `src/`, or alongside stores
+- Test files colocated: `Component.spec.js` next to `Component.vue` or alongside stores
 - Setup: `setActivePinia(createPinia())` + `localStorage.clear()` in `beforeEach`
 - API calls mocked with `global.fetch = vi.fn().mockResolvedValue(...)`
 - Component tests use `@vue/test-utils` `mount` with stubbed `vue-router` (`createMemoryHistory`)
@@ -130,7 +125,10 @@ Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` 
 - All tests in `server-go/test/` package, using `github.com/stretchr/testify/suite`
 - Each domain has `XxxTestSuite` struct with `SetupSuite` (calls `SetupTestConfig` -> `SetupTestDB` -> `SetupRouter`)
 - `MakeRequest(router, method, path, body, headers)` returns `*httptest.ResponseRecorder`
-- Auth via dev bypass: `GetAdminAuthHeader()` / `GetCustomerAuthHeader()` returns `{"Authorization": "user-{id}"}`
+- `MakeFormRequest(router, method, path, formData, fileFields, headers)` for multipart uploads
+- `ParseResponse(w)` unmarshals response body to `map[string]interface{}`
+- `CreateTestImageFile(ext)` / `CreateLargeTestImageFile(ext)` create temp files for upload tests
+- Auth via dev bypass: `GetAdminAuthHeader()` / `GetCustomerAuthHeader()` / `GetCustomer2AuthHeader()` returns `{"Authorization": "user-{id}"}`
 - Uses separate `bycigar_test` database; `CleanDB()` truncates all tables between suite runs
 - Test users: admin@test.com (admin), user1@test.com (customer), user2@test.com (customer)
 
@@ -140,12 +138,12 @@ Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` 
 - Product listings sort `stock > 0` first via SQL CASE expression. Batch operations: `PUT /api/admin/products/batch/status`, `DELETE /api/admin/products/batch`.
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
-- **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers. Frontend: bell icon in header + right-side panel. Clicking a notification navigates to `/notifications/:id` detail page (auto marks read), which has a link to the related order or product.
+- **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
-- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors this with proxy_cache (500MB, 30d).
+- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors with proxy_cache.
 - **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer always mounted. NotificationPanel inside TheHeader via Teleport.
 - **Captcha**: Register always requires captcha. Login uses progressive captcha (3 failures -> required). Password change requires captcha.
-- **Admin route groups**: `cmd/main.go` has two groups — `admin` (AdminOnly middleware) for shared routes, `superAdmin` (SuperAdminOnly) for restricted routes.
+- **Admin route groups**: `cmd/main.go` has two groups — `admin` (AdminOnly) for shared routes, `superAdmin` (SuperAdminOnly) for restricted routes.
 
 ## Naming Conventions
 
@@ -174,6 +172,7 @@ Three user roles in `User.Role` field: `"admin"` (超级管理员), `"service"` 
 - **Database**: Always `utf8mb4`, `parseTime=True&loc=Local` in DSN
 - **API paths**: Frontend always uses relative `/api/...` paths, never hardcoded localhost URLs
 - **New models**: Must be added to `database.Migrate()` in `database/database.go`
+- **New routes**: Must be added to both `cmd/main.go` and `test/helpers.go` `SetupRouter()`
 
 ## Git Commits
 
