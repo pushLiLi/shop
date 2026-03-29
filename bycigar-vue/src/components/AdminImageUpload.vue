@@ -14,7 +14,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'update:thumbnail'])
 
 const API_BASE = '/api'
 const dragOver = ref(false)
@@ -87,8 +87,8 @@ const confirmCrop = () => {
   canvas.toBlob((blob) => {
     showCropper.value = false
     cropImageSrc.value = null
-    uploadFile(blob, 'cropped.png')
-  }, 'image/png')
+    uploadFile(blob, 'cropped.jpg')
+  }, 'image/jpeg', 0.85)
 }
 
 const cancelCrop = () => {
@@ -119,6 +119,9 @@ const uploadFile = async (file, filename) => {
     }
 
     imageUrl.value = data.url
+    if (data.thumbnailUrl) {
+      emit('update:thumbnail', data.thumbnailUrl)
+    }
   } catch (e) {
     error.value = e.message
   } finally {

@@ -7,21 +7,22 @@ import (
 )
 
 type Product struct {
-	ID          uint           `json:"id" gorm:"primaryKey"`
-	Name        string         `json:"name" gorm:"not null"`
-	Slug        string         `json:"slug" gorm:"type:varchar(191);uniqueIndex"`
-	Description string         `json:"description"`
-	Price       float64        `json:"price" gorm:"not null"`
-	Image       string         `json:"imageUrl"`
-	Images      string         `json:"images"`
-	CategoryID  uint           `json:"categoryId"`
-	Category    Category       `json:"category" gorm:"foreignKey:CategoryID"`
-	Stock       int            `json:"stock" gorm:"default:0"`
-	IsActive    bool           `json:"isActive" gorm:"default:true"`
-	IsFeatured  bool           `json:"isFeatured" gorm:"default:false"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
+	ID             uint           `json:"id" gorm:"primaryKey"`
+	Name           string         `json:"name" gorm:"not null"`
+	Slug           string         `json:"slug" gorm:"type:varchar(191);uniqueIndex"`
+	Description    string         `json:"description"`
+	Price          float64        `json:"price" gorm:"not null"`
+	Image          string         `json:"imageUrl"`
+	Images         string         `json:"images"`
+	ThumbnailImage string         `json:"thumbnailUrl" gorm:"column:thumbnail_image"`
+	CategoryID     uint           `json:"categoryId"`
+	Category       Category       `json:"category" gorm:"foreignKey:CategoryID"`
+	Stock          int            `json:"stock" gorm:"default:0"`
+	IsActive       bool           `json:"isActive" gorm:"default:true"`
+	IsFeatured     bool           `json:"isFeatured" gorm:"default:false"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type ProductListResponse struct {

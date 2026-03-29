@@ -185,7 +185,7 @@ async function removeFavorite(productId) {
               class="item-image"
               @click.stop
             >
-              <img :src="fav.product?.imageUrl" :alt="fav.product?.name">
+              <img :src="fav.product?.thumbnailUrl || fav.product?.imageUrl" :alt="fav.product?.name" loading="lazy">
             </router-link>
             
             <router-link 

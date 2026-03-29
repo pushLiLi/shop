@@ -13,16 +13,17 @@ import (
 )
 
 type ProductInput struct {
-	Name        string  `json:"name"`
-	Slug        string  `json:"slug"`
-	Description string  `json:"description"`
-	Price       float64 `json:"price"`
-	Image       string  `json:"imageUrl"`
-	Images      string  `json:"images"`
-	CategoryID  uint    `json:"categoryId"`
-	Stock       int     `json:"stock"`
-	IsActive    bool    `json:"isActive"`
-	IsFeatured  bool    `json:"isFeatured"`
+	Name           string  `json:"name"`
+	Slug           string  `json:"slug"`
+	Description    string  `json:"description"`
+	Price          float64 `json:"price"`
+	Image          string  `json:"imageUrl"`
+	Images         string  `json:"images"`
+	ThumbnailImage string  `json:"thumbnailUrl"`
+	CategoryID     uint    `json:"categoryId"`
+	Stock          int     `json:"stock"`
+	IsActive       bool    `json:"isActive"`
+	IsFeatured     bool    `json:"isFeatured"`
 }
 
 func generateSlug(name string) string {
@@ -57,16 +58,17 @@ func CreateProduct(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Name:        input.Name,
-		Slug:        input.Slug,
-		Description: input.Description,
-		Price:       input.Price,
-		Image:       input.Image,
-		Images:      input.Images,
-		CategoryID:  input.CategoryID,
-		Stock:       input.Stock,
-		IsActive:    input.IsActive,
-		IsFeatured:  input.IsFeatured,
+		Name:           input.Name,
+		Slug:           input.Slug,
+		Description:    input.Description,
+		Price:          input.Price,
+		Image:          input.Image,
+		Images:         input.Images,
+		ThumbnailImage: input.ThumbnailImage,
+		CategoryID:     input.CategoryID,
+		Stock:          input.Stock,
+		IsActive:       input.IsActive,
+		IsFeatured:     input.IsFeatured,
 	}
 
 	if err := database.DB.Create(&product).Error; err != nil {
@@ -117,6 +119,7 @@ func UpdateProduct(c *gin.Context) {
 	product.Price = input.Price
 	product.Image = input.Image
 	product.Images = input.Images
+	product.ThumbnailImage = input.ThumbnailImage
 	product.CategoryID = input.CategoryID
 	product.Stock = input.Stock
 	product.IsActive = input.IsActive

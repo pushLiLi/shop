@@ -255,11 +255,7 @@ onMounted(() => fetchOrders())
             <div class="section-title">商品列表</div>
             <div class="items-list">
               <div v-for="item in detailOrder?.items" :key="item.id" class="order-item">
-                <img v-if="item.product?.imageUrl" :src="item.product.imageUrl" class="item-thumb">
-                <div class="item-info">
-                  <div class="item-name">{{ item.product?.name || '商品已删除' }}</div>
-                  <div class="item-meta">¥{{ parseFloat(item.price).toFixed(2) }} x {{ item.quantity }}</div>
-                </div>
+                <img v-if="item.product?.thumbnailUrl || item.product?.imageUrl" :src="item.product.imageUrl" class="item-thumb" loading="lazy" />
                 <div class="item-total">¥{{ (item.price * item.quantity).toFixed(2) }}</div>
               </div>
             </div>

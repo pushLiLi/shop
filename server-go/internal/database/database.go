@@ -74,6 +74,7 @@ func Seed() {
 	SeedPages()
 	SeedSettings()
 	SeedSiteConfig()
+	SeedTestData()
 }
 
 func SeedAdminUser() {

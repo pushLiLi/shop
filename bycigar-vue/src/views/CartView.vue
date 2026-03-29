@@ -51,7 +51,7 @@ onMounted(() => {
         <div class="cart-items">
           <div v-for="item in items" :key="item.productId" class="cart-item">
             <router-link :to="'/products/' + item.productId" class="item-image">
-              <img :src="item.product?.imageUrl" :alt="item.product?.name">
+              <img :src="item.product?.thumbnailUrl || item.product?.imageUrl" :alt="item.product?.name" loading="lazy">
             </router-link>
             <div class="item-info">
               <h3 class="item-name">

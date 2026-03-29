@@ -27,6 +27,7 @@ const form = ref({
   description: '',
   price: 0,
   imageUrl: '',
+  thumbnailUrl: '',
   categoryId: '',
   stock: 0,
   isActive: true,
@@ -100,6 +101,7 @@ const openCreateModal = () => {
     description: '',
     price: 0,
     imageUrl: '',
+    thumbnailUrl: '',
     categoryId: '',
     stock: 0,
     isActive: true,
@@ -119,6 +121,7 @@ const openEditModal = (product) => {
     description: product.description || '',
     price: product.price,
     imageUrl: product.imageUrl || '',
+    thumbnailUrl: product.thumbnailUrl || '',
     categoryId: product.categoryId || '',
     stock: product.stock || 0,
     isActive: product.isActive,
@@ -151,6 +154,7 @@ const saveProduct = async () => {
       description: form.value.description,
       price: parseFloat(form.value.price),
       imageUrl: form.value.imageUrl,
+      thumbnailUrl: form.value.thumbnailUrl || '',
       categoryId: form.value.categoryId ? parseInt(form.value.categoryId) : 0,
       stock: parseInt(form.value.stock) || 0,
       isActive: form.value.isActive,
@@ -540,7 +544,7 @@ onMounted(() => {
           <div class="form-section">
             <div class="section-title">商品图片</div>
             <div class="form-group">
-              <AdminImageUpload v-model="form.imageUrl" :aspect-ratio="1" />
+              <AdminImageUpload v-model="form.imageUrl" v-model:thumbnail="form.thumbnailUrl" :aspect-ratio="1" />
             </div>
           </div>
         </div>

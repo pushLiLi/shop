@@ -70,6 +70,7 @@ server-go/
 ├── internal/
 │   ├── config/config.go        # Loads .env via godotenv into AppConfig global
 │   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
+│   ├── database/seed_data.go   # SeedTestData: clears + re-inserts all test data
 │   ├── handlers/               # product, banner, page, auth, captcha, cart, favorite,
 │   │                           #   order, address, config, setting, upload,
 │   │                           #   admin_product, admin_category, admin_order,
@@ -195,6 +196,7 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Production nginx mirrors this.
 - **App.vue layout**: Shows TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted.
 - **Config**: `.env` fields: DB_HOST/PORT/USER/PASSWORD/NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET/USE_SSL.
+- **Seed data**: `SeedTestData()` in `seed_data.go` truncates and re-inserts all test data on every server start. 12 test users (password: `123456`), 14 categories, 44 products, 5 banners, 14 addresses, 10 cart items, 20 favorites, 31 orders across all statuses.
 
 ## Git Commits
 

@@ -421,10 +421,7 @@ async function changePassword() {
                   :key="item.id"
                   class="order-item"
                 >
-                  <img
-                    :src="item.product?.imageUrl"
-                    :alt="item.product?.name"
-                  />
+                  <img :src="item.product?.thumbnailUrl || item.product?.imageUrl" :alt="item.product?.name" loading="lazy">
                   <div class="item-info">
                     <span class="item-name">{{ item.product?.name }}</span>
                     <span class="item-qty">x{{ item.quantity }}</span>

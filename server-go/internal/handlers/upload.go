@@ -1,13 +1,16 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"time"
 
+	imagepkg "bycigar-server/pkg/image"
 	miniopkg "bycigar-server/pkg/minio"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +20,7 @@ import (
 
 // UploadImage godoc
 // @Summary 上传图片
-// @Description 上传图片文件到MinIO
+// @Description 上传图片文件到MinIO，自动生成缩略图
 // @Tags admin-upload
 // @Accept multipart/form-data
 // @Produce json
@@ -51,29 +54,51 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("%d_%s%s", time.Now().Unix(), uuid.New().String(), ext)
-	objectName := filename
-	contentType := header.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/octet-stream"
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取文件失败"})
+		return
 	}
+
+	result, _ := imagepkg.Process(fileBytes, ext)
+
+	baseName := fmt.Sprintf("%d_%s", time.Now().Unix(), uuid.New().String())
+	origName := baseName + result.OrigExt
 
 	_, err = miniopkg.Client.PutObject(
 		context.Background(),
 		miniopkg.Bucket,
-		objectName,
-		file,
-		header.Size,
-		minio.PutObjectOptions{ContentType: contentType},
+		origName,
+		bytes.NewReader(result.Original),
+		int64(len(result.Original)),
+		minio.PutObjectOptions{ContentType: result.ContentType},
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "上传文件到MinIO失败"})
 		return
 	}
 
-	url := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, filename)
+	url := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, origName)
+	thumbnailUrl := ""
+
+	if len(result.Thumbnail) > 0 {
+		thumbName := baseName + "_thumb.jpg"
+		_, err = miniopkg.Client.PutObject(
+			context.Background(),
+			miniopkg.Bucket,
+			thumbName,
+			bytes.NewReader(result.Thumbnail),
+			int64(len(result.Thumbnail)),
+			minio.PutObjectOptions{ContentType: "image/jpeg"},
+		)
+		if err == nil {
+			thumbnailUrl = fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, thumbName)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"url":     url,
-		"success": true,
+		"url":          url,
+		"thumbnailUrl": thumbnailUrl,
+		"success":      true,
 	})
 }

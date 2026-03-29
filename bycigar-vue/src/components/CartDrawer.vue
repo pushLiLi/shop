@@ -92,7 +92,7 @@ watch(() => cartStore.isOpen, (isOpen) => {
             <div v-else class="cart-items">
               <div v-for="item in items" :key="item.productId" class="cart-item">
                 <div class="item-image" @click="goToProduct(item.productId)">
-                  <img :src="item.product?.imageUrl" :alt="item.product?.name">
+                  <img :src="item.product?.thumbnailUrl || item.product?.imageUrl" :alt="item.product?.name" loading="lazy">
                 </div>
                 <div class="item-info">
                   <h3 class="item-name" @click="goToProduct(item.productId)">{{ item.product?.name }}</h3>
