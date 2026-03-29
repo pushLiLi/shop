@@ -38,16 +38,26 @@ watch(showMobileSearch, (val) => {
   }
 })
 
+watch(() => authStore.isLoggedIn, (loggedIn) => {
+  if (loggedIn) {
+    notificationsStore.startPolling()
+  } else {
+    notificationsStore.stopPolling()
+  }
+})
+
 onMounted(() => {
   if (authStore.isLoggedIn) {
     cartStore.fetchCart()
     favoritesStore.fetchFavorites()
-    notificationsStore.fetchUnreadCount()
+    notificationsStore.startPolling()
   }
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 const handleLogout = () => {
+  notificationsStore.stopPolling()
   authStore.logout()
   showUserMenu.value = false
   router.push('/')
@@ -98,7 +108,18 @@ const handleClickOutside = (e) => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  notificationsStore.stopPolling()
 })
+
+const handleVisibilityChange = () => {
+  if (!authStore.isLoggedIn) return
+  if (document.hidden) {
+    notificationsStore.stopPolling()
+  } else {
+    notificationsStore.startPolling()
+  }
+}
 </script>
 
 <template>

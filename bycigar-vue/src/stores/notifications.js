@@ -19,7 +19,8 @@ export const useNotificationsStore = defineStore('notifications', {
     page: 1,
     totalPages: 1,
     currentNotification: null,
-    detailLoading: false
+    detailLoading: false,
+    pollingTimer: null
   }),
 
   actions: {
@@ -57,7 +58,11 @@ export const useNotificationsStore = defineStore('notifications', {
           headers: getAuthHeaders()
         })
         const data = await res.json()
-        this.unreadCount = data.count || 0
+        const newCount = data.count || 0
+        if (newCount > this.unreadCount && this.items.length > 0) {
+          this.fetchNotifications()
+        }
+        this.unreadCount = newCount
       } catch (e) {
         console.error('Fetch unread count failed:', e)
       }
@@ -98,7 +103,23 @@ export const useNotificationsStore = defineStore('notifications', {
       }
     },
 
+    startPolling() {
+      this.stopPolling()
+      this.fetchUnreadCount()
+      this.pollingTimer = setInterval(() => {
+        this.fetchUnreadCount()
+      }, 30000)
+    },
+
+    stopPolling() {
+      if (this.pollingTimer) {
+        clearInterval(this.pollingTimer)
+        this.pollingTimer = null
+      }
+    },
+
     clear() {
+      this.stopPolling()
       this.items = []
       this.unreadCount = 0
     },
