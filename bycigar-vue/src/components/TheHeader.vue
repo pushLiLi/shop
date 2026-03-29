@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
@@ -40,6 +40,7 @@ onMounted(() => {
     cartStore.fetchCart()
     favoritesStore.fetchFavorites()
   }
+  document.addEventListener('click', handleClickOutside)
 })
 
 const handleLogout = () => {
@@ -83,6 +84,17 @@ const handleOverlayClick = (e) => {
     closeMenu()
   }
 }
+
+const handleClickOutside = (e) => {
+  const wrapper = document.querySelector('.user-menu-wrapper')
+  if (wrapper && !wrapper.contains(e.target)) {
+    showUserMenu.value = false
+  }
+}
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
