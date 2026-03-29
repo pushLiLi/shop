@@ -1,7 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 
 const API_BASE = '/api'
+const authStore = useAuthStore()
+const showRevenue = computed(() => authStore.isSuperAdmin)
 
 const stats = ref({})
 const recentOrders = ref([])
@@ -73,8 +76,8 @@ onMounted(async () => {
     <div v-if="loading" class="loading">加载中...</div>
 
     <template v-else>
-      <div class="stats-grid">
-        <div class="stat-card">
+      <div class="stats-grid" :class="{ 'stats-grid-3': !showRevenue }">
+        <div class="stat-card" v-if="showRevenue">
           <div class="stat-icon revenue">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           </div>
@@ -112,7 +115,7 @@ onMounted(async () => {
             <div class="stat-value">{{ stats.todayOrders }}</div>
             <div class="stat-label">今日订单</div>
           </div>
-          <div class="stat-extra">
+          <div class="stat-extra" v-if="showRevenue">
             <span class="today-revenue">{{ formatPrice(stats.todayRevenue) }}</span>
           </div>
         </div>
@@ -181,7 +184,7 @@ onMounted(async () => {
                   <th style="width: 60px">排名</th>
                   <th>商品名称</th>
                   <th style="width: 120px">销量</th>
-                  <th style="width: 150px">营收</th>
+                  <th v-if="showRevenue" style="width: 150px">营收</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,10 +192,10 @@ onMounted(async () => {
                   <td><span class="rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</span></td>
                   <td>{{ product.productName }}</td>
                   <td>{{ product.totalSold }} 件</td>
-                  <td class="price">{{ formatPrice(product.revenue) }}</td>
+                  <td v-if="showRevenue" class="price">{{ formatPrice(product.revenue) }}</td>
                 </tr>
                 <tr v-if="topProducts.length === 0">
-                  <td colspan="4" class="empty-text">暂无销售数据</td>
+                  <td :colspan="showRevenue ? 4 : 3" class="empty-text">暂无销售数据</td>
                 </tr>
               </tbody>
             </table>
@@ -222,6 +225,10 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
+}
+
+.stats-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .stat-card {

@@ -44,7 +44,6 @@ go test ./test/... -v -count=1                  # Run only integration tests
 go test ./test/... -v -count=1 -run TestProductSuite  # Run a single test suite
 go test ./test/... -v -count=1 -run "TestProductSuite/TestGetProductsDefaultPagination"  # Single test
 ```
-
 Frontend tests are unit tests (no backend needed). Backend tests are integration tests hitting real MySQL + MinIO.
 
 ## Project Structure
@@ -62,6 +61,7 @@ bycigar-vue/src/
 ├── views/admin/                # AdminLayout + Dashboard, Products, Orders, Users,
 │                               #   Banners, Categories, Pages, Settings
 ├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
+│                               #   (+ colocated .spec.js test files)
 └── router/index.js             # Routes with auth/admin/superAdmin guards (createWebHistory)
 
 server-go/
@@ -89,12 +89,12 @@ server-go/
 Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (customer service), `"customer"` (regular user).
 
 ### Backend Middleware
-- **`AdminOnly`**: Allows `admin` + `service` — used for shared admin routes (products, categories, orders, dashboard, users, upload)
-- **`SuperAdminOnly`**: Allows `admin` only — used for super-admin-only routes (banners, pages, config, settings, user role changes)
+- **`AdminOnly`**: Allows `admin` + `service` — shared admin routes (products, categories, orders, dashboard, users, upload)
+- **`SuperAdminOnly`**: Allows `admin` only — restricted routes (banners, pages, config, settings, user role changes)
 
 ### Frontend Auth Store (`useAuthStore`)
 - `isAdmin`: `role === 'admin' || role === 'service'` — can access admin panel
-- `isSuperAdmin`: `role === 'admin'` — can see banners, pages, settings menus
+- `isSuperAdmin`: `role === 'admin'` — can see revenue data, banners, pages, settings menus
 - `isService`: `role === 'service'` — for conditional UI in shared views
 
 ### Frontend Route Guards
@@ -104,7 +104,7 @@ Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (cus
 ### Permission Matrix
 | Module | admin | service | customer |
 |---|---|---|---|
-| Dashboard | ✅ | ✅ | ❌ |
+| Dashboard (full) | ✅ | ✅ (no revenue) | ❌ |
 | Products CRUD | ✅ | ✅ | ❌ |
 | Categories CRUD | ✅ | ✅ | ❌ |
 | Orders (view + status) | ✅ | ✅ | ❌ |
@@ -155,7 +155,7 @@ Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (cus
 ## Test Patterns
 
 ### Frontend (Vitest)
-- Test files colocated: `Component.spec.js` next to `Component.vue` in `src/`
+- Test files colocated: `Component.spec.js` next to `Component.vue` in `src/`, or alongside stores
 - Setup: `setActivePinia(createPinia())` + `localStorage.clear()` in `beforeEach`
 - API calls mocked with `global.fetch = vi.fn().mockResolvedValue(...)`
 - Component tests use `@vue/test-utils` `mount` with stubbed `vue-router` (`createMemoryHistory`)
@@ -170,7 +170,7 @@ Three user roles in `User.Role` field: `"admin"` (super admin), `"service"` (cus
 ## Key Architecture
 
 - Admin endpoints return ALL records; public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
-- Product listings sort `stock > 0` first via SQL CASE expression.
+- Product listings sort `stock > 0` first via SQL CASE expression. Batch operations: `PUT /api/admin/products/batch/status`, `DELETE /api/admin/products/batch`.
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
