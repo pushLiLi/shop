@@ -91,7 +91,7 @@ describe('CategorySidebar', () => {
   })
 
   it('renders children categories', async () => {
-    const wrapper = await mountSidebar()
+    const wrapper = await mountSidebar({ activeSlug: 'cuban' })
     await vi.waitFor(() => wrapper.find('.subcategory-list').exists(), { timeout: 3000 })
 
     expect(wrapper.text()).toContain('Cuban')

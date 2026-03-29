@@ -34,6 +34,19 @@ onUnmounted(() => {
   window.removeEventListener('resize', onResize)
 })
 
+const activeParentId = computed(() => {
+  if (!props.activeSlug || !categories.value.length) return null
+  for (const cat of categories.value) {
+    if (cat.slug === props.activeSlug) return cat.id
+    if (cat.children) {
+      for (const child of cat.children) {
+        if (child.slug === props.activeSlug) return cat.id
+      }
+    }
+  }
+  return null
+})
+
 const currentCategoryName = computed(() => {
   if (!props.activeSlug) return '全部分类'
   for (const cat of categories.value) {
@@ -57,14 +70,19 @@ function closeDrawer() {
   document.body.style.overflow = ''
 }
 
+function toggleCategory(cat) {
+  if (!cat.children || !cat.children.length) return
+  if (expandedCategories.value.has(cat.id)) {
+    expandedCategories.value.delete(cat.id)
+  } else {
+    expandedCategories.value.add(cat.id)
+  }
+}
+
 function handleCategoryClick(cat, event) {
   if (isMobile.value && cat.children && cat.children.length > 0) {
     event.preventDefault()
-    if (expandedCategories.value.has(cat.id)) {
-      expandedCategories.value.delete(cat.id)
-    } else {
-      expandedCategories.value.add(cat.id)
-    }
+    toggleCategory(cat)
   } else if (isMobile.value) {
     closeDrawer()
   }
@@ -149,13 +167,26 @@ function isExpanded(catId) {
     <template v-if="!isMobile">
       <div class="sidebar-title">商品分类</div>
       <ul class="category-list" v-if="!loading">
-        <li v-for="cat in categories" :key="cat.id" class="category-item">
+        <li
+          v-for="cat in categories"
+          :key="cat.id"
+          class="category-item"
+          :class="{ 'has-active-child': activeParentId === cat.id }"
+        >
           <router-link
             :to="'/category/' + cat.slug"
             class="category-link"
             :class="{ active: activeSlug === cat.slug }"
           >
             <span>{{ cat.name }}</span>
+            <svg
+              v-if="cat.children && cat.children.length"
+              class="category-chevron"
+              xmlns="http://www.w3.org/2000/svg"
+              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            >
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </router-link>
           <ul v-if="cat.children && cat.children.length" class="subcategory-list">
             <li v-for="child in cat.children" :key="child.id">
@@ -180,6 +211,25 @@ function isExpanded(catId) {
   position: sticky;
   top: 100px;
   align-self: flex-start;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+}
+
+.category-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.category-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-sidebar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+.category-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .sidebar-title {
@@ -224,10 +274,33 @@ function isExpanded(catId) {
   font-weight: 500;
 }
 
+.category-chevron {
+  color: #666;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.category-item:hover .category-chevron,
+.category-item.has-active-child .category-chevron {
+  transform: rotate(180deg);
+  color: #d4a574;
+}
+
 .subcategory-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.25s ease;
+}
+
+.category-item:hover > .subcategory-list,
+.category-item.has-active-child > .subcategory-list {
+  max-height: 500px;
+  opacity: 1;
 }
 
 .category-link.sub {
@@ -449,6 +522,8 @@ function isExpanded(catId) {
     min-width: auto;
     max-width: none;
     position: static;
+    max-height: none;
+    overflow: visible;
   }
 }
 </style>
