@@ -273,7 +273,18 @@ onMounted(async () => {
 }
 
 .section-with-refresh {
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.section-with-refresh .btn-refresh {
+  margin-top: 10px;
+  flex-shrink: 0;
+}
+
+.section-with-refresh .stats-grid {
+  flex: 1;
 }
 
 .btn-refresh {
