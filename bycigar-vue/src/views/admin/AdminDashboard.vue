@@ -12,6 +12,10 @@ const lowStockProducts = ref([])
 const topProducts = ref([])
 const loading = ref(true)
 
+const collapsedOrders = ref(false)
+const collapsedLowStock = ref(false)
+const collapsedTopProducts = ref(false)
+
 const authHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -123,10 +127,11 @@ onMounted(async () => {
 
       <div class="dashboard-grid">
         <div class="dashboard-section">
-          <div class="section-header">
+          <div class="section-header" @click="collapsedOrders = !collapsedOrders">
             <h3>近期订单</h3>
+            <svg class="collapse-icon" :class="{ collapsed: collapsedOrders }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
-          <div class="section-body">
+          <div class="section-body" v-show="!collapsedOrders">
             <table class="data-table">
               <thead>
                 <tr>
@@ -154,11 +159,14 @@ onMounted(async () => {
         </div>
 
         <div class="dashboard-section">
-          <div class="section-header">
+          <div class="section-header" @click="collapsedLowStock = !collapsedLowStock">
             <h3>低库存预警</h3>
-            <span class="section-sub">库存 ≤ 10</span>
+            <div class="section-header-right">
+              <span class="section-sub">库存 ≤ 10</span>
+              <svg class="collapse-icon" :class="{ collapsed: collapsedLowStock }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
           </div>
-          <div class="section-body">
+          <div class="section-body" v-show="!collapsedLowStock">
             <div class="low-stock-list">
               <div v-for="product in lowStockProducts" :key="product.id" class="low-stock-item">
                 <div class="product-info">
@@ -174,10 +182,11 @@ onMounted(async () => {
         </div>
 
         <div class="dashboard-section full-width">
-          <div class="section-header">
+          <div class="section-header" @click="collapsedTopProducts = !collapsedTopProducts">
             <h3>热销商品 TOP 10</h3>
+            <svg class="collapse-icon" :class="{ collapsed: collapsedTopProducts }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
-          <div class="section-body">
+          <div class="section-body" v-show="!collapsedTopProducts">
             <table class="data-table">
               <thead>
                 <tr>
@@ -315,6 +324,12 @@ onMounted(async () => {
   align-items: center;
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header:hover {
+  background: #fafafa;
 }
 
 .section-header h3 {
@@ -326,6 +341,21 @@ onMounted(async () => {
 .section-sub {
   font-size: 13px;
   color: #999;
+}
+
+.section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapse-icon {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapse-icon.collapsed {
+  transform: rotate(-90deg);
 }
 
 .section-body {
