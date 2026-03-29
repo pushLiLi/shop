@@ -11,17 +11,25 @@ export const useAuthStore = defineStore('auth', () => {
   const isAdmin = computed(() => user.value?.role === 'admin')
   const userName = computed(() => user.value?.name || user.value?.email?.split('@')[0] || '用户')
 
-  async function login(email, password) {
+  async function login(email, password, captchaId, captchaCode) {
+    const body = { email, password }
+    if (captchaId && captchaCode) {
+      body.captchaId = captchaId
+      body.captchaCode = captchaCode
+    }
+
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify(body)
     })
     
     const data = await response.json()
     
     if (!response.ok) {
-      throw new Error(data.error || '登录失败')
+      const err = new Error(data.error || '登录失败')
+      err.requireCaptcha = !!data.requireCaptcha
+      throw err
     }
     
     token.value = data.token
@@ -32,11 +40,11 @@ export const useAuthStore = defineStore('auth', () => {
     return data.user
   }
 
-  async function register(email, password, name) {
+  async function register(email, password, name, captchaId, captchaCode) {
     const response = await fetch(`${API_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name })
+      body: JSON.stringify({ email, password, name, captchaId, captchaCode })
     })
     
     const data = await response.json()

@@ -69,19 +69,17 @@ server-go/
 - CSS: `<style scoped>` with kebab-case class names. Storefront dark theme (#0f0f0f), admin light theme (#fff).
 - No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
 - **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
-- **All API calls use relative paths** (`'/api/...'`), never hardcoded `http://localhost:3000/api/...`. The Vite proxy handles routing in dev; nginx handles it in production.
+- **All API calls use relative paths** (`'/api/...'`), never hardcoded `http://localhost:3000/api/...`.
 - **Auth guards in views**: Before calling cart/favorites store methods, always check `authStore.isLoggedIn`. If false, show `toast.error('请先登录')` and `router.push('/login')`. See `ProductCard.vue` for reference pattern.
 
 ## Pinia Store Patterns
 
-Two styles exist:
 - **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
 - **Options API** (`cart.js`, `favorites.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
-
-Store IDs are simple lowercase: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`.
-Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
-Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
-Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
+- Store IDs are simple lowercase: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`.
+- Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
+- Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
+- Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
 
 ## Go Code Style
 
@@ -128,9 +126,9 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 - `AuthMiddleware()`: global, optional JWT parsing, sets `c.Set("userID", ...)`.
 - `RequireAuth()`: per-route, only on `ChangePassword`. Checks userID + DB lookup.
 - `AdminOnly`: plain `func(c *gin.Context)` used as group middleware for `/api/admin`.
-- Cart/favorites/addresses/orders check `c.Get("userID")` inline in handlers.
 - Dev bypass: `Authorization: user-{id}` header skips JWT.
 - Router guard: routes with `meta: { requiresAuth: true }` redirect to `/login?redirect=...`. `meta: { requiresAdmin: true }` additionally checks `user.role === 'admin'`.
+- **Captcha**: Register always requires captcha. Login uses progressive captcha — after 3 consecutive failures (per email, 15-min window), backend returns `"requireCaptcha": true` and frontend shows captcha. Password change also requires captcha.
 
 ## API Endpoints
 
@@ -146,19 +144,16 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - Product listings always sort `stock > 0` first via SQL CASE expression.
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - `Product.Image` and `Banner.Image` have JSON tag `"imageUrl"`. Frontend must send/read `"imageUrl"`.
-- Config API: `GET /api/config` returns `{"key": "value"}` map. Settings API: `GET /api/settings` returns `{"success": true, "data": {...}}`.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/{bucket}/{timestamp}_{uuid}{ext}"}`. Max 10MB, jpg/png/gif/webp.
-- `AdminImageUpload.vue` supports optional image cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio (e.g. `1` for products, `7/3` for banners). `null` (default) skips cropping.
+- `AdminImageUpload.vue` supports optional cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
-- Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.
-- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Production nginx mirrors this routing.
-- **App.vue layout**: Shows TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted. Page transitions via `<Transition name="page">`.
-- **HomeView**: Banner slider → 特别推荐 (featured, limit 12) → optional banner ad → 按分类商品 (per-category sections, 8 products each, only categories with products, each has "查看更多 →" link to `/category/{slug}`).
-- **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (where `isCompact = window.innerWidth <= 992`). HomeView and ProductDetailView do not pass it (vertical cards).
-- **Responsive grids**: CategoryView/SearchView use `grid-template-columns: 1fr` at ≤992px for horizontal cards; HomeView uses `repeat(2, 1fr)` at ≤768px for vertical cards. When using `flex-direction: column` on a parent flex container, always set `align-items: stretch` so children fill the full width.
-- **CategorySidebar mobile drawer**: On mobile (≤768px), CategorySidebar shows a button that opens a bottom drawer via `<Teleport to="body">`. Uses `drawerOpen` ref + `openDrawer()`/`closeDrawer()` methods. Drawer has overlay (`rgba(0,0,0,0.6)`), slides up with `transform: translateY(100%)` animation. Categories with children expand inline via `expandedCategories` Set. Always set `document.body.style.overflow = 'hidden'` when drawer opens to prevent background scroll.
-- **Config**: Loaded from `.env` via `godotenv`. Fields: DB_HOST/PORT/USER/PASSWORD/NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET/USE_SSL.
-- **MinIO**: Public read bucket policy set automatically. Images served via `/media/{bucket}/{filename}`.
+- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Production nginx mirrors this.
+- **App.vue layout**: Shows TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted.
+- **HomeView**: Banner slider → 特别推荐 (featured, limit 12) → optional banner ad → 按分类商品 (per-category sections, 8 products each, each has "查看更多 →" link).
+- **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (≤992px). HomeView/ProductDetailView use vertical cards.
+- **CategorySidebar mobile drawer**: On mobile (≤768px), bottom drawer via `<Teleport to="body">` with overlay and slide-up animation.
+- **Config**: `.env` fields: DB_HOST/PORT/USER/PASSWORD/NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET/USE_SSL.
+- **Login progressive captcha**: In-memory counter per email. `maxLoginAttempts=3`. 15-min auto-reset. Login error responses include `"requireCaptcha": true` when threshold met. Frontend `LoginView.vue` conditionally shows captcha row. Register always shows captcha.
 
 ## Git Commits
 

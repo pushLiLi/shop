@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"bycigar-server/internal/config"
@@ -14,6 +15,50 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type loginAttempt struct {
+	count       int
+	lastAttempt time.Time
+}
+
+var (
+	loginFailures = make(map[string]*loginAttempt)
+	failureMutex  sync.Mutex
+)
+
+const maxLoginAttempts = 3
+
+func getRequireCaptcha(key string) bool {
+	failureMutex.Lock()
+	defer failureMutex.Unlock()
+	a, ok := loginFailures[key]
+	if !ok {
+		return false
+	}
+	if time.Since(a.lastAttempt) > 15*time.Minute {
+		delete(loginFailures, key)
+		return false
+	}
+	return a.count >= maxLoginAttempts
+}
+
+func recordFailure(key string) {
+	failureMutex.Lock()
+	defer failureMutex.Unlock()
+	a, ok := loginFailures[key]
+	if !ok {
+		a = &loginAttempt{}
+		loginFailures[key] = a
+	}
+	a.count++
+	a.lastAttempt = time.Now()
+}
+
+func clearFailures(key string) {
+	failureMutex.Lock()
+	defer failureMutex.Unlock()
+	delete(loginFailures, key)
+}
 
 // Register godoc
 // @Summary 用户注册
@@ -28,7 +73,12 @@ import (
 func Register(c *gin.Context) {
 	var input models.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "邮箱和密码不能为空")
+		utils.ErrorResponse(c, http.StatusBadRequest, "请填写完整信息")
+		return
+	}
+
+	if !captchaInstance.Verify(input.CaptchaId, input.CaptchaCode, true) {
+		utils.ErrorResponse(c, http.StatusBadRequest, "验证码错误或已过期")
 		return
 	}
 
@@ -109,16 +159,51 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	key := strings.ToLower(input.Email)
+	needCaptcha := getRequireCaptcha(key)
+
+	if needCaptcha {
+		if input.CaptchaId == "" || input.CaptchaCode == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":          "请输入验证码",
+				"requireCaptcha": true,
+			})
+			return
+		}
+		if !captchaInstance.Verify(input.CaptchaId, input.CaptchaCode, true) {
+			recordFailure(key)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":          "验证码错误或已过期",
+				"requireCaptcha": true,
+			})
+			return
+		}
+	}
+
 	var user models.User
 	if err := database.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "邮箱或密码错误")
+		recordFailure(key)
+		requireCaptcha := getRequireCaptcha(key)
+		resp := gin.H{"error": "邮箱或密码错误"}
+		if requireCaptcha {
+			resp["requireCaptcha"] = true
+		}
+		c.JSON(http.StatusUnauthorized, resp)
 		return
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
-		utils.ErrorResponse(c, http.StatusUnauthorized, "邮箱或密码错误")
+		recordFailure(key)
+		requireCaptcha := getRequireCaptcha(key)
+		resp := gin.H{"error": "邮箱或密码错误"}
+		if requireCaptcha {
+			resp["requireCaptcha"] = true
+		}
+		c.JSON(http.StatusUnauthorized, resp)
 		return
 	}
+
+	clearFailures(key)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,

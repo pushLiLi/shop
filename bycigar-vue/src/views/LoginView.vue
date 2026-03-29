@@ -23,19 +23,62 @@ const name = ref('')
 const error = ref('')
 const loading = ref(false)
 
+const registerCaptchaId = ref('')
+const registerCaptchaImage = ref('')
+const registerCaptchaCode = ref('')
+
+const loginCaptchaRequired = ref(false)
+const loginCaptchaId = ref('')
+const loginCaptchaImage = ref('')
+const loginCaptchaCode = ref('')
+
+async function refreshRegisterCaptcha() {
+  try {
+    const res = await fetch('/api/auth/captcha')
+    const data = await res.json()
+    registerCaptchaId.value = data.captchaId
+    registerCaptchaImage.value = data.captchaImage
+    registerCaptchaCode.value = ''
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+async function refreshLoginCaptcha() {
+  try {
+    const res = await fetch('/api/auth/captcha')
+    const data = await res.json()
+    loginCaptchaId.value = data.captchaId
+    loginCaptchaImage.value = data.captchaImage
+    loginCaptchaCode.value = ''
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 const handleLogin = async () => {
   error.value = ''
-  
+
   if (!email.value || !password.value) {
     error.value = '请输入邮箱和密码'
     return
   }
-  
+
+  if (loginCaptchaRequired.value && !loginCaptchaCode.value) {
+    error.value = '请输入验证码'
+    return
+  }
+
   loading.value = true
-  
+
   try {
-    const user = await authStore.login(email.value, password.value)
-    
+    const user = await authStore.login(
+      email.value,
+      password.value,
+      loginCaptchaId.value,
+      loginCaptchaCode.value
+    )
+
     if (route.query.redirect) {
       router.push(route.query.redirect)
     } else if (user.role === 'admin') {
@@ -45,6 +88,10 @@ const handleLogin = async () => {
     }
   } catch (e) {
     error.value = e.message
+    if (e.requireCaptcha) {
+      loginCaptchaRequired.value = true
+      refreshLoginCaptcha()
+    }
   } finally {
     loading.value = false
   }
@@ -52,30 +99,42 @@ const handleLogin = async () => {
 
 const handleRegister = async () => {
   error.value = ''
-  
+
   if (!email.value || !password.value) {
     error.value = '请输入邮箱和密码'
     return
   }
-  
+
   if (password.value.length < 6) {
     error.value = '密码至少需要6个字符'
     return
   }
-  
+
   if (password.value !== confirmPassword.value) {
     error.value = '两次输入的密码不一致'
     return
   }
-  
+
+  if (!registerCaptchaCode.value) {
+    error.value = '请输入验证码'
+    return
+  }
+
   loading.value = true
-  
+
   try {
-    await authStore.register(email.value, password.value, name.value)
+    await authStore.register(
+      email.value,
+      password.value,
+      name.value,
+      registerCaptchaId.value,
+      registerCaptchaCode.value
+    )
     toast.success('注册成功，已自动登录')
     router.push('/')
   } catch (e) {
     error.value = e.message
+    refreshRegisterCaptcha()
   } finally {
     loading.value = false
   }
@@ -84,6 +143,9 @@ const handleRegister = async () => {
 const switchTab = (tab) => {
   activeTab.value = tab
   error.value = ''
+  if (tab === 'register' && !registerCaptchaImage.value) {
+    refreshRegisterCaptcha()
+  }
 }
 </script>
 
@@ -96,14 +158,14 @@ const switchTab = (tab) => {
       </div>
 
       <div class="tabs">
-        <button 
-          :class="['tab-btn', { active: activeTab === 'login' }]" 
+        <button
+          :class="['tab-btn', { active: activeTab === 'login' }]"
           @click="switchTab('login')"
         >
           登录
         </button>
-        <button 
-          :class="['tab-btn', { active: activeTab === 'register' }]" 
+        <button
+          :class="['tab-btn', { active: activeTab === 'register' }]"
           @click="switchTab('register')"
         >
           注册
@@ -113,22 +175,45 @@ const switchTab = (tab) => {
       <form v-if="activeTab === 'login'" @submit.prevent="handleLogin" class="login-form">
         <div class="form-group">
           <label>邮箱</label>
-          <input 
-            v-model="email" 
-            type="email" 
+          <input
+            v-model="email"
+            type="email"
             placeholder="请输入邮箱"
             autocomplete="email"
           >
         </div>
-        
+
         <div class="form-group">
           <label>密码</label>
-          <input 
-            v-model="password" 
-            type="password" 
+          <input
+            v-model="password"
+            type="password"
             placeholder="请输入密码"
             autocomplete="current-password"
           >
+        </div>
+
+        <div v-if="loginCaptchaRequired" class="form-group">
+          <label>验证码</label>
+          <div class="captcha-row">
+            <input
+              v-model="loginCaptchaCode"
+              type="text"
+              placeholder="请输入验证码"
+              maxlength="4"
+              autocomplete="off"
+            >
+            <img
+              v-if="loginCaptchaImage"
+              :src="loginCaptchaImage"
+              class="captcha-img"
+              @click="refreshLoginCaptcha"
+              title="点击刷新"
+            >
+            <button type="button" class="btn-refresh-captcha" @click="refreshLoginCaptcha">
+              刷新
+            </button>
+          </div>
         </div>
 
         <div v-if="error" class="error-msg">{{ error }}</div>
@@ -136,25 +221,24 @@ const switchTab = (tab) => {
         <button type="submit" class="submit-btn" :disabled="loading">
           {{ loading ? '登录中...' : '登录' }}
         </button>
-
       </form>
 
       <form v-else @submit.prevent="handleRegister" class="login-form">
         <div class="form-group">
           <label>邮箱</label>
-          <input 
-            v-model="email" 
-            type="email" 
+          <input
+            v-model="email"
+            type="email"
             placeholder="请输入邮箱"
             autocomplete="email"
           >
         </div>
-        
+
         <div class="form-group">
           <label>用户名 (可选)</label>
-          <input 
-            v-model="name" 
-            type="text" 
+          <input
+            v-model="name"
+            type="text"
             placeholder="请输入用户名"
             autocomplete="username"
           >
@@ -162,9 +246,9 @@ const switchTab = (tab) => {
 
         <div class="form-group">
           <label>密码</label>
-          <input 
-            v-model="password" 
-            type="password" 
+          <input
+            v-model="password"
+            type="password"
             placeholder="请输入密码 (至少6位)"
             autocomplete="new-password"
           >
@@ -172,12 +256,35 @@ const switchTab = (tab) => {
 
         <div class="form-group">
           <label>确认密码</label>
-          <input 
-            v-model="confirmPassword" 
-            type="password" 
+          <input
+            v-model="confirmPassword"
+            type="password"
             placeholder="请再次输入密码"
             autocomplete="new-password"
           >
+        </div>
+
+        <div class="form-group">
+          <label>验证码</label>
+          <div class="captcha-row">
+            <input
+              v-model="registerCaptchaCode"
+              type="text"
+              placeholder="请输入验证码"
+              maxlength="4"
+              autocomplete="off"
+            >
+            <img
+              v-if="registerCaptchaImage"
+              :src="registerCaptchaImage"
+              class="captcha-img"
+              @click="refreshRegisterCaptcha"
+              title="点击刷新"
+            >
+            <button type="button" class="btn-refresh-captcha" @click="refreshRegisterCaptcha">
+              刷新
+            </button>
+          </div>
         </div>
 
         <div v-if="error" class="error-msg">{{ error }}</div>
@@ -289,6 +396,46 @@ const switchTab = (tab) => {
   border-color: #d4a574;
 }
 
+.captcha-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.captcha-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.captcha-img {
+  height: 46px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.captcha-img:hover {
+  opacity: 0.8;
+}
+
+.btn-refresh-captcha {
+  padding: 12px 14px;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-refresh-captcha:hover {
+  background: #444;
+  color: #fff;
+}
+
 .error-msg {
   color: #e74c3c;
   font-size: 14px;
@@ -320,6 +467,4 @@ const switchTab = (tab) => {
   opacity: 0.6;
   cursor: not-allowed;
 }
-
-
 </style>
