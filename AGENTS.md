@@ -52,9 +52,9 @@ Frontend tests are unit tests (no backend needed). Backend tests are integration
 Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Priority: admin > service > customer.
 
 ### Middleware
-- **`AdminOnly`**: admin + service — products, categories, orders, dashboard, users, upload
+- **`AdminOnly`**: admin + service — products, categories, orders, dashboard, users, upload, chat admin
 - **`SuperAdminOnly`**: admin only — banners, pages, config, settings, user role changes
-- **`RequireAuth`**: any logged-in user — cart, favorites, addresses, orders, notifications
+- **`RequireAuth`**: any logged-in user — cart, favorites, addresses, orders, notifications, chat
 
 ### Frontend Auth (`useAuthStore`)
 - `isAdmin`: `role === 'admin' || role === 'service'`
@@ -71,6 +71,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 |---|---|---|---|
 | Dashboard | ✅ | ✅ (no revenue) | ❌ |
 | Products / Categories / Orders / Users CRUD | ✅ | ✅ | ❌ |
+| Chat (admin reply) | ✅ | ✅ | ❌ |
 | Reset user password | ✅ | ✅ (not admin) | ❌ |
 | Change user role / Banners / Pages / Config / Settings | ✅ | ❌ | ❌ |
 
@@ -99,8 +100,8 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 ## Pinia Stores
 
 - **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
-- **Options API** (`cart.js`, `favorites.js`, `notifications.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
-- Store IDs: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`, `'notifications'`.
+- **Options API** (`cart.js`, `favorites.js`, `notifications.js`, `chat.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
+- Store IDs: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`, `'notifications'`, `'chat'`.
 - Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
 - Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
 - Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
@@ -108,7 +109,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 ## GORM Models
 
 - Each model defines base fields inline (no shared `Model` struct). `uint` for all IDs.
-- JSON tags: camelCase. GORM tags: snake_case. Always include `CreatedAt`/`UpdatedAt`. Exception: `Notification` has only `CreatedAt`.
+- JSON tags: camelCase. GORM tags: snake_case. Always include `CreatedAt`/`UpdatedAt`. Exception: `Notification`, `Message` have only `CreatedAt`.
 - Use `DeletedAt` for soft-delete (products, categories). Response and input structs live alongside their models.
 - Notification model uses `*uint` (pointer) for optional foreign keys (`ProductID`, `OrderID`).
 - Preload: `database.DB.Preload("Category").Find(&products)`
@@ -139,9 +140,10 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
 - **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers.
+- **Chat**: Customer → Admin/Service real-time messaging. One open conversation per customer. Polling-based (3s panel open, 10s closed). Messages limited to 500 chars.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
 - **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors with proxy_cache.
-- **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer always mounted. NotificationPanel inside TheHeader via Teleport.
+- **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer, ChatWidget always mounted.
 - **Captcha**: Register always requires captcha. Login uses progressive captcha (3 failures -> required). Password change requires captcha.
 - **Admin route groups**: `cmd/main.go` has two groups — `admin` (AdminOnly) for shared routes, `superAdmin` (SuperAdminOnly) for restricted routes.
 

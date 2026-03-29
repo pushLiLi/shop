@@ -91,6 +91,12 @@ func main() {
 	r.PUT("/api/notifications/:id/read", middleware.RequireAuth(), handlers.MarkAsRead)
 	r.PUT("/api/notifications/read-all", middleware.RequireAuth(), handlers.MarkAllRead)
 
+	r.POST("/api/chat/conversations", middleware.RequireAuth(), handlers.CreateConversation)
+	r.GET("/api/chat/conversations", middleware.RequireAuth(), handlers.GetConversations)
+	r.GET("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.GetMessages)
+	r.POST("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.SendMessage)
+	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
+
 	r.GET("/api/auth/me", handlers.GetProfile)
 	r.PUT("/api/auth/profile", handlers.UpdateProfile)
 	r.GET("/api/auth/captcha", handlers.GetCaptcha)
@@ -125,6 +131,12 @@ func main() {
 		admin.GET("/users", handlers.GetAdminUsers)
 		admin.GET("/users/:id", handlers.GetAdminUser)
 		admin.POST("/users/:id/reset-password", handlers.ResetUserPassword)
+
+		admin.GET("/chat/conversations", handlers.GetAdminConversations)
+		admin.GET("/chat/conversations/:id/messages", handlers.GetAdminMessages)
+		admin.POST("/chat/conversations/:id/messages", handlers.AdminSendMessage)
+		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
+		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
 	}
 
 	superAdmin := r.Group("/api/admin")

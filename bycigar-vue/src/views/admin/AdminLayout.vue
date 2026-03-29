@@ -14,6 +14,7 @@ const allMenuItems = [
   { path: '/admin/products', name: '商品管理', icon: 'box' },
   { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' },
   { path: '/admin/users', name: '用户管理', icon: 'users' },
+  { path: '/admin/chat', name: '客服消息', icon: 'message-circle' },
   { path: '/admin/categories', name: '分类管理', icon: 'folder' },
   { path: '/admin/banners', name: '轮播图管理', icon: 'image', superAdminOnly: true },
   { path: '/admin/pages', name: '页面管理', icon: 'file-text', superAdminOnly: true },
@@ -80,6 +81,9 @@ const handleLogout = () => {
             <circle cx="9" cy="7" r="4"></circle>
             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <svg v-else-if="item.icon === 'message-circle'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
           </svg>
           <svg v-else-if="item.icon === 'image'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>

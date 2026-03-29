@@ -20,6 +20,7 @@ import AdminSettings from '../views/admin/AdminSettings.vue'
 import AdminOrders from '../views/admin/AdminOrders.vue'
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
 import AdminUsers from '../views/admin/AdminUsers.vue'
+import AdminChat from '../views/admin/AdminChat.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -122,6 +123,12 @@ const router = createRouter({
           name: 'admin-users',
           component: AdminUsers,
           meta: { title: '用户管理' }
+        },
+        {
+          path: 'chat',
+          name: 'admin-chat',
+          component: AdminChat,
+          meta: { title: '客服消息' }
         },
         {
           path: 'categories',
