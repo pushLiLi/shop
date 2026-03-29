@@ -9,6 +9,7 @@ import (
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func GetAdminUsers(c *gin.Context) {
@@ -94,13 +95,44 @@ func GetAdminUser(c *gin.Context) {
 	database.DB.Where("user_id = ?", id).
 		Preload("Items.Product").
 		Order("created_at desc").
-		Limit(10).
+		Limit(20).
 		Find(&orders)
 
+	var addresses []models.Address
+	database.DB.Where("user_id = ?", id).
+		Order("is_default desc, created_at desc").
+		Find(&addresses)
+
 	c.JSON(http.StatusOK, gin.H{
-		"user":   user,
-		"orders": orders,
+		"user":      user,
+		"orders":    orders,
+		"addresses": addresses,
 	})
+}
+
+func ResetUserPassword(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的用户ID")
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "用户不存在")
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("123456"), bcrypt.DefaultCost)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "密码重置失败")
+		return
+	}
+
+	user.Password = string(hashedPassword)
+	database.DB.Save(&user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "密码已重置为 123456，请通知用户尽快修改"})
 }
 
 type UpdateUserRoleInput struct {
@@ -120,7 +152,7 @@ func UpdateUserRole(c *gin.Context) {
 		return
 	}
 
-	if input.Role != "admin" && input.Role != "customer" {
+	if input.Role != "admin" && input.Role != "service" && input.Role != "customer" {
 		utils.ErrorResponse(c, http.StatusBadRequest, "无效的角色")
 		return
 	}

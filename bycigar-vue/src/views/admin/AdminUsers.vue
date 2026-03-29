@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useAuthStore } from '../../stores/auth'
 import { useToastStore } from '../../stores/toast'
 
 const API_BASE = '/api'
 const toast = useToastStore()
+const authStore = useAuthStore()
 
 const users = ref([])
 const loading = ref(false)
@@ -15,10 +17,14 @@ const search = ref('')
 const showDetailModal = ref(false)
 const detailUser = ref(null)
 const detailOrders = ref([])
+const detailAddresses = ref([])
 
 const showRoleModal = ref(false)
 const roleUser = ref(null)
 const selectedRole = ref('')
+
+const showResetModal = ref(false)
+const resetUser = ref(null)
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -26,7 +32,8 @@ const authHeaders = () => ({
 })
 
 const roleLabels = {
-  admin: '管理员',
+  admin: '超级管理员',
+  service: '客服',
   customer: '客户'
 }
 
@@ -64,6 +71,7 @@ const openDetail = async (user) => {
     const data = await res.json()
     detailUser.value = data.user
     detailOrders.value = data.orders || []
+    detailAddresses.value = data.addresses || []
     showDetailModal.value = true
   } catch (e) {
     toast.error('获取用户详情失败')
@@ -74,6 +82,11 @@ const openRoleModal = (user) => {
   roleUser.value = user
   selectedRole.value = user.role
   showRoleModal.value = true
+}
+
+const openResetModal = (user) => {
+  resetUser.value = user
+  showResetModal.value = true
 }
 
 const updateRole = async () => {
@@ -95,8 +108,32 @@ const updateRole = async () => {
   }
 }
 
+const resetPassword = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${resetUser.value.id}/reset-password`, {
+      method: 'POST',
+      headers: authHeaders()
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || '重置失败')
+    }
+    toast.success('密码已重置为 123456，请通知用户尽快修改')
+    showResetModal.value = false
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
 const formatPrice = (price) => `¥${parseFloat(price || 0).toFixed(2)}`
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
+const formatAddress = (addr) => `${addr.fullName} ${addr.phone} ${addr.state}${addr.city}${addr.addressLine1}${addr.addressLine2 ? ' ' + addr.addressLine2 : ''} ${addr.zipCode}`
+
+const roleBadgeClass = (role) => {
+  if (role === 'admin') return 'badge-warning'
+  if (role === 'service') return 'badge-info'
+  return 'badge-default'
+}
 
 const statusLabels = {
   pending: '待处理',
@@ -156,7 +193,7 @@ onMounted(() => fetchUsers())
             <td>{{ user.email }}</td>
             <td>{{ user.name || '-' }}</td>
             <td>
-              <span class="badge" :class="user.role === 'admin' ? 'badge-warning' : 'badge-default'">
+              <span class="badge" :class="roleBadgeClass(user.role)">
                 {{ roleLabels[user.role] || user.role }}
               </span>
             </td>
@@ -165,7 +202,8 @@ onMounted(() => fetchUsers())
             <td class="time-cell">{{ formatDate(user.createdAt) }}</td>
             <td>
               <button class="btn-view" @click="openDetail(user)">详情</button>
-              <button class="btn-role" @click="openRoleModal(user)">角色</button>
+              <button class="btn-reset-pwd" @click="openResetModal(user)">重置密码</button>
+              <button v-if="authStore.isSuperAdmin" class="btn-role" @click="openRoleModal(user)">角色</button>
             </td>
           </tr>
           <tr v-if="users.length === 0">
@@ -194,7 +232,7 @@ onMounted(() => fetchUsers())
               <div class="detail-item"><span class="label">ID</span><span>{{ detailUser?.id }}</span></div>
               <div class="detail-item"><span class="label">邮箱</span><span>{{ detailUser?.email }}</span></div>
               <div class="detail-item"><span class="label">姓名</span><span>{{ detailUser?.name || '-' }}</span></div>
-              <div class="detail-item"><span class="label">角色</span><span class="badge" :class="detailUser?.role === 'admin' ? 'badge-warning' : 'badge-default'">{{ roleLabels[detailUser?.role] }}</span></div>
+              <div class="detail-item"><span class="label">角色</span><span class="badge" :class="roleBadgeClass(detailUser?.role)">{{ roleLabels[detailUser?.role] }}</span></div>
               <div class="detail-item"><span class="label">注册时间</span><span>{{ formatDate(detailUser?.createdAt) }}</span></div>
             </div>
           </div>
@@ -221,6 +259,16 @@ onMounted(() => fetchUsers())
             </table>
           </div>
           <div v-else class="no-orders">该用户暂无订单</div>
+
+          <div class="detail-section" v-if="detailAddresses.length > 0">
+            <div class="section-title">收货地址</div>
+            <div class="address-list">
+              <div v-for="addr in detailAddresses" :key="addr.id" class="address-item">
+                <span v-if="addr.isDefault" class="badge badge-primary">默认</span>
+                <span class="address-text">{{ formatAddress(addr) }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -233,19 +281,37 @@ onMounted(() => fetchUsers())
         </div>
         <div class="modal-body">
           <div class="current-role">
-            当前角色：<span class="badge" :class="roleUser?.role === 'admin' ? 'badge-warning' : 'badge-default'">{{ roleLabels[roleUser?.role] }}</span>
+            当前角色：<span class="badge" :class="roleBadgeClass(roleUser?.role)">{{ roleLabels[roleUser?.role] }}</span>
           </div>
           <div class="form-group">
             <label>新角色</label>
             <select v-model="selectedRole">
               <option value="customer">客户</option>
-              <option value="admin">管理员</option>
+              <option value="service">客服</option>
+              <option value="admin">超级管理员</option>
             </select>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="showRoleModal = false">取消</button>
           <button class="btn-save" @click="updateRole">确认修改</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showResetModal" class="modal-overlay" @click.self="showResetModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>重置密码</h3>
+          <button class="modal-close" @click="showResetModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>确认将用户 <strong>{{ resetUser?.email }}</strong> 的密码重置为 <strong>123456</strong>？</p>
+          <p class="reset-hint">请通知用户登录后尽快修改密码</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showResetModal = false">取消</button>
+          <button class="btn-save btn-danger" @click="resetPassword">确认重置</button>
         </div>
       </div>
     </div>
@@ -379,7 +445,8 @@ onMounted(() => fetchUsers())
 .badge-default { background: #f5f5f5; color: #999; }
 
 .btn-view,
-.btn-role {
+.btn-role,
+.btn-reset-pwd {
   padding: 5px 10px;
   border: none;
   border-radius: 4px;
@@ -405,6 +472,15 @@ onMounted(() => fetchUsers())
 
 .btn-role:hover {
   background: #ffecb3;
+}
+
+.btn-reset-pwd {
+  background: #fce4ec;
+  color: #c62828;
+}
+
+.btn-reset-pwd:hover {
+  background: #f8bbd0;
 }
 
 .empty-text {
@@ -600,5 +676,40 @@ onMounted(() => fetchUsers())
   text-align: center;
   color: #999;
   padding: 20px;
+}
+
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.address-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f9f9f9;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #666;
+}
+
+.address-text {
+  line-height: 1.5;
+}
+
+.reset-hint {
+  color: #f57c00;
+  font-size: 13px;
+  margin-top: 10px;
+}
+
+.btn-danger {
+  background: #c62828 !important;
+}
+
+.btn-danger:hover {
+  background: #b71c1c !important;
 }
 </style>

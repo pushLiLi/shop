@@ -8,7 +8,9 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
 
   const isLoggedIn = computed(() => !!token.value && !!user.value)
-  const isAdmin = computed(() => user.value?.role === 'admin')
+  const isAdmin = computed(() => user.value?.role === 'admin' || user.value?.role === 'service')
+  const isSuperAdmin = computed(() => user.value?.role === 'admin')
+  const isService = computed(() => user.value?.role === 'service')
   const userName = computed(() => user.value?.name || user.value?.email?.split('@')[0] || '用户')
 
   async function login(email, password, captchaId, captchaCode) {
@@ -96,6 +98,8 @@ export const useAuthStore = defineStore('auth', () => {
     user,
     isLoggedIn,
     isAdmin,
+    isSuperAdmin,
+    isService,
     userName,
     login,
     register,

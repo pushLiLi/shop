@@ -106,17 +106,6 @@ func main() {
 		admin.PUT("/categories/:id", handlers.UpdateCategory)
 		admin.DELETE("/categories/:id", handlers.DeleteCategory)
 
-		admin.GET("/banners", handlers.GetAdminBanners)
-		admin.POST("/banners", handlers.CreateBanner)
-		admin.PUT("/banners/:id", handlers.UpdateBanner)
-		admin.DELETE("/banners/:id", handlers.DeleteBanner)
-
-		admin.GET("/pages", handlers.GetAdminPages)
-		admin.PUT("/pages/:slug", handlers.UpdatePage)
-
-		admin.PUT("/config/:key", handlers.UpdateConfig)
-		admin.PUT("/settings/:key", handlers.UpdateSetting)
-
 		admin.GET("/orders", handlers.GetAdminOrders)
 		admin.GET("/orders/:id", handlers.GetAdminOrder)
 		admin.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
@@ -128,7 +117,24 @@ func main() {
 
 		admin.GET("/users", handlers.GetAdminUsers)
 		admin.GET("/users/:id", handlers.GetAdminUser)
-		admin.PUT("/users/:id/role", handlers.UpdateUserRole)
+		admin.POST("/users/:id/reset-password", handlers.ResetUserPassword)
+	}
+
+	superAdmin := r.Group("/api/admin")
+	superAdmin.Use(middleware.SuperAdminOnly)
+	{
+		superAdmin.GET("/banners", handlers.GetAdminBanners)
+		superAdmin.POST("/banners", handlers.CreateBanner)
+		superAdmin.PUT("/banners/:id", handlers.UpdateBanner)
+		superAdmin.DELETE("/banners/:id", handlers.DeleteBanner)
+
+		superAdmin.GET("/pages", handlers.GetAdminPages)
+		superAdmin.PUT("/pages/:slug", handlers.UpdatePage)
+
+		superAdmin.PUT("/config/:key", handlers.UpdateConfig)
+		superAdmin.PUT("/settings/:key", handlers.UpdateSetting)
+
+		superAdmin.PUT("/users/:id/role", handlers.UpdateUserRole)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

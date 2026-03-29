@@ -9,16 +9,21 @@ const authStore = useAuthStore()
 
 const sidebarCollapsed = ref(false)
 
-const menuItems = [
+const allMenuItems = [
   { path: '/admin', name: '仪表盘', icon: 'dashboard' },
   { path: '/admin/products', name: '商品管理', icon: 'box' },
   { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' },
   { path: '/admin/users', name: '用户管理', icon: 'users' },
-  { path: '/admin/banners', name: '轮播图管理', icon: 'image' },
   { path: '/admin/categories', name: '分类管理', icon: 'folder' },
-  { path: '/admin/pages', name: '页面管理', icon: 'file-text' },
-  { path: '/admin/settings', name: '站点设置', icon: 'settings' }
+  { path: '/admin/banners', name: '轮播图管理', icon: 'image', superAdminOnly: true },
+  { path: '/admin/pages', name: '页面管理', icon: 'file-text', superAdminOnly: true },
+  { path: '/admin/settings', name: '站点设置', icon: 'settings', superAdminOnly: true }
 ]
+
+const menuItems = computed(() => {
+  if (authStore.isSuperAdmin) return allMenuItems
+  return allMenuItems.filter(item => !item.superAdminOnly)
+})
 
 const isActive = (path) => {
   if (path === '/admin') return route.path === '/admin'

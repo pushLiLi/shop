@@ -105,30 +105,6 @@ const router = createRouter({
           meta: { title: '商品管理' }
         },
         {
-          path: 'banners',
-          name: 'admin-banners',
-          component: AdminBanners,
-          meta: { title: '轮播图管理' }
-        },
-        {
-          path: 'categories',
-          name: 'admin-categories',
-          component: AdminCategories,
-          meta: { title: '分类管理' }
-        },
-        {
-          path: 'pages',
-          name: 'admin-pages',
-          component: AdminPages,
-          meta: { title: '页面管理' }
-        },
-        {
-          path: 'settings',
-          name: 'admin-settings',
-          component: AdminSettings,
-          meta: { title: '站点设置' }
-        },
-        {
           path: 'orders',
           name: 'admin-orders',
           component: AdminOrders,
@@ -139,6 +115,30 @@ const router = createRouter({
           name: 'admin-users',
           component: AdminUsers,
           meta: { title: '用户管理' }
+        },
+        {
+          path: 'categories',
+          name: 'admin-categories',
+          component: AdminCategories,
+          meta: { title: '分类管理' }
+        },
+        {
+          path: 'banners',
+          name: 'admin-banners',
+          component: AdminBanners,
+          meta: { title: '轮播图管理', requiresSuperAdmin: true }
+        },
+        {
+          path: 'pages',
+          name: 'admin-pages',
+          component: AdminPages,
+          meta: { title: '页面管理', requiresSuperAdmin: true }
+        },
+        {
+          path: 'settings',
+          name: 'admin-settings',
+          component: AdminSettings,
+          meta: { title: '站点设置', requiresSuperAdmin: true }
         }
       ]
     }
@@ -156,6 +156,19 @@ router.beforeEach((to, from, next) => {
     }
 
     if (to.meta.requiresAdmin) {
+      try {
+        const user = JSON.parse(userStr)
+        if (user.role !== 'admin' && user.role !== 'service') {
+          next({ name: 'home' })
+          return
+        }
+      } catch {
+        next({ name: 'login', query: { redirect: to.fullPath } })
+        return
+      }
+    }
+
+    if (to.meta.requiresSuperAdmin) {
       try {
         const user = JSON.parse(userStr)
         if (user.role !== 'admin') {
