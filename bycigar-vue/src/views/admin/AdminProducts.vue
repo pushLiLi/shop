@@ -46,9 +46,7 @@ const authHeaders = () => ({
 
 const fetchCategories = async () => {
   try {
-    const res = await fetch(`${API_BASE}/admin/categories`, {
-      headers: authHeaders()
-    })
+    const res = await fetch(`${API_BASE}/categories`)
     categories.value = await res.json()
   } catch (e) {
     console.error('Error fetching categories:', e)
@@ -371,9 +369,12 @@ onMounted(() => {
         </div>
         <select v-model="filterCategory" @change="handleSearch">
           <option value="">所有分类</option>
-          <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-            {{ cat.name }}
-          </option>
+          <template v-for="cat in categories" :key="cat.id">
+            <optgroup :label="cat.name">
+              <option :value="cat.id">{{ cat.name }} - 全部</option>
+              <option v-for="child in cat.children" :key="child.id" :value="child.id">{{ child.name }}</option>
+            </optgroup>
+          </template>
         </select>
         <select v-model="filterFeatured" @change="handleSearch">
           <option value="">全部商品</option>
@@ -510,9 +511,11 @@ onMounted(() => {
               <label>分类</label>
               <select v-model="form.categoryId">
                 <option value="">请选择分类</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                  {{ cat.name }}
-                </option>
+                <template v-for="cat in categories" :key="cat.id">
+                  <optgroup :label="cat.name">
+                    <option v-for="child in cat.children" :key="child.id" :value="child.id">{{ child.name }}</option>
+                  </optgroup>
+                </template>
               </select>
             </div>
           </div>

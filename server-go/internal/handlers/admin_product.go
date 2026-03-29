@@ -241,7 +241,13 @@ func GetAdminProducts(c *gin.Context) {
 
 	if categoryIDStr != "" {
 		if categoryID, err := strconv.Atoi(categoryIDStr); err == nil {
-			query = query.Where("category_id = ?", categoryID)
+			var childCats []models.Category
+			database.DB.Where("parent_id = ?", categoryID).Find(&childCats)
+			ids := []uint{uint(categoryID)}
+			for _, child := range childCats {
+				ids = append(ids, child.ID)
+			}
+			query = query.Where("category_id IN ?", ids)
 		}
 	}
 

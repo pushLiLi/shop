@@ -60,7 +60,13 @@ func GetProducts(c *gin.Context) {
 	if categorySlug != "" {
 		var category models.Category
 		if database.DB.Where("slug = ?", categorySlug).First(&category).Error == nil {
-			query = query.Where("category_id = ?", category.ID)
+			var childCats []models.Category
+			database.DB.Where("parent_id = ?", category.ID).Find(&childCats)
+			ids := []uint{category.ID}
+			for _, child := range childCats {
+				ids = append(ids, child.ID)
+			}
+			query = query.Where("category_id IN ?", ids)
 		}
 	}
 
