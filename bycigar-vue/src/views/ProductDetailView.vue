@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
 import { useToastStore } from '../stores/toast'
+import { useAuthStore } from '../stores/auth'
 import ProductCard from '../components/ProductCard.vue'
 
 const route = useRoute()
@@ -11,6 +12,7 @@ const router = useRouter()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
 const toast = useToastStore()
+const authStore = useAuthStore()
 const product = ref(null)
 const relatedProducts = ref([])
 const loading = ref(true)
@@ -67,12 +69,22 @@ function handleQtyInput() {
 
 async function addToCart() {
   if (!product.value) return
+  if (!authStore.isLoggedIn) {
+    toast.error('请先登录')
+    router.push('/login')
+    return
+  }
   await cartStore.addItem(product.value, quantity.value)
   toast.success(`已添加 ${quantity.value} 件到购物车`)
 }
 
 async function toggleFavorite() {
   if (!product.value) return
+  if (!authStore.isLoggedIn) {
+    toast.error('请先登录')
+    router.push('/login')
+    return
+  }
   if (isFavorite.value) {
     await favoritesStore.removeItem(product.value.id)
   } else {

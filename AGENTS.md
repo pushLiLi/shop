@@ -70,6 +70,7 @@ server-go/
 - No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
 - **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
 - **All API calls use relative paths** (`'/api/...'`), never hardcoded `http://localhost:3000/api/...`. The Vite proxy handles routing in dev; nginx handles it in production.
+- **Auth guards in views**: Before calling cart/favorites store methods, always check `authStore.isLoggedIn`. If false, show `toast.error('请先登录')` and `router.push('/login')`. See `ProductCard.vue` for reference pattern.
 
 ## Pinia Store Patterns
 
@@ -80,6 +81,7 @@ Two styles exist:
 Store IDs are simple lowercase: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`.
 Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
 Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
+Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
 
 ## Go Code Style
 
@@ -128,6 +130,7 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 - `AdminOnly`: plain `func(c *gin.Context)` used as group middleware for `/api/admin`.
 - Cart/favorites/addresses/orders check `c.Get("userID")` inline in handlers.
 - Dev bypass: `Authorization: user-{id}` header skips JWT.
+- Router guard: routes with `meta: { requiresAuth: true }` redirect to `/login?redirect=...`. `meta: { requiresAdmin: true }` additionally checks `user.role === 'admin'`.
 
 ## API Endpoints
 
@@ -148,9 +151,13 @@ Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortB
 - `AdminImageUpload.vue` supports optional image cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio (e.g. `1` for products, `7/3` for banners). `null` (default) skips cropping.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
 - Cart debounce: 300ms. Address limit: 5 per user. Captcha TTL: 5 min.
+- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Production nginx mirrors this routing.
+- **App.vue layout**: Shows TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted. Page transitions via `<Transition name="page">`.
 - **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (where `isCompact = window.innerWidth <= 992`) to show left-image/right-text layout on tablet/mobile. HomeView and ProductDetailView do not pass it (vertical cards). Horizontal styles use `.product-card.horizontal` class with `@media (max-width: 768px)` for smaller image size (120px vs 180px).
 - **Responsive grids**: CategoryView/SearchView use `grid-template-columns: 1fr` at ≤992px for horizontal cards; HomeView uses `repeat(2, 1fr)` at ≤768px for vertical cards. When using `flex-direction: column` on a parent flex container, always set `align-items: stretch` so children fill the full width.
 - **CategorySidebar mobile drawer**: On mobile (≤768px), CategorySidebar shows a button that opens a bottom drawer via `<Teleport to="body">`. Uses `drawerOpen` ref + `openDrawer()`/`closeDrawer()` methods. Drawer has overlay (`rgba(0,0,0,0.6)`), slides up with `transform: translateY(100%)` animation. Categories with children expand inline via `expandedCategories` Set. Always set `document.body.style.overflow = 'hidden'` when drawer opens to prevent background scroll.
+- **Config**: Loaded from `.env` via `godotenv`. Fields: DB_HOST/PORT/USER/PASSWORD/NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET/USE_SSL.
+- **MinIO**: Public read bucket policy set automatically. Images served via `/media/{bucket}/{filename}`.
 
 ## Git Commits
 
