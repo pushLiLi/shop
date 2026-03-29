@@ -141,6 +141,13 @@ func SeedSiteConfig() {
 		{ConfigKey: "home_banner_1", ConfigValue: "/media/bycigar/banner-1.png"},
 		{ConfigKey: "home_banner_2", ConfigValue: "/media/bycigar/banner-2.png"},
 		{ConfigKey: "home_banner_3", ConfigValue: "/media/bycigar/banner-3.png"},
+		{ConfigKey: "home_promo_left_image", ConfigValue: ""},
+		{ConfigKey: "home_promo_left_link", ConfigValue: ""},
+		{ConfigKey: "home_promo_right_image", ConfigValue: ""},
+		{ConfigKey: "home_promo_right_link", ConfigValue: ""},
+		{ConfigKey: "home_featured_title", ConfigValue: "特别推荐"},
+		{ConfigKey: "home_new_title", ConfigValue: "新品上架"},
+		{ConfigKey: "home_topselling_title", ConfigValue: "热销排行"},
 	}
 
 	for _, cfg := range defaultConfigs {

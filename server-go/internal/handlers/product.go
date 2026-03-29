@@ -66,7 +66,13 @@ func GetProducts(c *gin.Context) {
 
 	if categoryIDStr != "" {
 		if categoryID, err := strconv.Atoi(categoryIDStr); err == nil {
-			query = query.Where("category_id = ?", categoryID)
+			var childCats []models.Category
+			database.DB.Where("parent_id = ?", categoryID).Find(&childCats)
+			ids := []uint{uint(categoryID)}
+			for _, child := range childCats {
+				ids = append(ids, child.ID)
+			}
+			query = query.Where("category_id IN ?", ids)
 		}
 	}
 
@@ -151,8 +157,12 @@ func GetCategories(c *gin.Context) {
 
 	var result []CategoryWithCount
 	for _, cat := range categories {
+		ids := []uint{cat.ID}
+		for _, child := range cat.Children {
+			ids = append(ids, child.ID)
+		}
 		var count int64
-		database.DB.Model(&models.Product{}).Where("category_id = ?", cat.ID).Count(&count)
+		database.DB.Model(&models.Product{}).Where("category_id IN ?", ids).Count(&count)
 		result = append(result, CategoryWithCount{
 			Category:     cat,
 			ProductCount: count,
@@ -160,4 +170,68 @@ func GetCategories(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// GetTopSelling godoc
+// @Summary 获取热销商品
+// @Description 根据订单项聚合销量，返回销量最高的商品
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param limit query int false "数量" default(8)
+// @Success 200 {object} map[string]interface{}
+// @Router /products/top-selling [get]
+func GetTopSelling(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "8"))
+	if limit < 1 {
+		limit = 8
+	}
+
+	type ProductWithSales struct {
+		models.Product
+		SalesCount int64 `json:"salesCount"`
+	}
+
+	var results []ProductWithSales
+	database.DB.Model(&models.OrderItem{}).
+		Select("product_id, SUM(quantity) as sales_count").
+		Group("product_id").
+		Order("sales_count DESC").
+		Limit(limit).
+		Scan(&results)
+
+	if len(results) == 0 {
+		c.JSON(http.StatusOK, gin.H{"products": []interface{}{}})
+		return
+	}
+
+	var productIDs []uint
+	for _, r := range results {
+		productIDs = append(productIDs, r.ID)
+	}
+
+	var products []models.Product
+	database.DB.Where("id IN ? AND is_active = ?", productIDs, true).Preload("Category").Find(&products)
+
+	productMap := make(map[uint]models.Product)
+	for _, p := range products {
+		productMap[p.ID] = p
+	}
+
+	type TopProduct struct {
+		models.Product
+		SalesCount int64 `json:"salesCount"`
+	}
+
+	var topProducts []TopProduct
+	for _, r := range results {
+		if p, ok := productMap[r.ID]; ok {
+			topProducts = append(topProducts, TopProduct{
+				Product:    p,
+				SalesCount: r.SalesCount,
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"products": topProducts})
 }

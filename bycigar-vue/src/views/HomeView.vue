@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useCarousel } from '../composables/useCarousel'
+import { marked } from 'marked'
 import ProductCard from '../components/ProductCard.vue'
 
 const API_BASE = '/api'
@@ -10,7 +11,11 @@ const loading = ref(true)
 const error = ref(null)
 const config = ref({})
 const featuredProducts = ref([])
+const newProducts = ref([])
+const topSellingProducts = ref([])
 const categoryProducts = ref([])
+const brandStory = ref(null)
+const brandPhilosophy = ref(null)
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
@@ -30,17 +35,27 @@ const {
 async function fetchData() {
   try {
     loading.value = true
-    const [configRes, featuredRes, bannersRes, categoriesRes] = await Promise.all([
+    const [configRes, featuredRes, bannersRes, categoriesRes, newRes, topSellingRes, storyRes, philosophyRes] = await Promise.all([
       fetch(`${API_BASE}/config`),
       fetch(`${API_BASE}/products?featured=true&limit=12`),
       fetch(`${API_BASE}/banners`),
-      fetch(`${API_BASE}/categories`)
+      fetch(`${API_BASE}/categories`),
+      fetch(`${API_BASE}/products?sortBy=createdAt&sortOrder=desc&limit=8`),
+      fetch(`${API_BASE}/products/top-selling?limit=8`),
+      fetch(`${API_BASE}/pages/brand-story`),
+      fetch(`${API_BASE}/pages/brand-philosophy`)
     ])
     
     config.value = await configRes.json()
     
     const featuredData = await featuredRes.json()
     featuredProducts.value = featuredData.products || []
+
+    const newData = await newRes.json()
+    newProducts.value = newData.products || []
+
+    const topSellingData = await topSellingRes.json()
+    topSellingProducts.value = topSellingData.products || []
     
     const bannersData = await bannersRes.json()
     banners.value = bannersData.length > 0 ? bannersData : [
@@ -61,6 +76,22 @@ async function fetchData() {
         })
       )
       categoryProducts.value = productResults.filter(item => item.products.length > 0)
+    }
+
+    if (storyRes.ok) {
+      const storyData = await storyRes.json()
+      if (storyData.content) {
+        storyData.htmlContent = marked(storyData.content)
+        brandStory.value = storyData
+      }
+    }
+
+    if (philosophyRes.ok) {
+      const philosophyData = await philosophyRes.json()
+      if (philosophyData.content) {
+        philosophyData.htmlContent = marked(philosophyData.content)
+        brandPhilosophy.value = philosophyData
+      }
     }
   } catch (e) {
     error.value = e.message
@@ -126,6 +157,34 @@ onMounted(() => { fetchData() })
       </div>
     </section>
 
+    <section class="promo-section" v-if="config.home_promo_left_image || config.home_promo_right_image">
+      <div class="container">
+        <div class="promo-grid">
+          <a v-if="config.home_promo_left_image" :href="config.home_promo_left_link || '#'" class="promo-card">
+            <img :src="config.home_promo_left_image" alt="Promo Left" loading="lazy">
+          </a>
+          <a v-if="config.home_promo_right_image" :href="config.home_promo_right_link || '#'" class="promo-card">
+            <img :src="config.home_promo_right_image" alt="Promo Right" loading="lazy">
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="new-section">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">{{ config.home_new_title || '新品上架' }}</h2>
+          <router-link to="/products?sortBy=createdAt&sortOrder=desc" class="view-more">
+            查看更多 <span class="arrow">&rarr;</span>
+          </router-link>
+        </div>
+        <div v-if="loading" class="loading">加载中...</div>
+        <div v-else class="products-grid grid-6">
+          <ProductCard v-for="product in newProducts" :key="'new-' + product.id" :product="product" />
+        </div>
+      </div>
+    </section>
+
     <section class="banner-section" v-if="config.home_banner_1">
       <div class="container">
         <img :src="config.home_banner_1" alt="Banner" class="full-width-banner">
@@ -147,6 +206,67 @@ onMounted(() => { fetchData() })
         <div class="products-grid grid-6">
           <ProductCard v-for="product in item.products" :key="product.id" :product="product" />
         </div>
+      </div>
+    </section>
+
+    <section class="top-selling-section" v-if="topSellingProducts.length > 0">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">{{ config.home_topselling_title || '热销排行' }}</h2>
+        </div>
+        <div v-if="loading" class="loading">加载中...</div>
+        <div v-else class="products-grid grid-6">
+          <ProductCard v-for="product in topSellingProducts" :key="'top-' + product.id" :product="product" />
+        </div>
+      </div>
+    </section>
+
+    <section class="services-section">
+      <div class="container">
+        <div class="services-grid">
+          <div class="service-item">
+            <div class="service-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h3>正品保证</h3>
+            <p>100%正品 假一赔十</p>
+          </div>
+          <div class="service-item">
+            <div class="service-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            </div>
+            <h3>极速配送</h3>
+            <p>下单即发 极速送达</p>
+          </div>
+          <div class="service-item">
+            <div class="service-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            </div>
+            <h3>售后无忧</h3>
+            <p>7天无理由 退换便捷</p>
+          </div>
+          <div class="service-item">
+            <div class="service-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d4a574" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h3>专业客服</h3>
+            <p>在线答疑 贴心服务</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="brand-section" v-if="brandStory">
+      <div class="container">
+        <h2 class="section-title centered">{{ brandStory.title }}</h2>
+        <div class="brand-content" v-html="brandStory.htmlContent"></div>
+      </div>
+    </section>
+
+    <section class="philosophy-section" v-if="brandPhilosophy">
+      <div class="container">
+        <h2 class="section-title centered">{{ brandPhilosophy.title }}</h2>
+        <div class="brand-content" v-html="brandPhilosophy.htmlContent"></div>
       </div>
     </section>
   </main>
@@ -258,6 +378,67 @@ onMounted(() => { fetchData() })
   width: 100%;
 }
 
+.promo-section {
+  padding: 20px 0;
+}
+
+.promo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.promo-card {
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.3s;
+}
+
+.promo-card:hover {
+  transform: translateY(-3px);
+}
+
+.promo-card img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2/1;
+  object-fit: cover;
+  display: block;
+}
+
+.new-section {
+  padding: 30px 0;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.new-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+.new-section .section-title {
+  color: #fff;
+  font-size: 20px;
+  margin: 0;
+  position: relative;
+  padding-left: 14px;
+}
+
+.new-section .section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: #d4a574;
+  border-radius: 2px;
+}
+
 .category-section {
   padding: 30px 0;
   border-top: 1px solid rgba(212, 165, 116, 0.15);
@@ -334,6 +515,114 @@ onMounted(() => { fetchData() })
   border-radius: 8px;
 }
 
+.top-selling-section {
+  padding: 30px 0;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.top-selling-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+.top-selling-section .section-title {
+  color: #fff;
+  font-size: 20px;
+  margin: 0;
+  position: relative;
+  padding-left: 14px;
+}
+
+.top-selling-section .section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: #d4a574;
+  border-radius: 2px;
+}
+
+.services-section {
+  padding: 50px 0;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  text-align: center;
+}
+
+.service-item {
+  padding: 30px 15px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  transition: transform 0.3s;
+}
+
+.service-item:hover {
+  transform: translateY(-3px);
+}
+
+.service-icon {
+  margin-bottom: 15px;
+}
+
+.service-item h3 {
+  color: #d4a574;
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+
+.service-item p {
+  color: #999;
+  font-size: 13px;
+  margin: 0;
+}
+
+.brand-section,
+.philosophy-section {
+  padding: 50px 0;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.section-title.centered {
+  text-align: center;
+  color: #fff;
+  font-size: 24px;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #d4a574;
+  display: inline-block;
+  width: 100%;
+}
+
+.brand-content {
+  color: #ccc;
+  line-height: 1.8;
+  font-size: 15px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.brand-content :deep(h1),
+.brand-content :deep(h2),
+.brand-content :deep(h3) {
+  color: #d4a574;
+}
+
+.brand-content :deep(img) {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 15px 0;
+}
+
 .loading {
   text-align: center;
   color: #d4a574;
@@ -395,6 +684,18 @@ onMounted(() => { fetchData() })
 
   .view-more {
     font-size: 13px;
+  }
+
+  .promo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .brand-content {
+    font-size: 14px;
   }
 }
 </style>
