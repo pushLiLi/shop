@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useToastStore } from '../../stores/toast'
 
 const API_BASE = '/api'
+const toast = useToastStore()
 
 const categories = ref([])
 const loading = ref(false)
@@ -67,7 +69,7 @@ const closeModal = () => {
 
 const saveCategory = async () => {
   if (!form.value.name) {
-    alert('请填写分类名称')
+    toast.error('请填写分类名称')
     return
   }
 
@@ -97,7 +99,7 @@ const saveCategory = async () => {
     closeModal()
     fetchCategories()
   } catch (e) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
@@ -119,7 +121,7 @@ const deleteCategory = async (category) => {
 
     fetchCategories()
   } catch (e) {
-    alert(e.message)
+    toast.error(e.message)
   }
 }
 

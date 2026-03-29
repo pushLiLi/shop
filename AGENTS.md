@@ -26,7 +26,27 @@ docker-compose up -d mysql      # MySQL only (root/123456, db: bycigar)
 docker-compose up -d minio      # MinIO only (minioadmin/minioadmin123, bucket: bycigar)
 docker-compose up --build       # Full stack: MySQL + MinIO + Backend + Frontend (:80)
 ```
-**No test or lint framework.** No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify compilation.
+No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify compilation.
+
+## Test Commands
+
+```bash
+# Frontend tests (run from bycigar-vue/) — Vitest + @vue/test-utils + happy-dom
+npm test                        # Run all tests once (vitest run)
+npm run test:watch              # Run tests in watch mode
+npx vitest run src/stores/cart.spec.js          # Run a single test file
+npx vitest run --reporter=verbose               # Run with verbose output
+
+# Backend tests (run from server-go/) — Go testing + testify/suite
+# Requires MySQL + MinIO running (docker-compose up -d mysql minio)
+# Uses database: bycigar_test (separate from dev db: bycigar)
+go test ./... -v -count=1                       # Run all backend tests
+go test ./test/... -v -count=1                  # Run only integration tests
+go test ./test/... -v -count=1 -run TestProductSuite  # Run a single test suite
+go test ./test/... -v -count=1 -run "TestProductSuite/TestGetProductsDefaultPagination"  # Single test
+```
+
+Frontend tests are unit tests (no backend needed). Backend tests are integration tests that hit a real MySQL + MinIO.
 
 ## Project Structure
 
@@ -40,8 +60,8 @@ bycigar-vue/src/
 ├── composables/                # useCarousel (autoplay, touch, pause)
 ├── views/                      # 11 public: Home, Category, ProductDetail, Search, Cart,
 │                               #   Checkout, Orders, Favorites, Login, Profile, Page
-├── views/admin/                # 6 admin: AdminLayout, AdminProducts, AdminBanners,
-│                               #   AdminCategories, AdminPages, AdminSettings
+├── views/admin/                # 9 admin: AdminLayout, AdminDashboard, AdminProducts, AdminOrders,
+│                               #   AdminUsers, AdminBanners, AdminCategories, AdminPages, AdminSettings
 ├── stores/                     # Pinia: auth.js, cart.js, favorites.js, toast.js, useSettingsStore.js
 └── router/index.js             # Routes with auth/admin guards
 
@@ -52,14 +72,35 @@ server-go/
 │   ├── database/database.go    # Connect, Migrate, Seed, BackfillOrderNo
 │   ├── handlers/               # product, banner, page, auth, captcha, cart, favorite,
 │   │                           #   order, address, config, setting, upload,
-│   │                           #   admin_product, admin_category
+│   │                           #   admin_product, admin_category, admin_order,
+│   │                           #   admin_dashboard, admin_user
 │   ├── models/                 # User, Category, Product, CartItem, Favorite, Address,
 │   │                           #   Order, OrderItem, SiteConfig, Banner, Page, Setting
 │   └── middleware/             # cors.go, auth.go, admin.go
+├── test/                       # Integration tests: helpers.go + *_test.go per domain
+│   └── helpers.go              # SetupTestConfig, SetupTestDB, SetupRouter, SeedTestData,
+│                               #   MakeRequest, MakeFormRequest, GetAdminAuthHeader, etc.
 └── pkg/
     ├── minio/minio.go          # MinIO client wrapper + EnsureBucket
     └── utils/                  # Response helpers + snowflake order number + UUID upload names
 ```
+
+## Test Patterns
+
+### Frontend (Vitest)
+- Test files colocated: `Component.spec.js` next to `Component.vue` in `src/`
+- Setup: `setActivePinia(createPinia())` + `localStorage.clear()` in `beforeEach`
+- Component tests use `@vue/test-utils` `mount` with a stubbed `vue-router` (`createMemoryHistory`)
+- Store tests import stores directly, test state/getters/actions in isolation
+- API calls mocked with `vi.fn()` or `vi.spyOn`
+
+### Backend (testify/suite)
+- All tests in `server-go/test/` package, using `github.com/stretchr/testify/suite`
+- Each domain has a `XxxTestSuite` struct with `SetupSuite` (calls `SetupTestConfig` → `SetupTestDB` → `SetupRouter`)
+- Test helper `MakeRequest(router, method, path, body, headers)` returns `*httptest.ResponseRecorder`
+- Auth via dev bypass: `GetAdminAuthHeader()` / `GetCustomerAuthHeader()` returns `{"Authorization": "user-{id}"}`
+- `SeedTestData()` in `helpers.go` creates: admin + 2 customers, categories, 11 products, banners, pages, addresses, cart items, favorites, 1 order
+- Uses separate `bycigar_test` database; `CleanDB()` truncates all tables between suite runs
 
 ## Vue Code Style
 
@@ -72,15 +113,6 @@ server-go/
 - **All API calls use relative paths** (`'/api/...'`), never hardcoded `http://localhost:3000/api/...`.
 - **Auth guards in views**: Before calling cart/favorites store methods, always check `authStore.isLoggedIn`. If false, show `toast.error('请先登录')` and `router.push('/login')`. See `ProductCard.vue` for reference pattern.
 
-## Pinia Store Patterns
-
-- **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
-- **Options API** (`cart.js`, `favorites.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
-- Store IDs are simple lowercase: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`.
-- Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
-- Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
-- Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
-
 ## Go Code Style
 
 - Import order: stdlib -> blank line -> external -> blank line -> internal
@@ -89,6 +121,15 @@ server-go/
 - No code comments except Swagger annotations.
 - Error responses: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`.
 - Input structs live in model files; exception: `ProductInput` in `admin_product.go`.
+
+## Pinia Store Patterns
+
+- **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
+- **Options API** (`cart.js`, `favorites.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
+- Store IDs are simple lowercase: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`.
+- Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
+- Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
+- Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
 
 ## GORM Models
 
@@ -111,6 +152,7 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 | Type | Convention | Example |
 |---|---|---|
 | Vue Components | PascalCase | `ProductCard.vue` |
+| Vue Test Files | PascalCase + .spec.js | `ProductCard.spec.js` |
 | Views | PascalCase + View | `HomeView.vue` |
 | Admin Views | Admin + Pascal | `AdminProducts.vue` |
 | Stores | use + camel + Store | `useCartStore` |
@@ -119,6 +161,8 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 | Go Handlers | PascalCase | `GetProducts` |
 | Go Helpers | camelCase | `generateSlug` |
 | Go Files | snake_case | `admin_product.go` |
+| Go Test Files | snake_case + _test.go | `product_test.go` |
+| Go Test Suites | PascalCase + TestSuite | `ProductTestSuite` |
 
 ## Authentication
 
@@ -134,26 +178,23 @@ utils.ErrorResponse(c, http.StatusBadRequest, "Invalid")  // 4xx {"error": "msg"
 
 Public: products, categories, banners, pages, auth/login, auth/register, config, settings, auth/captcha
 Auth-dependent: auth/me, auth/profile, auth/change-password, cart, favorites, orders, addresses
-Admin (AdminOnly): admin/products, admin/categories, admin/banners, admin/pages, admin/upload, admin/settings/:key
-**Security note**: `PUT /api/admin/config/:key` is outside admin group -- no role check.
-Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy` (alias: `sort`), `sortOrder` (alias: `order`), `featured`, `active`
+Admin (AdminOnly): admin/products (CRUD + batch), admin/categories, admin/banners, admin/pages, admin/upload, admin/settings/:key, admin/config/:key, admin/orders, admin/users, admin/dashboard/stats|recent-orders|low-stock|top-products
+Query params: `page`, `limit`, `search`, `category` (slug), `categoryId`, `sortBy` (alias: `sort`), `sortOrder` (alias: `order`), `featured`, `active`, `status`, `role`
 
 ## Architecture Notes
 
 - Admin endpoints return ALL records; public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
 - Product listings always sort `stock > 0` first via SQL CASE expression.
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
+- Order status flow: `pending → processing → shipped → completed`, with `cancelled` from pending/processing.
 - `Product.Image` and `Banner.Image` have JSON tag `"imageUrl"`. Frontend must send/read `"imageUrl"`.
+- `Product.Images` stores additional images as comma-separated URLs. Admin supports multi-image upload.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/{bucket}/{timestamp}_{uuid}{ext}"}`. Max 10MB, jpg/png/gif/webp.
 - `AdminImageUpload.vue` supports optional cropping via `vue-advanced-cropper`. Pass `:aspect-ratio` prop to enforce ratio.
 - CMS pages: slugs `about`, `services`, `privacy-policy`, `statement`. Markdown via `marked`.
 - **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Production nginx mirrors this.
 - **App.vue layout**: Shows TheHeader + TheFooter on all routes except `/admin/*`. Toast and CartDrawer always mounted.
-- **HomeView**: Banner slider → 特别推荐 (featured, limit 12) → optional banner ad → 按分类商品 (per-category sections, 8 products each, each has "查看更多 →" link).
-- **ProductCard horizontal mode**: `ProductCard` accepts `horizontal` prop (Boolean). CategoryView/SearchView pass `:horizontal="isCompact"` (≤992px). HomeView/ProductDetailView use vertical cards.
-- **CategorySidebar mobile drawer**: On mobile (≤768px), bottom drawer via `<Teleport to="body">` with overlay and slide-up animation.
 - **Config**: `.env` fields: DB_HOST/PORT/USER/PASSWORD/NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET/USE_SSL.
-- **Login progressive captcha**: In-memory counter per email. `maxLoginAttempts=3`. 15-min auto-reset. Login error responses include `"requireCaptcha": true` when threshold met. Frontend `LoginView.vue` conditionally shows captcha row. Register always shows captcha.
 
 ## Git Commits
 
@@ -167,7 +208,8 @@ refactor: 简化购物车侧边栏逻辑
 
 - **Language**: Communicate in Chinese
 - **No comments**: Do not add code comments in source files
-- **No tests**: No test framework, use build to verify
+- **No linter**: No ESLint/Prettier/Go linter; use `go build` and `npm run build` to verify compilation
+- **Run tests after changes**: Use `npm test` (frontend) and `go test ./... -v -count=1` (backend) to verify
 - **Simplicity**: Avoid over-engineering
 - **Error handling**: Frontend uses toast, backend uses `utils.ErrorResponse()`
 - **Database**: Always `utf8mb4`, `parseTime=True&loc=Local` in DSN

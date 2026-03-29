@@ -237,3 +237,54 @@ func GetAdminProducts(c *gin.Context) {
 		"totalPages": totalPages,
 	})
 }
+
+type BatchStatusInput struct {
+	IDs      []uint `json:"ids" binding:"required"`
+	IsActive bool   `json:"isActive"`
+}
+
+func BatchUpdateProductStatus(c *gin.Context) {
+	var input BatchStatusInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择商品"})
+		return
+	}
+
+	result := database.DB.Model(&models.Product{}).Where("id IN ?", input.IDs).Update("is_active", input.IsActive)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "批量更新失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "批量更新成功", "updated": result.RowsAffected})
+}
+
+type BatchDeleteInput struct {
+	IDs []uint `json:"ids" binding:"required"`
+}
+
+func BatchDeleteProducts(c *gin.Context) {
+	var input BatchDeleteInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(input.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择商品"})
+		return
+	}
+
+	result := database.DB.Where("id IN ?", input.IDs).Delete(&models.Product{})
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "批量删除失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "批量删除成功", "deleted": result.RowsAffected})
+}

@@ -4,6 +4,22 @@ import (
 	"time"
 )
 
+const (
+	OrderStatusPending    = "pending"
+	OrderStatusProcessing = "processing"
+	OrderStatusShipped    = "shipped"
+	OrderStatusCompleted  = "completed"
+	OrderStatusCancelled  = "cancelled"
+)
+
+var ValidOrderStatusTransitions = map[string][]string{
+	OrderStatusPending:    {OrderStatusProcessing, OrderStatusCancelled},
+	OrderStatusProcessing: {OrderStatusShipped, OrderStatusCancelled},
+	OrderStatusShipped:    {OrderStatusCompleted},
+	OrderStatusCompleted:  {},
+	OrderStatusCancelled:  {},
+}
+
 type Order struct {
 	ID        uint        `json:"id" gorm:"primaryKey"`
 	OrderNo   string      `json:"orderNo" gorm:"uniqueIndex;size:64;not null"`

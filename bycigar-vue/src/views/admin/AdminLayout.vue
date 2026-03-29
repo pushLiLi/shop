@@ -10,14 +10,20 @@ const authStore = useAuthStore()
 const sidebarCollapsed = ref(false)
 
 const menuItems = [
+  { path: '/admin', name: '仪表盘', icon: 'dashboard' },
   { path: '/admin/products', name: '商品管理', icon: 'box' },
+  { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' },
+  { path: '/admin/users', name: '用户管理', icon: 'users' },
   { path: '/admin/banners', name: '轮播图管理', icon: 'image' },
   { path: '/admin/categories', name: '分类管理', icon: 'folder' },
   { path: '/admin/pages', name: '页面管理', icon: 'file-text' },
   { path: '/admin/settings', name: '站点设置', icon: 'settings' }
 ]
 
-const isActive = (path) => route.path === path
+const isActive = (path) => {
+  if (path === '/admin') return route.path === '/admin'
+  return route.path === path
+}
 
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
@@ -48,10 +54,27 @@ const handleLogout = () => {
           class="nav-item"
           :class="{ active: isActive(item.path) }"
         >
-          <svg v-if="item.icon === 'box'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg v-if="item.icon === 'dashboard'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <svg v-else-if="item.icon === 'box'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+          <svg v-else-if="item.icon === 'shopping-bag'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <svg v-else-if="item.icon === 'users'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg>
           <svg v-else-if="item.icon === 'image'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>

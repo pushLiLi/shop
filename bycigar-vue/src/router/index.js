@@ -16,6 +16,9 @@ import AdminBanners from '../views/admin/AdminBanners.vue'
 import AdminCategories from '../views/admin/AdminCategories.vue'
 import AdminPages from '../views/admin/AdminPages.vue'
 import AdminSettings from '../views/admin/AdminSettings.vue'
+import AdminOrders from '../views/admin/AdminOrders.vue'
+import AdminDashboard from '../views/admin/AdminDashboard.vue'
+import AdminUsers from '../views/admin/AdminUsers.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -91,7 +94,9 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: '/admin/products'
+          name: 'admin-dashboard',
+          component: AdminDashboard,
+          meta: { title: '仪表盘' }
         },
         {
           path: 'products',
@@ -122,6 +127,18 @@ const router = createRouter({
           name: 'admin-settings',
           component: AdminSettings,
           meta: { title: '站点设置' }
+        },
+        {
+          path: 'orders',
+          name: 'admin-orders',
+          component: AdminOrders,
+          meta: { title: '订单管理' }
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: AdminUsers,
+          meta: { title: '用户管理' }
         }
       ]
     }

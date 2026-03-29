@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import AdminImageUpload from '../../components/AdminImageUpload.vue'
+import { useToastStore } from '../../stores/toast'
 
 const API_BASE = '/api'
+const toast = useToastStore()
 
 const products = ref([])
 const categories = ref([])
@@ -28,8 +30,13 @@ const form = ref({
   categoryId: '',
   stock: 0,
   isActive: true,
-  isFeatured: false
+  isFeatured: false,
+  images: ''
 })
+
+const selectedIds = ref([])
+const selectAll = ref(false)
+const imageList = ref([])
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -96,8 +103,10 @@ const openCreateModal = () => {
     categoryId: '',
     stock: 0,
     isActive: true,
-    isFeatured: false
+    isFeatured: false,
+    images: ''
   }
+  imageList.value = []
   showModal.value = true
 }
 
@@ -115,6 +124,8 @@ const openEditModal = (product) => {
     isActive: product.isActive,
     isFeatured: product.isFeatured
   }
+  const extra = product.images ? product.images.split(',').filter(Boolean) : []
+  imageList.value = extra
   showModal.value = true
 }
 
@@ -124,7 +135,7 @@ const closeModal = () => {
 
 const saveProduct = async () => {
   if (!form.value.name || !form.value.price) {
-    alert('请填写商品名称和价格')
+    toast.error('请填写商品名称和价格')
     return
   }
 
@@ -143,7 +154,8 @@ const saveProduct = async () => {
       categoryId: form.value.categoryId ? parseInt(form.value.categoryId) : 0,
       stock: parseInt(form.value.stock) || 0,
       isActive: form.value.isActive,
-      isFeatured: form.value.isFeatured
+      isFeatured: form.value.isFeatured,
+      images: imageList.value.join(',')
     }
 
     const res = await fetch(url, {
@@ -160,7 +172,7 @@ const saveProduct = async () => {
     closeModal()
     fetchProducts()
   } catch (e) {
-    alert(e.message)
+    toast.error(e.message)
   } finally {
     saving.value = false
   }
@@ -182,8 +194,85 @@ const deleteProduct = async (product) => {
 
     fetchProducts()
   } catch (e) {
-    alert(e.message)
+    toast.error(e.message)
   }
+}
+
+const toggleSelectAll = () => {
+  if (selectAll.value) {
+    selectedIds.value = products.value.map(p => p.id)
+  } else {
+    selectedIds.value = []
+  }
+}
+
+const batchUpdateStatus = async (isActive) => {
+  if (selectedIds.value.length === 0) {
+    toast.error('请选择商品')
+    return
+  }
+  try {
+    const res = await fetch(`${API_BASE}/admin/products/batch/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ ids: selectedIds.value, isActive })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '操作失败')
+    toast.success(data.message)
+    selectedIds.value = []
+    selectAll.value = false
+    fetchProducts()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const batchDelete = async () => {
+  if (selectedIds.value.length === 0) {
+    toast.error('请选择商品')
+    return
+  }
+  if (!confirm(`确定要删除选中的 ${selectedIds.value.length} 个商品吗？`)) return
+  try {
+    const res = await fetch(`${API_BASE}/admin/products/batch`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ ids: selectedIds.value })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '删除失败')
+    toast.success(data.message)
+    selectedIds.value = []
+    selectAll.value = false
+    fetchProducts()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const addExtraImage = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  e.target.value = ''
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res = await fetch(`${API_BASE}/admin/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+      body: formData
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '上传失败')
+    imageList.value.push(data.url)
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const removeExtraImage = (index) => {
+  imageList.value.splice(index, 1)
 }
 
 const toggleFeatured = async (product) => {
@@ -288,6 +377,12 @@ onMounted(() => {
       </div>
       <div class="toolbar-right">
         <button class="btn-add" @click="openCreateModal">+ 添加商品</button>
+        <template v-if="selectedIds.length > 0">
+          <button class="btn-batch" @click="batchUpdateStatus(true)">批量上架</button>
+          <button class="btn-batch" @click="batchUpdateStatus(false)">批量下架</button>
+          <button class="btn-batch btn-batch-danger" @click="batchDelete">批量删除</button>
+          <span class="selected-count">已选 {{ selectedIds.length }} 件</span>
+        </template>
       </div>
     </div>
 
@@ -297,6 +392,7 @@ onMounted(() => {
       <table class="data-table">
         <thead>
           <tr>
+            <th style="width: 40px"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
             <th style="width: 60px">ID</th>
             <th style="width: 80px">图片</th>
             <th>商品名称</th>
@@ -310,6 +406,7 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr v-for="product in products" :key="product.id">
+            <td><input type="checkbox" :value="product.id" v-model="selectedIds"></td>
             <td>{{ product.id }}</td>
             <td>
               <img 
@@ -351,7 +448,7 @@ onMounted(() => {
             </td>
           </tr>
           <tr v-if="products.length === 0">
-            <td colspan="9" class="empty-text">暂无商品数据</td>
+            <td colspan="10" class="empty-text">暂无商品数据</td>
           </tr>
         </tbody>
       </table>

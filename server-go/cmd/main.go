@@ -98,6 +98,8 @@ func main() {
 		admin.POST("/products", handlers.CreateProduct)
 		admin.PUT("/products/:id", handlers.UpdateProduct)
 		admin.DELETE("/products/:id", handlers.DeleteProduct)
+		admin.PUT("/products/batch/status", handlers.BatchUpdateProductStatus)
+		admin.DELETE("/products/batch", handlers.BatchDeleteProducts)
 
 		admin.GET("/categories", handlers.GetAdminCategories)
 		admin.POST("/categories", handlers.CreateCategory)
@@ -114,6 +116,19 @@ func main() {
 
 		admin.PUT("/config/:key", handlers.UpdateConfig)
 		admin.PUT("/settings/:key", handlers.UpdateSetting)
+
+		admin.GET("/orders", handlers.GetAdminOrders)
+		admin.GET("/orders/:id", handlers.GetAdminOrder)
+		admin.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
+
+		admin.GET("/dashboard/stats", handlers.GetDashboardStats)
+		admin.GET("/dashboard/recent-orders", handlers.GetDashboardRecentOrders)
+		admin.GET("/dashboard/low-stock", handlers.GetDashboardLowStock)
+		admin.GET("/dashboard/top-products", handlers.GetDashboardTopProducts)
+
+		admin.GET("/users", handlers.GetAdminUsers)
+		admin.GET("/users/:id", handlers.GetAdminUser)
+		admin.PUT("/users/:id/role", handlers.UpdateUserRole)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)
