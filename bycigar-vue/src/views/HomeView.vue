@@ -10,6 +10,7 @@ const loading = ref(true)
 const error = ref(null)
 const config = ref({})
 const featuredProducts = ref([])
+const categoryProducts = ref([])
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
@@ -29,10 +30,11 @@ const {
 async function fetchData() {
   try {
     loading.value = true
-    const [configRes, featuredRes, bannersRes] = await Promise.all([
+    const [configRes, featuredRes, bannersRes, categoriesRes] = await Promise.all([
       fetch(`${API_BASE}/config`),
       fetch(`${API_BASE}/products?featured=true&limit=12`),
-      fetch(`${API_BASE}/banners`)
+      fetch(`${API_BASE}/banners`),
+      fetch(`${API_BASE}/categories`)
     ])
     
     config.value = await configRes.json()
@@ -46,6 +48,20 @@ async function fetchData() {
       { imageUrl: '/media/bycigar/banner-4.png', link: '#' },
       { imageUrl: '/media/bycigar/banner-5.jpg', link: '#' }
     ]
+
+    const categoriesData = await categoriesRes.json()
+    const categoriesWithProducts = (categoriesData || []).filter(c => c._count > 0)
+    
+    if (categoriesWithProducts.length > 0) {
+      const productResults = await Promise.all(
+        categoriesWithProducts.map(async (cat) => {
+          const res = await fetch(`${API_BASE}/products?categoryId=${cat.id}&limit=8`)
+          const data = await res.json()
+          return { category: cat, products: data.products || [] }
+        })
+      )
+      categoryProducts.value = productResults.filter(item => item.products.length > 0)
+    }
   } catch (e) {
     error.value = e.message
     console.error('Error:', e)
@@ -113,6 +129,24 @@ onMounted(() => { fetchData() })
     <section class="banner-section" v-if="config.home_banner_1">
       <div class="container">
         <img :src="config.home_banner_1" alt="Banner" class="full-width-banner">
+      </div>
+    </section>
+
+    <section
+      v-for="item in categoryProducts"
+      :key="item.category.id"
+      class="category-section"
+    >
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">{{ item.category.name }}</h2>
+          <router-link :to="'/category/' + item.category.slug" class="view-more">
+            查看更多 <span class="arrow">&rarr;</span>
+          </router-link>
+        </div>
+        <div class="products-grid grid-6">
+          <ProductCard v-for="product in item.products" :key="product.id" :product="product" />
+        </div>
       </div>
     </section>
   </main>
@@ -213,7 +247,7 @@ onMounted(() => { fetchData() })
   padding: 40px 0;
 }
 
-.section-title {
+.products-section .section-title {
   text-align: center;
   color: #fff;
   font-size: 24px;
@@ -222,6 +256,62 @@ onMounted(() => { fetchData() })
   border-bottom: 2px solid #d4a574;
   display: inline-block;
   width: 100%;
+}
+
+.category-section {
+  padding: 30px 0;
+  border-top: 1px solid rgba(212, 165, 116, 0.15);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+.section-header .section-title {
+  color: #fff;
+  font-size: 20px;
+  margin: 0;
+  padding: 0;
+  border-bottom: none;
+  position: relative;
+  padding-left: 14px;
+}
+
+.section-header .section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: #d4a574;
+  border-radius: 2px;
+}
+
+.view-more {
+  color: #999;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.view-more:hover {
+  color: #d4a574;
+}
+
+.view-more .arrow {
+  transition: transform 0.3s;
+}
+
+.view-more:hover .arrow {
+  transform: translateX(3px);
 }
 
 .products-grid {
@@ -297,6 +387,14 @@ onMounted(() => { fetchData() })
 
   .products-grid.grid-6 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .section-header .section-title {
+    font-size: 18px;
+  }
+
+  .view-more {
+    font-size: 13px;
   }
 }
 </style>
