@@ -149,8 +149,8 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <button class="btn-refresh" :class="{ spinning: statsLoading }" @click="fetchStats" title="刷新统计">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        <button class="btn-refresh btn-refresh-float" :class="{ spinning: statsLoading }" @click="fetchStats" title="刷新统计">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
         </button>
       </div>
 
@@ -162,6 +162,7 @@ onMounted(async () => {
               <button class="btn-refresh" :class="{ spinning: ordersLoading }" @click.stop="fetchRecentOrders" title="刷新近期订单">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               </button>
+              <span class="header-divider"></span>
               <svg class="collapse-icon" :class="{ collapsed: collapsedOrders }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
           </div>
@@ -199,6 +200,7 @@ onMounted(async () => {
               <button class="btn-refresh" :class="{ spinning: lowStockLoading }" @click.stop="fetchLowStock" title="刷新低库存">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               </button>
+              <span class="header-divider"></span>
               <span class="section-sub">库存 ≤ 10</span>
               <svg class="collapse-icon" :class="{ collapsed: collapsedLowStock }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -225,6 +227,7 @@ onMounted(async () => {
               <button class="btn-refresh" :class="{ spinning: topProductsLoading }" @click.stop="fetchTopProducts" title="刷新热销商品">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
               </button>
+              <span class="header-divider"></span>
               <svg class="collapse-icon" :class="{ collapsed: collapsedTopProducts }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
           </div>
@@ -273,18 +276,21 @@ onMounted(async () => {
 }
 
 .section-with-refresh {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  position: relative;
 }
 
-.section-with-refresh .btn-refresh {
-  margin-top: 10px;
-  flex-shrink: 0;
+.btn-refresh-float {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  opacity: 0.4;
 }
 
-.section-with-refresh .stats-grid {
-  flex: 1;
+.section-with-refresh:hover .btn-refresh-float,
+.btn-refresh-float.spinning {
+  opacity: 1;
 }
 
 .btn-refresh {
@@ -431,7 +437,13 @@ onMounted(async () => {
 .section-header-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+}
+
+.header-divider {
+  width: 1px;
+  height: 14px;
+  background: #e0e0e0;
 }
 
 .collapse-icon {
