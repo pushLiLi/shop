@@ -11,6 +11,10 @@ const recentOrders = ref([])
 const lowStockProducts = ref([])
 const topProducts = ref([])
 const loading = ref(true)
+const statsLoading = ref(false)
+const ordersLoading = ref(false)
+const lowStockLoading = ref(false)
+const topProductsLoading = ref(false)
 
 const collapsedOrders = ref(false)
 const collapsedLowStock = ref(false)
@@ -41,26 +45,46 @@ const statusBadgeClass = (status) => {
 }
 
 const fetchStats = async () => {
-  const res = await fetch(`${API_BASE}/admin/dashboard/stats`, { headers: authHeaders() })
-  stats.value = await res.json()
+  statsLoading.value = true
+  try {
+    const res = await fetch(`${API_BASE}/admin/dashboard/stats`, { headers: authHeaders() })
+    stats.value = await res.json()
+  } finally {
+    statsLoading.value = false
+  }
 }
 
 const fetchRecentOrders = async () => {
-  const res = await fetch(`${API_BASE}/admin/dashboard/recent-orders`, { headers: authHeaders() })
-  const data = await res.json()
-  recentOrders.value = data.orders || []
+  ordersLoading.value = true
+  try {
+    const res = await fetch(`${API_BASE}/admin/dashboard/recent-orders`, { headers: authHeaders() })
+    const data = await res.json()
+    recentOrders.value = data.orders || []
+  } finally {
+    ordersLoading.value = false
+  }
 }
 
 const fetchLowStock = async () => {
-  const res = await fetch(`${API_BASE}/admin/dashboard/low-stock`, { headers: authHeaders() })
-  const data = await res.json()
-  lowStockProducts.value = data.products || []
+  lowStockLoading.value = true
+  try {
+    const res = await fetch(`${API_BASE}/admin/dashboard/low-stock`, { headers: authHeaders() })
+    const data = await res.json()
+    lowStockProducts.value = data.products || []
+  } finally {
+    lowStockLoading.value = false
+  }
 }
 
 const fetchTopProducts = async () => {
-  const res = await fetch(`${API_BASE}/admin/dashboard/top-products`, { headers: authHeaders() })
-  const data = await res.json()
-  topProducts.value = data.products || []
+  topProductsLoading.value = true
+  try {
+    const res = await fetch(`${API_BASE}/admin/dashboard/top-products`, { headers: authHeaders() })
+    const data = await res.json()
+    topProducts.value = data.products || []
+  } finally {
+    topProductsLoading.value = false
+  }
 }
 
 const formatPrice = (price) => `¥${parseFloat(price || 0).toFixed(2)}`
@@ -80,56 +104,66 @@ onMounted(async () => {
     <div v-if="loading" class="loading">加载中...</div>
 
     <template v-else>
-      <div class="stats-grid" :class="{ 'stats-grid-3': !showRevenue }">
-        <div class="stat-card" v-if="showRevenue">
-          <div class="stat-icon revenue">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+      <div class="section-with-refresh">
+        <div class="stats-grid" :class="{ 'stats-grid-3': !showRevenue }">
+          <div class="stat-card" v-if="showRevenue">
+            <div class="stat-icon revenue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
+              <div class="stat-label">总营收</div>
+            </div>
           </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
-            <div class="stat-label">总营收</div>
+          <div class="stat-card">
+            <div class="stat-icon orders">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.totalOrders }}</div>
+              <div class="stat-label">总订单</div>
+            </div>
+            <div class="stat-extra" v-if="stats.pendingOrders > 0">
+              <span class="pending-badge">{{ stats.pendingOrders }} 待处理</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon users">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.totalUsers }}</div>
+              <div class="stat-label">注册用户</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon today">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.todayOrders }}</div>
+              <div class="stat-label">今日订单</div>
+            </div>
+            <div class="stat-extra" v-if="showRevenue">
+              <span class="today-revenue">{{ formatPrice(stats.todayRevenue) }}</span>
+            </div>
           </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon orders">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.totalOrders }}</div>
-            <div class="stat-label">总订单</div>
-          </div>
-          <div class="stat-extra" v-if="stats.pendingOrders > 0">
-            <span class="pending-badge">{{ stats.pendingOrders }} 待处理</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon users">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.totalUsers }}</div>
-            <div class="stat-label">注册用户</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon today">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          </div>
-          <div class="stat-info">
-            <div class="stat-value">{{ stats.todayOrders }}</div>
-            <div class="stat-label">今日订单</div>
-          </div>
-          <div class="stat-extra" v-if="showRevenue">
-            <span class="today-revenue">{{ formatPrice(stats.todayRevenue) }}</span>
-          </div>
-        </div>
+        <button class="btn-refresh" :class="{ spinning: statsLoading }" @click="fetchStats" title="刷新统计">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        </button>
       </div>
 
       <div class="dashboard-grid">
         <div class="dashboard-section">
           <div class="section-header" @click="collapsedOrders = !collapsedOrders">
             <h3>近期订单</h3>
-            <svg class="collapse-icon" :class="{ collapsed: collapsedOrders }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="section-header-right">
+              <button class="btn-refresh" :class="{ spinning: ordersLoading }" @click.stop="fetchRecentOrders" title="刷新近期订单">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              </button>
+              <svg class="collapse-icon" :class="{ collapsed: collapsedOrders }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
           </div>
           <div class="section-body" v-show="!collapsedOrders">
             <table class="data-table">
@@ -162,6 +196,9 @@ onMounted(async () => {
           <div class="section-header" @click="collapsedLowStock = !collapsedLowStock">
             <h3>低库存预警</h3>
             <div class="section-header-right">
+              <button class="btn-refresh" :class="{ spinning: lowStockLoading }" @click.stop="fetchLowStock" title="刷新低库存">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              </button>
               <span class="section-sub">库存 ≤ 10</span>
               <svg class="collapse-icon" :class="{ collapsed: collapsedLowStock }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
@@ -184,7 +221,12 @@ onMounted(async () => {
         <div class="dashboard-section full-width">
           <div class="section-header" @click="collapsedTopProducts = !collapsedTopProducts">
             <h3>热销商品 TOP 10</h3>
-            <svg class="collapse-icon" :class="{ collapsed: collapsedTopProducts }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            <div class="section-header-right">
+              <button class="btn-refresh" :class="{ spinning: topProductsLoading }" @click.stop="fetchTopProducts" title="刷新热销商品">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              </button>
+              <svg class="collapse-icon" :class="{ collapsed: collapsedTopProducts }" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
           </div>
           <div class="section-body" v-show="!collapsedTopProducts">
             <table class="data-table">
@@ -228,6 +270,38 @@ onMounted(async () => {
   color: #666;
   background: #fff;
   border-radius: 8px;
+}
+
+.section-with-refresh {
+  position: relative;
+}
+
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #999;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btn-refresh:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.btn-refresh.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .stats-grid {
