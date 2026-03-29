@@ -89,8 +89,6 @@ func main() {
 	r.GET("/api/auth/captcha", handlers.GetCaptcha)
 	r.PUT("/api/auth/change-password", middleware.RequireAuth(), handlers.ChangePassword)
 
-	r.PUT("/api/admin/config/:key", handlers.UpdateConfig)
-
 	admin := r.Group("/api/admin")
 	admin.Use(middleware.AdminOnly)
 	{
@@ -114,6 +112,7 @@ func main() {
 		admin.GET("/pages", handlers.GetAdminPages)
 		admin.PUT("/pages/:slug", handlers.UpdatePage)
 
+		admin.PUT("/config/:key", handlers.UpdateConfig)
 		admin.PUT("/settings/:key", handlers.UpdateSetting)
 	}
 

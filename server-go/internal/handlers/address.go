@@ -214,7 +214,10 @@ func DeleteAddress(c *gin.Context) {
 		return
 	}
 
-	database.DB.Delete(&existing)
+	if err := database.DB.Delete(&existing).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "删除失败，该地址可能已被订单引用")
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
