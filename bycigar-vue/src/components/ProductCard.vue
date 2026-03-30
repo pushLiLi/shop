@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
 import { useToastStore } from '../stores/toast'
+import { useShare } from '../composables/useShare'
 
 const emit = defineEmits(['addToCart'])
 
@@ -24,6 +25,7 @@ const authStore = useAuthStore()
 const cartStore = useCartStore()
 const favoritesStore = useFavoritesStore()
 const toast = useToastStore()
+const { shareProduct } = useShare()
 
 const isFavorite = computed(() => {
   return favoritesStore.items.some(item => item.productId === props.product.id)
@@ -57,6 +59,12 @@ async function toggleFavorite(e) {
     await favoritesStore.addItem(props.product)
   }
 }
+
+async function shareHandler(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  await shareProduct(props.product)
+}
 </script>
 
 <template>
@@ -66,6 +74,15 @@ async function toggleFavorite(e) {
       <button class="favorite-btn" @click="toggleFavorite" :class="{ active: isFavorite }">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" :fill="isFavorite ? '#d4a574' : 'none'" stroke="currentColor" stroke-width="2">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+      </button>
+      <button class="share-btn" @click="shareHandler">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="18" cy="5" r="3"></circle>
+          <circle cx="6" cy="12" r="3"></circle>
+          <circle cx="18" cy="19" r="3"></circle>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
         </svg>
       </button>
     </router-link>
@@ -119,6 +136,24 @@ async function toggleFavorite(e) {
 }
 
 .favorite-btn.active {
+  color: #d4a574;
+}
+
+.share-btn {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s;
+  color: #fff;
+}
+
+.share-btn:hover {
+  background: rgba(0,0,0,0.8);
   color: #d4a574;
 }
 
@@ -248,7 +283,22 @@ async function toggleFavorite(e) {
   font-size: 16px;
 }
 
+.product-card.horizontal .share-btn {
+  top: 8px;
+  left: 8px;
+  padding: 6px;
+}
+
 @media (max-width: 768px) {
+  .add-cart-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .favorite-btn {
+    padding: 8px;
+  }
+
   .product-card.horizontal .product-image {
     width: 120px;
     height: 120px;
@@ -258,6 +308,12 @@ async function toggleFavorite(e) {
   .product-card.horizontal .favorite-btn {
     top: 6px;
     right: 6px;
+    padding: 5px;
+  }
+
+  .product-card.horizontal .share-btn {
+    top: 6px;
+    left: 6px;
     padding: 5px;
   }
 
@@ -271,8 +327,8 @@ async function toggleFavorite(e) {
   }
 
   .product-card.horizontal .add-cart-btn {
-    padding: 5px 10px;
-    font-size: 11px;
+    padding: 8px 12px;
+    font-size: 12px;
   }
 
   .product-card.horizontal .product-price {
