@@ -95,6 +95,15 @@ onMounted(fetchSettings)
       <div class="form-section">
         <h3>首页横幅图</h3>
 
+        <div class="content-tips">
+          <div class="tip-item">
+            <strong>推荐尺寸：</strong>1400 × 500px（宽高比 7:3）
+          </div>
+          <div class="tip-item">
+            <strong>推荐内容：</strong>品牌故事、新品推荐、促销活动、节日专题等
+          </div>
+        </div>
+
         <div v-for="(label, key) in bannerLabels" :key="key" class="form-group">
           <label>{{ label }}</label>
           <AdminImageUpload v-model="banners[key]" />
@@ -103,22 +112,31 @@ onMounted(fetchSettings)
 
       <div class="form-section">
         <h3>页脚设置</h3>
-        
+
+        <div class="content-tips">
+          <div class="tip-item">
+            <strong>页脚描述：</strong>推荐包含品牌简介、经营理念、核心优势等，建议 50-150 字
+          </div>
+          <div class="tip-item">
+            <strong>客服时间：</strong>推荐格式如"客服在线时间每周一至周六 9:00 到 18:00"
+          </div>
+        </div>
+
         <div class="form-group">
           <label>页脚描述</label>
-          <textarea 
-            v-model="form.footer_description" 
-            rows="4" 
+          <textarea
+            v-model="form.footer_description"
+            rows="4"
             placeholder="输入页脚描述文字..."
           ></textarea>
-          <span class="hint">显示在网站底部的主要描述文字</span>
+          <span class="hint">显示在网站底部的主要描述文字，推荐包含品牌简介和核心优势</span>
         </div>
 
         <div class="form-group">
           <label>客服在线时间</label>
-          <input 
-            v-model="form.footer_service_time" 
-            type="text" 
+          <input
+            v-model="form.footer_service_time"
+            type="text"
             placeholder="例如：客服在线时间每周一至周六 9:00到18:00"
           />
           <span class="hint">显示在页脚描述下方的客服时间信息</span>
@@ -174,6 +192,22 @@ onMounted(fetchSettings)
   margin: 0 0 16px;
   padding-bottom: 8px;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.content-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #fdf8f3;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: #8a7560;
+}
+
+.content-tips .tip-item strong {
+  color: #b08968;
 }
 
 .form-group {

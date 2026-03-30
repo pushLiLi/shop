@@ -84,9 +84,11 @@ async function fetchData() {
 
     const bannersData = await bannersRes.json()
     banners.value = bannersData.length > 0 ? bannersData : [
-      { imageUrl: '/media/bycigar/微信图片_20260303152810_1_341(2).jpg', link: '/brand-gl-pease' },
-      { imageUrl: '/media/bycigar/banner-4.png', link: '#' },
-      { imageUrl: '/media/bycigar/banner-5.jpg', link: '#' }
+      { imageUrl: 'https://picsum.photos/seed/cigar1/1400/500', link: '#' },
+      { imageUrl: 'https://picsum.photos/seed/cigar2/1400/500', link: '#' },
+      { imageUrl: 'https://picsum.photos/seed/cigar3/1400/500', link: '#' },
+      { imageUrl: 'https://picsum.photos/seed/cigar4/1400/500', link: '#' },
+      { imageUrl: 'https://picsum.photos/seed/cigar5/1400/500', link: '#' }
     ]
 
     const categoriesData = await categoriesRes.json()
