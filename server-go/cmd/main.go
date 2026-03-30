@@ -8,6 +8,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
+	"bycigar-server/internal/ws"
 	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
 
@@ -44,6 +45,9 @@ func main() {
 	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
 	utils.InitSnowflake(1)
 	database.BackfillOrderNo()
+
+	ws.DefaultHub = ws.NewHub()
+	go ws.DefaultHub.Run()
 
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())
@@ -96,6 +100,7 @@ func main() {
 	r.GET("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.GetMessages)
 	r.POST("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.SendMessage)
 	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
+	r.GET("/api/chat/ws", middleware.RequireAuth(), handlers.HandleCustomerWS)
 
 	r.GET("/api/auth/me", handlers.GetProfile)
 	r.PUT("/api/auth/profile", handlers.UpdateProfile)
@@ -137,6 +142,7 @@ func main() {
 		admin.POST("/chat/conversations/:id/messages", handlers.AdminSendMessage)
 		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
 		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
+		admin.GET("/chat/ws", handlers.HandleAdminWS)
 	}
 
 	superAdmin := r.Group("/api/admin")

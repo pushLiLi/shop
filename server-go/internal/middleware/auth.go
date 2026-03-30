@@ -17,6 +17,12 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			authHeader = c.Query("token")
+			if authHeader != "" && !strings.HasPrefix(authHeader, "Bearer ") {
+				authHeader = "Bearer " + authHeader
+			}
+		}
+		if authHeader == "" {
 			c.Next()
 			return
 		}

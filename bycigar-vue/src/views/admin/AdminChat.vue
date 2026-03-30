@@ -14,12 +14,110 @@ const messagesLoading = ref(false)
 const replyContent = ref('')
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
-const pollTimer = ref(null)
+const ws = ref(null)
+const wsReconnectTimer = ref(null)
+const wsReconnectDelay = ref(3000)
+const wsConnected = ref(false)
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
 })
+
+const connectWebSocket = () => {
+  disconnectWebSocket()
+  const token = localStorage.getItem('token')
+  if (!token) return
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const url = `${protocol}//${window.location.host}/api/admin/chat/ws?token=${encodeURIComponent(token)}`
+
+  try {
+    ws.value = new WebSocket(url)
+
+    ws.value.onopen = () => {
+      wsConnected.value = true
+      wsReconnectDelay.value = 3000
+    }
+
+    ws.value.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        handleWSMessage(data)
+      } catch (e) {
+        console.error('Parse WS message failed:', e)
+      }
+    }
+
+    ws.value.onclose = () => {
+      wsConnected.value = false
+      scheduleReconnect()
+    }
+
+    ws.value.onerror = () => {
+      wsConnected.value = false
+    }
+  } catch (e) {
+    console.error('WebSocket connect failed:', e)
+    scheduleReconnect()
+  }
+}
+
+const disconnectWebSocket = () => {
+  if (wsReconnectTimer.value) {
+    clearTimeout(wsReconnectTimer.value)
+    wsReconnectTimer.value = null
+  }
+  if (ws.value) {
+    ws.value.onclose = null
+    ws.value.close()
+    ws.value = null
+  }
+  wsConnected.value = false
+}
+
+const scheduleReconnect = () => {
+  if (wsReconnectTimer.value) return
+  wsReconnectTimer.value = setTimeout(() => {
+    wsReconnectTimer.value = null
+    connectWebSocket()
+  }, wsReconnectDelay.value)
+  wsReconnectDelay.value = Math.min(wsReconnectDelay.value * 2, 30000)
+}
+
+const wsSend = (data) => {
+  if (ws.value && ws.value.readyState === WebSocket.OPEN) {
+    ws.value.send(JSON.stringify(data))
+  }
+}
+
+const handleWSMessage = (data) => {
+  switch (data.type) {
+    case 'new_message':
+      if (data.message && selectedConversation.value && data.conversationId === selectedConversation.value.id) {
+        const exists = messages.value.some(m => m.id === data.message.id)
+        if (!exists) {
+          messages.value.push(data.message)
+          scrollToBottom()
+        }
+        wsSend({ type: 'mark_read', conversationId: selectedConversation.value.id })
+      }
+      fetchConversations()
+      break
+    case 'conversation_updated':
+      if (data.conversation) {
+        const idx = conversations.value.findIndex(c => c.id === data.conversation.id)
+        if (idx >= 0) {
+          conversations.value[idx] = { ...conversations.value[idx], ...data.conversation }
+        }
+        if (selectedConversation.value && data.conversation.id === selectedConversation.value.id) {
+          selectedConversation.value = { ...selectedConversation.value, ...data.conversation }
+        }
+      }
+      break
+    case 'unread_stats':
+      break
+  }
+}
 
 const fetchConversations = async () => {
   try {
@@ -38,6 +136,7 @@ const selectConversation = async (conv) => {
   messages.value = []
   await fetchMessages()
   scrollToBottom()
+  wsSend({ type: 'mark_read', conversationId: conv.id })
 }
 
 const fetchMessages = async (afterId) => {
@@ -70,23 +169,28 @@ const sendReply = async () => {
   if (!replyContent.value.trim() || !selectedConversation.value) return
   const content = replyContent.value
   replyContent.value = ''
-  try {
-    const convId = selectedConversation.value.id
-    const res = await fetch(`${API_BASE}/admin/chat/conversations/${convId}/messages`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ content: content.trim() })
-    })
-    const data = await res.json()
-    if (data.message) {
-      messages.value.push(data.message)
-      scrollToBottom()
-    }
-  } catch (e) {
-    toast.error('发送失败')
-  }
   if (textareaRef.value) {
     textareaRef.value.style.height = 'auto'
+  }
+
+  const convId = selectedConversation.value.id
+  if (wsConnected.value) {
+    wsSend({ type: 'send_message', conversationId: convId, content: content.trim() })
+  } else {
+    try {
+      const res = await fetch(`${API_BASE}/admin/chat/conversations/${convId}/messages`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ content: content.trim() })
+      })
+      const data = await res.json()
+      if (data.message) {
+        messages.value.push(data.message)
+        scrollToBottom()
+      }
+    } catch (e) {
+      toast.error('发送失败')
+    }
   }
 }
 
@@ -148,26 +252,6 @@ const truncate = (str, len) => {
   return str.length > len ? str.substring(0, len) + '...' : str
 }
 
-const startPolling = () => {
-  stopPolling()
-  const poll = () => {
-    fetchConversations()
-    if (selectedConversation.value) {
-      const lastId = messages.value.length > 0 ? messages.value[messages.value.length - 1].id : 0
-      fetchMessages(lastId)
-    }
-    pollTimer.value = setTimeout(poll, 5000)
-  }
-  pollTimer.value = setTimeout(poll, 5000)
-}
-
-const stopPolling = () => {
-  if (pollTimer.value) {
-    clearTimeout(pollTimer.value)
-    pollTimer.value = null
-  }
-}
-
 watch(filterStatus, () => {
   fetchConversations()
 })
@@ -178,11 +262,11 @@ watch(() => messages.value.length, () => {
 
 onMounted(() => {
   fetchConversations()
-  startPolling()
+  connectWebSocket()
 })
 
 onUnmounted(() => {
-  stopPolling()
+  disconnectWebSocket()
 })
 </script>
 

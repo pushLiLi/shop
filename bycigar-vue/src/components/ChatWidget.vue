@@ -166,7 +166,7 @@ watch(() => chatStore.messages.length, () => {
 
 onMounted(() => {
   if (authStore.isLoggedIn) {
-    chatStore.initPolling()
+    chatStore.init()
   }
   const pos = clampPosition(window.innerWidth - 86, window.innerHeight - 86)
   fabX.value = pos.x
@@ -187,7 +187,7 @@ onUnmounted(() => {
 
 watch(() => authStore.isLoggedIn, (val) => {
   if (val) {
-    chatStore.initPolling()
+    chatStore.init()
   } else {
     chatStore.cleanup()
   }
