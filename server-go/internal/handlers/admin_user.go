@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
@@ -31,7 +32,8 @@ func GetAdminUsers(c *gin.Context) {
 		query = query.Where("email LIKE ? OR name LIKE ?", "%"+search+"%", "%"+search+"%")
 	}
 	if role != "" {
-		query = query.Where("role = ?", role)
+		roles := strings.Split(role, ",")
+		query = query.Where("role IN ?", roles)
 	}
 
 	var total int64

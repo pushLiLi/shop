@@ -13,6 +13,7 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 const limit = 20
 const search = ref('')
+const activeTab = ref('')
 
 const showDetailModal = ref(false)
 const detailUser = ref(null)
@@ -42,6 +43,7 @@ const fetchUsers = async () => {
   try {
     const params = new URLSearchParams({ page: currentPage.value, limit })
     if (search.value) params.append('search', search.value)
+    if (activeTab.value) params.append('role', activeTab.value)
 
     const res = await fetch(`${API_BASE}/admin/users?${params}`, { headers: authHeaders() })
     const data = await res.json()
@@ -61,6 +63,12 @@ const handleSearch = () => {
 
 const resetSearch = () => {
   search.value = ''
+  currentPage.value = 1
+  fetchUsers()
+}
+
+const switchTab = (role) => {
+  activeTab.value = role
   currentPage.value = 1
   fetchUsers()
 }
@@ -172,6 +180,12 @@ onMounted(() => fetchUsers())
         </div>
         <button class="btn-reset" @click="resetSearch">重置</button>
       </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-item" :class="{ active: activeTab === '' }" @click="switchTab('')">全部</button>
+      <button class="tab-item" :class="{ active: activeTab === 'customer' }" @click="switchTab('customer')">客户</button>
+      <button class="tab-item" :class="{ active: activeTab === 'admin,service' }" @click="switchTab('admin,service')">管理员</button>
     </div>
 
     <div v-if="loading" class="loading">加载中...</div>
@@ -743,5 +757,33 @@ onMounted(() => fetchUsers())
 
 .btn-danger:hover {
   background: #b71c1c !important;
+}
+
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  padding: 0 20px;
+  gap: 0;
+}
+
+.tab-item {
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-item:hover {
+  color: #333;
+}
+
+.tab-item.active {
+  color: #d4a574;
+  border-bottom-color: #d4a574;
+  font-weight: 600;
 }
 </style>

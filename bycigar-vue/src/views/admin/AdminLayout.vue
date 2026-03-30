@@ -9,21 +9,47 @@ const authStore = useAuthStore()
 
 const sidebarCollapsed = ref(false)
 
-const allMenuItems = [
-  { path: '/admin', name: '仪表盘', icon: 'dashboard' },
-  { path: '/admin/products', name: '商品管理', icon: 'box' },
-  { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' },
-  { path: '/admin/users', name: '用户管理', icon: 'users' },
-  { path: '/admin/chat', name: '客服消息', icon: 'message-circle' },
-  { path: '/admin/categories', name: '分类管理', icon: 'folder' },
-  { path: '/admin/banners', name: '轮播图管理', icon: 'image', superAdminOnly: true },
-  { path: '/admin/pages', name: '页面管理', icon: 'file-text', superAdminOnly: true },
-  { path: '/admin/settings', name: '站点设置', icon: 'settings', superAdminOnly: true }
+const allMenuGroups = [
+  {
+    title: '概览',
+    items: [
+      { path: '/admin', name: '仪表盘', icon: 'dashboard' }
+    ]
+  },
+  {
+    title: '商品',
+    items: [
+      { path: '/admin/products', name: '商品管理', icon: 'box' },
+      { path: '/admin/categories', name: '分类管理', icon: 'folder' }
+    ]
+  },
+  {
+    title: '交易',
+    items: [
+      { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' }
+    ]
+  },
+  {
+    title: '客户',
+    items: [
+      { path: '/admin/users', name: '用户管理', icon: 'users' },
+      { path: '/admin/chat', name: '客服消息', icon: 'message-circle' }
+    ]
+  },
+  {
+    title: '系统',
+    superAdminOnly: true,
+    items: [
+      { path: '/admin/banners', name: '轮播图管理', icon: 'image' },
+      { path: '/admin/pages', name: '页面管理', icon: 'file-text' },
+      { path: '/admin/settings', name: '站点设置', icon: 'settings' }
+    ]
+  }
 ]
 
-const menuItems = computed(() => {
-  if (authStore.isSuperAdmin) return allMenuItems
-  return allMenuItems.filter(item => !item.superAdminOnly)
+const menuGroups = computed(() => {
+  if (authStore.isSuperAdmin) return allMenuGroups
+  return allMenuGroups.filter(group => !group.superAdminOnly)
 })
 
 const isActive = (path) => {
@@ -53,13 +79,15 @@ const handleLogout = () => {
       </div>
       
       <nav class="sidebar-nav">
-        <router-link 
-          v-for="item in menuItems" 
-          :key="item.path"
-          :to="item.path"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-        >
+        <div v-for="group in menuGroups" :key="group.title" class="nav-group">
+          <div v-if="!sidebarCollapsed" class="nav-group-title">{{ group.title }}</div>
+          <router-link 
+            v-for="item in group.items" 
+            :key="item.path"
+            :to="item.path"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+          >
           <svg v-if="item.icon === 'dashboard'" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7"></rect>
             <rect x="14" y="3" width="7" height="7"></rect>
@@ -106,6 +134,7 @@ const handleLogout = () => {
           </svg>
           <span v-if="!sidebarCollapsed">{{ item.name }}</span>
         </router-link>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -189,7 +218,21 @@ const handleLogout = () => {
 
 .sidebar-nav {
   flex: 1;
-  padding: 15px 0;
+  padding: 10px 0;
+  overflow-y: auto;
+}
+
+.nav-group {
+  margin-bottom: 6px;
+}
+
+.nav-group-title {
+  padding: 10px 20px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #777;
 }
 
 .nav-item {
@@ -210,6 +253,11 @@ const handleLogout = () => {
 .nav-item.active {
   background: #d4a574;
   color: #1a1a1a;
+}
+
+.admin-layout.collapsed .nav-group + .nav-group {
+  border-top: 1px solid #333;
+  padding-top: 6px;
 }
 
 .sidebar-footer {
