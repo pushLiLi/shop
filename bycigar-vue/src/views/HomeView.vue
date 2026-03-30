@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useCarousel } from '../composables/useCarousel'
 import ProductCard from '../components/ProductCard.vue'
@@ -29,6 +29,36 @@ const {
   onTouchEnd
 } = useCarousel({ autoplay: true, interval: 4000, pauseOnHover: true })
 
+const featuredScroll = ref(null)
+const newScroll = ref(null)
+const topSellingScroll = ref(null)
+const categoryScrolls = ref([])
+
+const scrollStates = reactive({
+  featured: { canLeft: false, canRight: true },
+  new: { canLeft: false, canRight: true },
+  topSelling: { canLeft: false, canRight: true },
+  categories: {}
+})
+
+function scrollSection(container, direction) {
+  if (!container) return
+  const item = container.querySelector('.product-scroll-item')
+  const scrollAmount = item ? item.offsetWidth + 15 : 280
+  container.scrollBy({
+    left: direction === 'left' ? -scrollAmount : scrollAmount,
+    behavior: 'smooth'
+  })
+}
+
+function updateScrollState(event, key) {
+  const el = event.target
+  const state = key.startsWith('cat-') ? scrollStates.categories[key] : scrollStates[key]
+  if (!state) return
+  state.canLeft = el.scrollLeft > 5
+  state.canRight = el.scrollLeft < el.scrollWidth - el.clientWidth - 5
+}
+
 async function fetchData() {
   try {
     loading.value = true
@@ -37,12 +67,12 @@ async function fetchData() {
       fetch(`${API_BASE}/products?featured=true&limit=12`),
       fetch(`${API_BASE}/banners`),
       fetch(`${API_BASE}/categories`),
-      fetch(`${API_BASE}/products?sortBy=createdAt&sortOrder=desc&limit=8`),
-      fetch(`${API_BASE}/products/top-selling?limit=8`)
+      fetch(`${API_BASE}/products?sortBy=createdAt&sortOrder=desc&limit=12`),
+      fetch(`${API_BASE}/products/top-selling?limit=12`)
     ])
-    
+
     config.value = await configRes.json()
-    
+
     const featuredData = await featuredRes.json()
     featuredProducts.value = featuredData.products || []
 
@@ -51,7 +81,7 @@ async function fetchData() {
 
     const topSellingData = await topSellingRes.json()
     topSellingProducts.value = topSellingData.products || []
-    
+
     const bannersData = await bannersRes.json()
     banners.value = bannersData.length > 0 ? bannersData : [
       { imageUrl: '/media/bycigar/微信图片_20260303152810_1_341(2).jpg', link: '/brand-gl-pease' },
@@ -61,16 +91,19 @@ async function fetchData() {
 
     const categoriesData = await categoriesRes.json()
     const categoriesWithProducts = (categoriesData || []).filter(c => c._count > 0)
-    
+
     if (categoriesWithProducts.length > 0) {
       const productResults = await Promise.all(
         categoriesWithProducts.map(async (cat) => {
-          const res = await fetch(`${API_BASE}/products?categoryId=${cat.id}&limit=8`)
+          const res = await fetch(`${API_BASE}/products?categoryId=${cat.id}&limit=12`)
           const data = await res.json()
           return { category: cat, products: data.products || [] }
         })
       )
       categoryProducts.value = productResults.filter(item => item.products.length > 0)
+      categoryProducts.value.forEach((_, i) => {
+        scrollStates.categories[`cat-${i}`] = { canLeft: false, canRight: true }
+      })
     }
 
   } catch (e) {
@@ -129,10 +162,21 @@ onMounted(() => { fetchData() })
 
     <section class="products-section">
       <div class="container">
-        <h2 class="section-title">{{ config.home_featured_title || '特别推荐' }}</h2>
+        <div class="section-header">
+          <h2 class="section-title">{{ config.home_featured_title || '特别推荐' }}</h2>
+          <router-link to="/products?featured=true" class="view-more">
+            查看更多 <span class="arrow">&rarr;</span>
+          </router-link>
+        </div>
         <div v-if="loading" class="loading">加载中...</div>
-        <div v-else class="products-grid grid-6">
-          <ProductCard v-for="product in featuredProducts" :key="product.id" :product="product" />
+        <div v-else class="products-scroll-wrapper">
+          <div class="products-scroll" ref="featuredScroll" @scroll="updateScrollState($event, 'featured')">
+            <div class="product-scroll-item" v-for="product in featuredProducts" :key="product.id">
+              <ProductCard :product="product" />
+            </div>
+          </div>
+          <button class="scroll-btn left" v-show="scrollStates.featured.canLeft" @click="scrollSection(featuredScroll, 'left')">&#10094;</button>
+          <button class="scroll-btn right" v-show="scrollStates.featured.canRight" @click="scrollSection(featuredScroll, 'right')">&#10095;</button>
         </div>
       </div>
     </section>
@@ -159,8 +203,14 @@ onMounted(() => { fetchData() })
           </router-link>
         </div>
         <div v-if="loading" class="loading">加载中...</div>
-        <div v-else class="products-grid grid-6">
-          <ProductCard v-for="product in newProducts" :key="'new-' + product.id" :product="product" />
+        <div v-else class="products-scroll-wrapper">
+          <div class="products-scroll" ref="newScroll" @scroll="updateScrollState($event, 'new')">
+            <div class="product-scroll-item" v-for="product in newProducts" :key="'new-' + product.id">
+              <ProductCard :product="product" />
+            </div>
+          </div>
+          <button class="scroll-btn left" v-show="scrollStates.new.canLeft" @click="scrollSection(newScroll, 'left')">&#10094;</button>
+          <button class="scroll-btn right" v-show="scrollStates.new.canRight" @click="scrollSection(newScroll, 'right')">&#10095;</button>
         </div>
       </div>
     </section>
@@ -172,7 +222,7 @@ onMounted(() => { fetchData() })
     </section>
 
     <section
-      v-for="item in categoryProducts"
+      v-for="(item, index) in categoryProducts"
       :key="item.category.id"
       class="category-section"
     >
@@ -183,8 +233,14 @@ onMounted(() => { fetchData() })
             查看更多 <span class="arrow">&rarr;</span>
           </router-link>
         </div>
-        <div class="products-grid grid-6">
-          <ProductCard v-for="product in item.products" :key="product.id" :product="product" />
+        <div class="products-scroll-wrapper">
+          <div class="products-scroll" :ref="el => categoryScrolls[index] = el" @scroll="updateScrollState($event, 'cat-' + index)">
+            <div class="product-scroll-item" v-for="product in item.products" :key="product.id">
+              <ProductCard :product="product" />
+            </div>
+          </div>
+          <button class="scroll-btn left" v-show="scrollStates.categories['cat-' + index]?.canLeft" @click="scrollSection(categoryScrolls[index], 'left')">&#10094;</button>
+          <button class="scroll-btn right" v-show="scrollStates.categories['cat-' + index]?.canRight" @click="scrollSection(categoryScrolls[index], 'right')">&#10095;</button>
         </div>
       </div>
     </section>
@@ -195,8 +251,14 @@ onMounted(() => { fetchData() })
           <h2 class="section-title">{{ config.home_topselling_title || '热销排行' }}</h2>
         </div>
         <div v-if="loading" class="loading">加载中...</div>
-        <div v-else class="products-grid grid-6">
-          <ProductCard v-for="product in topSellingProducts" :key="'top-' + product.id" :product="product" />
+        <div v-else class="products-scroll-wrapper">
+          <div class="products-scroll" ref="topSellingScroll" @scroll="updateScrollState($event, 'topSelling')">
+            <div class="product-scroll-item" v-for="product in topSellingProducts" :key="'top-' + product.id">
+              <ProductCard :product="product" />
+            </div>
+          </div>
+          <button class="scroll-btn left" v-show="scrollStates.topSelling.canLeft" @click="scrollSection(topSellingScroll, 'left')">&#10094;</button>
+          <button class="scroll-btn right" v-show="scrollStates.topSelling.canRight" @click="scrollSection(topSellingScroll, 'right')">&#10095;</button>
         </div>
       </div>
     </section>
@@ -334,17 +396,6 @@ onMounted(() => { fetchData() })
   padding: 40px 0;
 }
 
-.products-section .section-title {
-  text-align: center;
-  color: #fff;
-  font-size: 24px;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #d4a574;
-  display: inline-block;
-  width: 100%;
-}
-
 .promo-section {
   padding: 20px 0;
 }
@@ -379,33 +430,6 @@ onMounted(() => { fetchData() })
   border-top: 1px solid rgba(212, 165, 116, 0.15);
 }
 
-.new-section .section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 25px;
-}
-
-.new-section .section-title {
-  color: #fff;
-  font-size: 20px;
-  margin: 0;
-  position: relative;
-  padding-left: 14px;
-}
-
-.new-section .section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background: #d4a574;
-  border-radius: 2px;
-}
-
 .category-section {
   padding: 30px 0;
   border-top: 1px solid rgba(212, 165, 116, 0.15);
@@ -422,8 +446,6 @@ onMounted(() => { fetchData() })
   color: #fff;
   font-size: 20px;
   margin: 0;
-  padding: 0;
-  border-bottom: none;
   position: relative;
   padding-left: 14px;
 }
@@ -462,13 +484,64 @@ onMounted(() => { fetchData() })
   transform: translateX(3px);
 }
 
-.products-grid {
-  display: grid;
-  gap: 15px;
+.products-scroll-wrapper {
+  position: relative;
 }
 
-.products-grid.grid-6 {
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+.products-scroll {
+  display: flex;
+  gap: 15px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 5px;
+}
+
+.products-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.products-scroll {
+  scrollbar-width: none;
+}
+
+.product-scroll-item {
+  flex: 0 0 calc((100% - 60px) / 5);
+  scroll-snap-align: start;
+  min-width: calc((100% - 60px) / 5);
+}
+
+.scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #d4a574;
+  border: 1px solid rgba(212, 165, 116, 0.3);
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.scroll-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: #d4a574;
+}
+
+.scroll-btn.left {
+  left: -5px;
+}
+
+.scroll-btn.right {
+  right: -5px;
 }
 
 .banner-section {
@@ -485,33 +558,6 @@ onMounted(() => { fetchData() })
 .top-selling-section {
   padding: 30px 0;
   border-top: 1px solid rgba(212, 165, 116, 0.15);
-}
-
-.top-selling-section .section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 25px;
-}
-
-.top-selling-section .section-title {
-  color: #fff;
-  font-size: 20px;
-  margin: 0;
-  position: relative;
-  padding-left: 14px;
-}
-
-.top-selling-section .section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background: #d4a574;
-  border-radius: 2px;
 }
 
 .services-section {
@@ -559,6 +605,13 @@ onMounted(() => { fetchData() })
   padding: 40px;
 }
 
+@media (max-width: 1200px) {
+  .product-scroll-item {
+    flex: 0 0 calc((100% - 30px) / 3);
+    min-width: calc((100% - 30px) / 3);
+  }
+}
+
 @media (max-width: 768px) {
   .slide img {
     aspect-ratio: 2/1;
@@ -604,8 +657,13 @@ onMounted(() => { fetchData() })
     background: #d4a574;
   }
 
-  .products-grid.grid-6 {
-    grid-template-columns: repeat(2, 1fr);
+  .product-scroll-item {
+    flex: 0 0 calc((100% - 15px) / 2);
+    min-width: calc((100% - 15px) / 2);
+  }
+
+  .scroll-btn {
+    display: none;
   }
 
   .section-header .section-title {
@@ -623,6 +681,5 @@ onMounted(() => { fetchData() })
   .services-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-
 }
 </style>

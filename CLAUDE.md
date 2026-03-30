@@ -52,6 +52,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 
 - **Entry**: `cmd/main.go` — loads config → connects MySQL → migrations → seeds → InitMinio → InitSnowflake → BackfillOrderNo → start cleanup jobs → init WebSocket Hub → Gin router
 - **Structure**: `internal/config/`, `internal/database/`, `internal/models/`, `internal/handlers/`, `internal/middleware/`, `internal/ws/`
+- **Route registration**: `cmd/main.go` registers routes in groups — public routes directly on `router.Group("/api")`, admin routes on `router.Group("/api/admin")` with `AuthMiddleware` + `AdminOnly`. SuperAdminOnly applied per-handler for sensitive endpoints.
 - **Config**: `.env` file (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET, MINIO_USE_SSL)
 - **Auth middleware** (`internal/middleware/auth.go`):
   - `AuthMiddleware()` — optional JWT parsing; supports `Bearer {token}` and `user-{id}` dev bypass. Sets `userID` in Gin context.
@@ -77,6 +78,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
   - Auth required: `/checkout`, `/orders`, `/favorites`, `/profile`
   - Admin (`/admin/*`): requires `role === 'admin'` or `role === 'service'`
 - **Stores** (Pinia): `auth.js`, `cart.js`, `favorites.js`, `useSettingsStore.js`, `toast.js`, `chat.js`, `notifications.js`. Each store defines its own `getAuthHeaders()` reading `localStorage.getItem('token')`. New stores use `/api` base path (not hardcoded localhost).
+- **Composables**: `composables/useCarousel.js` — reusable carousel logic (autoplay, touch/swipe, navigation). Pattern for shared component logic.
 - **Global CSS**: `style.css` — dark theme, grid system (.col-2/3/4/6/12), utility classes, 768px responsive breakpoint.
 - **Markdown**: `marked` library renders CMS page content.
 
