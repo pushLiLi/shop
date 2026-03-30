@@ -3,12 +3,51 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"sync"
+	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
+
+var (
+	bannerCache     []models.Banner
+	bannerCacheTime time.Time
+	bannerCacheMu   sync.RWMutex
+	bannerCacheTTL  = 5 * time.Minute
+)
+
+func getBannersCached() []models.Banner {
+	bannerCacheMu.RLock()
+	if bannerCache != nil && time.Since(bannerCacheTime) < bannerCacheTTL {
+		result := bannerCache
+		bannerCacheMu.RUnlock()
+		return result
+	}
+	bannerCacheMu.RUnlock()
+
+	bannerCacheMu.Lock()
+	defer bannerCacheMu.Unlock()
+
+	if bannerCache != nil && time.Since(bannerCacheTime) < bannerCacheTTL {
+		return bannerCache
+	}
+
+	var banners []models.Banner
+	database.DB.Where("is_active = ?", true).Order("sort_order asc, id desc").Find(&banners)
+
+	bannerCache = banners
+	bannerCacheTime = time.Now()
+	return banners
+}
+
+func invalidateBannerCache() {
+	bannerCacheMu.Lock()
+	bannerCache = nil
+	bannerCacheMu.Unlock()
+}
 
 // GetBanners godoc
 // @Summary 获取轮播图列表
@@ -19,10 +58,7 @@ import (
 // @Success 200 {array} models.Banner
 // @Router /banners [get]
 func GetBanners(c *gin.Context) {
-	var banners []models.Banner
-	database.DB.Where("is_active = ?", true).Order("sort_order asc, id desc").Find(&banners)
-
-	c.JSON(http.StatusOK, banners)
+	c.JSON(http.StatusOK, getBannersCached())
 }
 
 // GetAdminBanners godoc
@@ -60,6 +96,7 @@ func CreateBanner(c *gin.Context) {
 	}
 
 	database.DB.Create(&input)
+	invalidateBannerCache()
 	c.JSON(http.StatusCreated, input)
 }
 
@@ -102,6 +139,7 @@ func UpdateBanner(c *gin.Context) {
 	banner.IsActive = input.IsActive
 
 	database.DB.Save(&banner)
+	invalidateBannerCache()
 	c.JSON(http.StatusOK, banner)
 }
 
@@ -123,5 +161,6 @@ func DeleteBanner(c *gin.Context) {
 		return
 	}
 	database.DB.Delete(&models.Banner{}, id)
+	invalidateBannerCache()
 	c.JSON(http.StatusOK, gin.H{"message": "Banner deleted"})
 }

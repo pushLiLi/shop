@@ -1,15 +1,25 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	categoriesCache     json.RawMessage
+	categoriesCacheTime time.Time
+	categoriesCacheMu   sync.RWMutex
+	categoriesCacheTTL  = 5 * time.Minute
 )
 
 // GetProducts godoc
@@ -173,13 +183,30 @@ func GetProduct(c *gin.Context) {
 // @Success 200 {array} models.Category
 // @Router /categories [get]
 func GetCategories(c *gin.Context) {
-	var categories []models.Category
-	database.DB.Where("parent_id IS NULL").Preload("Children").Find(&categories)
+	categoriesCacheMu.RLock()
+	if categoriesCache != nil && time.Since(categoriesCacheTime) < categoriesCacheTTL {
+		cached := categoriesCache
+		categoriesCacheMu.RUnlock()
+		c.Data(http.StatusOK, "application/json; charset=utf-8", cached)
+		return
+	}
+	categoriesCacheMu.RUnlock()
+
+	categoriesCacheMu.Lock()
+	defer categoriesCacheMu.Unlock()
+
+	if categoriesCache != nil && time.Since(categoriesCacheTime) < categoriesCacheTTL {
+		c.Data(http.StatusOK, "application/json; charset=utf-8", categoriesCache)
+		return
+	}
 
 	type CategoryWithCount struct {
 		models.Category
 		ProductCount int64 `json:"_count"`
 	}
+
+	var categories []models.Category
+	database.DB.Where("parent_id IS NULL").Preload("Children").Find(&categories)
 
 	var result []CategoryWithCount
 	for _, cat := range categories {
@@ -195,7 +222,11 @@ func GetCategories(c *gin.Context) {
 		})
 	}
 
-	c.JSON(http.StatusOK, result)
+	data, _ := json.Marshal(result)
+	categoriesCache = json.RawMessage(data)
+	categoriesCacheTime = time.Now()
+
+	c.Data(http.StatusOK, "application/json; charset=utf-8", data)
 }
 
 // GetTopSelling godoc

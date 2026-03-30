@@ -44,7 +44,7 @@ func Connect() {
 	sqlDB, err = DB.DB()
 	if err == nil {
 		sqlDB.SetConnMaxLifetime(5 * time.Minute)
-		sqlDB.SetConnMaxIdleTime(time.Minute)
+		sqlDB.SetConnMaxIdleTime(4 * time.Minute)
 		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetMaxOpenConns(25)
 	}
