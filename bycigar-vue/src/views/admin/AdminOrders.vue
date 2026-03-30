@@ -22,6 +22,7 @@ const detailProof = ref(null)
 const showQuickReview = ref(false)
 const quickReviewOrder = ref(null)
 const rejectReason = ref('')
+const proofImageError = ref(false)
 
 const selectedIds = ref([])
 
@@ -135,15 +136,7 @@ const openDetail = async (order) => {
     const data = await res.json()
     detailOrder.value = data.order
     detailUser.value = data.user
-    detailProof.value = order.paymentProof || null
-
-    if (!detailProof.value && (data.order?.status === 'pending' || data.order?.status === 'paid')) {
-      try {
-        const proofRes = await fetch(`${API_BASE}/orders/${data.order.id}/payment-proof`, { headers: authHeaders() })
-        const proofData = await proofRes.json()
-        detailProof.value = proofData.paymentProof || null
-      } catch (e) {}
-    }
+    detailProof.value = data.paymentProof || order.paymentProof || null
 
     showDetailModal.value = true
   } catch (e) {
@@ -437,7 +430,7 @@ onMounted(() => fetchOrders())
           <div v-if="detailProof" class="detail-section">
             <div class="section-title">付款凭证</div>
             <div class="proof-detail-grid">
-              <div class="detail-item"><span class="label">付款方式</span><span>{{ detailProof.paymentMethod?.name || '-' }}</span></div>
+              <div class="detail-item"><span class="label">付款方式</span><span>{{ typeof detailProof.paymentMethod === 'object' ? detailProof.paymentMethod?.name : detailProof.paymentMethod || '-' }}</span></div>
               <div class="detail-item">
                 <span class="label">凭证状态</span>
                 <span :class="['badge', detailProof.status === 'pending' ? 'badge-warning' : detailProof.status === 'approved' ? 'badge-success' : 'badge-danger']">
@@ -448,8 +441,9 @@ onMounted(() => fetchOrders())
                 <span class="label">付款截图</span>
                 <div class="proof-image-wrapper">
                   <a :href="detailProof.imageUrl" target="_blank">
-                    <img :src="detailProof.imageUrl" class="proof-image" />
+                    <img :src="detailProof.imageUrl" class="proof-image" @error="$event.target.style.display='none';$event.target.parentElement.nextElementSibling && ($event.target.parentElement.nextElementSibling.style.display='block')" />
                   </a>
+                  <div class="image-load-error" style="display:none">图片加载失败，<a :href="detailProof.imageUrl" target="_blank">点击在新窗口打开</a></div>
                 </div>
               </div>
               <div v-if="detailProof.rejectReason" class="detail-item full">
@@ -496,7 +490,8 @@ onMounted(() => fetchOrders())
 
           <div v-if="quickReviewOrder?.paymentProof?.imageUrl" class="review-proof-image">
             <a :href="quickReviewOrder.paymentProof.imageUrl" target="_blank">
-              <img :src="quickReviewOrder.paymentProof.imageUrl" />
+              <img :src="quickReviewOrder.paymentProof.imageUrl" @error="$event.target.style.display='none';$event.target.nextElementSibling && ($event.target.nextElementSibling.style.display='block')" />
+              <div class="image-load-error" style="display:none">图片加载失败，<a :href="quickReviewOrder.paymentProof.imageUrl" target="_blank">点击在新窗口打开</a></div>
             </a>
           </div>
 
@@ -1153,6 +1148,15 @@ select {
 
 .proof-image-wrapper {
   margin-top: 8px;
+}
+
+.image-load-error {
+  padding: 12px 16px;
+  background: #fff3e0;
+  border: 1px solid #ffe0b2;
+  border-radius: 6px;
+  color: #e65100;
+  font-size: 13px;
 }
 
 .proof-image {

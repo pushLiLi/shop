@@ -147,9 +147,26 @@ func GetAdminOrder(c *gin.Context) {
 	var user models.User
 	database.DB.First(&user, order.UserID)
 
+	var proofSummary *PaymentProofSummary
+	var proof models.PaymentProof
+	if err := database.DB.Where("order_id = ?", order.ID).
+		Preload("PaymentMethod").
+		Order("created_at desc").
+		First(&proof).Error; err == nil {
+		proofSummary = &PaymentProofSummary{
+			ID:            proof.ID,
+			Status:        proof.Status,
+			ImageUrl:      proof.ImageUrl,
+			PaymentMethod: proof.PaymentMethod.Name,
+			RejectReason:  proof.RejectReason,
+			CreatedAt:     proof.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"order": order,
-		"user":  gin.H{"id": user.ID, "name": user.Name, "email": user.Email},
+		"order":        order,
+		"user":         gin.H{"id": user.ID, "name": user.Name, "email": user.Email},
+		"paymentProof": proofSummary,
 	})
 }
 
