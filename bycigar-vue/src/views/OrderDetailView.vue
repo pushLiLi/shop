@@ -13,6 +13,7 @@ const order = ref(null)
 const paymentProof = ref(null)
 const loading = ref(true)
 const reuploadFile = ref(null)
+const reuploadPreview = ref(null)
 const reuploading = ref(false)
 
 const statusMap = {
@@ -83,6 +84,7 @@ async function handleReupload() {
       toast.success('付款截图已重新上传')
       paymentProof.value = data.paymentProof
       reuploadFile.value = null
+      reuploadPreview.value = null
     } else {
       toast.error(data.error || '上传失败')
     }
@@ -91,6 +93,26 @@ async function handleReupload() {
   } finally {
     reuploading.value = false
   }
+}
+
+function onReuploadFileChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('图片大小不能超过 10MB')
+    return
+  }
+  reuploadFile.value = file
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    reuploadPreview.value = ev.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+function removeReuploadFile() {
+  reuploadFile.value = null
+  reuploadPreview.value = null
 }
 
 function formatDate(dateStr) {
@@ -211,12 +233,30 @@ onMounted(() => fetchOrder())
 
           <div v-if="paymentProof.status === 'rejected'" class="reupload-area">
             <p class="reupload-hint">凭证被驳回，请重新上传付款截图</p>
-            <div class="reupload-form">
-              <input type="file" accept="image/*" @change="e => reuploadFile = e.target.files[0]" class="file-input" />
-              <button class="btn-reupload" :disabled="!reuploadFile || reuploading" @click="handleReupload">
-                {{ reuploading ? '上传中...' : '重新上传' }}
+            <div v-if="!reuploadPreview" class="reupload-drop" @click="$refs.reuploadInput.click()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>点击选择付款截图</span>
+              <span class="upload-hint">支持 JPG、PNG、GIF、WebP，最大 10MB</span>
+            </div>
+            <div v-else class="reupload-preview-wrapper">
+              <img :src="reuploadPreview" class="reupload-preview-img" />
+              <button class="remove-reupload-btn" @click="removeReuploadFile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
+            <input ref="reuploadInput" type="file" accept="image/*" @change="onReuploadFileChange" hidden />
+            <button
+              v-if="reuploadPreview"
+              class="btn-reupload"
+              :disabled="reuploading"
+              @click="handleReupload"
+            >
+              {{ reuploading ? '上传中...' : '提交重新上传' }}
+            </button>
           </div>
         </div>
 
@@ -488,39 +528,83 @@ onMounted(() => fetchOrder())
   margin: 0 0 12px;
 }
 
-.reupload-form {
+.reupload-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px;
+  border: 2px dashed #444;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #888;
+  transition: all 0.3s;
+}
+
+.reupload-drop:hover {
+  border-color: #d4a574;
+  color: #d4a574;
+}
+
+.upload-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: #666;
+}
+
+.reupload-preview-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+
+.reupload-preview-img {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.remove-reupload-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
 }
 
-.file-input {
-  color: #ccc;
-  font-size: 13px;
-}
-
-.file-input::file-selector-button {
-  background: #2a2a2a;
-  color: #ccc;
-  border: 1px solid #444;
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
+.remove-reupload-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke: #fff;
 }
 
 .btn-reupload {
+  width: 100%;
   background: #d4a574;
   color: #1a1a1a;
   border: none;
-  padding: 8px 18px;
+  padding: 12px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-reupload:disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

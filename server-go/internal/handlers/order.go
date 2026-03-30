@@ -156,5 +156,24 @@ func GetOrder(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, order)
+	var proofSummary map[string]interface{}
+	var proof models.PaymentProof
+	if err := database.DB.Where("order_id = ?", order.ID).
+		Preload("PaymentMethod").
+		Order("created_at desc").
+		First(&proof).Error; err == nil {
+		proofSummary = map[string]interface{}{
+			"id":              proof.ID,
+			"status":          proof.Status,
+			"imageUrl":        proof.ImageUrl,
+			"paymentMethodId": proof.PaymentMethodID,
+			"paymentMethod":   proof.PaymentMethod.Name,
+			"rejectReason":    proof.RejectReason,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"order":        order,
+		"paymentProof": proofSummary,
+	})
 }

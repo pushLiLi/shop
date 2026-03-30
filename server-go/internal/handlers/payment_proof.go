@@ -50,8 +50,13 @@ func UploadPaymentProof(c *gin.Context) {
 	paymentMethodIDStr := c.PostForm("paymentMethodId")
 	paymentMethodID, err := strconv.Atoi(paymentMethodIDStr)
 	if err != nil || paymentMethodID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择付款方式"})
-		return
+		var existingProof models.PaymentProof
+		if err := database.DB.Where("order_id = ?", order.ID).Order("created_at desc").First(&existingProof).Error; err == nil {
+			paymentMethodID = int(existingProof.PaymentMethodID)
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "请选择付款方式"})
+			return
+		}
 	}
 
 	var paymentMethod models.PaymentMethod

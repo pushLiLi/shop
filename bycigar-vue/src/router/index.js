@@ -6,6 +6,7 @@ import SearchView from '../views/SearchView.vue'
 import CartView from '../views/CartView.vue'
 import CheckoutView from '../views/CheckoutView.vue'
 import OrdersView from '../views/OrdersView.vue'
+import OrderDetailView from '../views/OrderDetailView.vue'
 import FavoritesView from '../views/FavoritesView.vue'
 import PageView from '../views/PageView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -66,6 +67,12 @@ const router = createRouter({
       path: '/orders',
       name: 'orders',
       component: OrdersView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/orders/:id',
+      name: 'order-detail',
+      component: OrderDetailView,
       meta: { requiresAuth: true }
     },
     {
