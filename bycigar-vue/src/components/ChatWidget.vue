@@ -22,6 +22,13 @@ const fullscreenImage = ref(null)
 const draftRestored = ref(false)
 const messagesLoaded = ref(false)
 const prevMsgCount = ref(0)
+const showRating = ref(false)
+const ratingConversationId = ref(null)
+const ratingScore = ref(0)
+const ratingHover = ref(0)
+const ratingComment = ref('')
+const ratingSubmitting = ref(false)
+const ratingDone = ref(false)
 
 const canSend = computed(() => messageInput.value.trim().length > 0 || previewImage.value)
 
@@ -196,6 +203,40 @@ const handleNewChat = async () => {
   scrollToBottom()
 }
 
+const openRating = (conversationId) => {
+  ratingConversationId.value = conversationId
+  ratingScore.value = 0
+  ratingComment.value = ''
+  ratingSubmitting.value = false
+  ratingDone.value = false
+  showRating.value = true
+}
+
+const submitRating = async () => {
+  if (ratingScore.value === 0 || ratingSubmitting.value) return
+  ratingSubmitting.value = true
+  try {
+    const token = localStorage.getItem('token')
+    await fetch(`/api/chat/conversations/${ratingConversationId.value}/rate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ score: ratingScore.value, comment: ratingComment.value })
+    })
+    ratingDone.value = true
+  } catch (e) {
+    console.error('Rating failed:', e)
+  } finally {
+    ratingSubmitting.value = false
+  }
+}
+
+const closeRating = () => {
+  showRating.value = false
+}
+
 watch(() => chatStore.messages.length, (newLen) => {
   if (messagesLoaded.value && newLen > prevMsgCount.value) {
     const lastMsg = chatStore.messages[chatStore.messages.length - 1]
@@ -214,9 +255,15 @@ onMounted(() => {
   if (authStore.isLoggedIn) {
     chatStore.init()
   }
+  chatStore.onMessage = (data) => {
+    if (data.type === 'rating_request') {
+      openRating(data.conversationId)
+    }
+  }
 })
 
 onUnmounted(() => {
+  chatStore.onMessage = null
   chatStore.cleanup()
 })
 
@@ -294,6 +341,9 @@ watch(() => authStore.isLoggedIn, (val) => {
                   <div class="message-bubble" v-if="item.msg.senderType === 'system'">
                     <div class="message-text system-text">{{ item.msg.content }}</div>
                   </div>
+                  <div class="message-bubble recalled" v-else-if="item.msg.recalledAt">
+                    <div class="message-text recalled-text">该消息已撤回</div>
+                  </div>
                   <div class="message-bubble" v-else>
                     <template v-if="item.msg.messageType === 'image'">
                       <img
@@ -306,7 +356,13 @@ watch(() => authStore.isLoggedIn, (val) => {
                     <template v-else>
                       <div class="message-text">{{ item.msg.content }}</div>
                     </template>
-                    <div class="message-time">{{ formatTime(item.msg.createdAt) }}</div>
+                    <div class="message-meta">
+                      <span class="message-time">{{ formatTime(item.msg.createdAt) }}</span>
+                      <span v-if="item.msg.senderType === 'customer' && item.msg.status" class="message-status">
+                        <svg v-if="item.msg.status === 'sent'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <svg v-else-if="item.msg.status === 'read'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2"><polyline points="18 6 7 17 2 12"></polyline><polyline points="22 6 11 17"></polyline></svg>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </template>
@@ -387,6 +443,42 @@ watch(() => authStore.isLoggedIn, (val) => {
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
+      </div>
+    </Transition>
+
+    <Transition name="fullscreen-fade">
+      <div v-if="showRating" class="rating-overlay" @click.self="closeRating">
+        <div class="rating-dialog">
+          <h3 v-if="!ratingDone">为本次服务评分</h3>
+          <h3 v-else>感谢您的评价！</h3>
+          <template v-if="!ratingDone">
+            <div class="rating-stars">
+              <span
+                v-for="i in 5"
+                :key="i"
+                class="star"
+                :class="{ active: i <= (ratingHover || ratingScore) }"
+                @mouseenter="ratingHover = i"
+                @mouseleave="ratingHover = 0"
+                @click="ratingScore = i"
+              >★</span>
+            </div>
+            <textarea
+              v-model="ratingComment"
+              class="rating-comment"
+              placeholder="请输入您的评价（可选）"
+              rows="3"
+              maxlength="200"
+            ></textarea>
+            <div class="rating-actions">
+              <button class="rating-cancel" @click="closeRating">跳过</button>
+              <button class="rating-submit" :disabled="ratingScore === 0 || ratingSubmitting" @click="submitRating">
+                {{ ratingSubmitting ? '提交中...' : '提交评价' }}
+              </button>
+            </div>
+          </template>
+          <button v-else class="rating-submit" @click="closeRating">关闭</button>
+        </div>
       </div>
     </Transition>
 
@@ -788,8 +880,34 @@ watch(() => authStore.isLoggedIn, (val) => {
 .message-time {
   font-size: 11px;
   opacity: 0.6;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
   margin-top: 4px;
-  text-align: right;
+}
+
+.message-status {
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+}
+
+.message-status svg {
+  display: block;
+}
+
+.message-bubble.recalled {
+  background: transparent !important;
+}
+
+.recalled-text {
+  color: #666 !important;
+  font-style: italic;
+  font-size: 12px !important;
 }
 
 .empty-state {
@@ -1020,6 +1138,121 @@ watch(() => authStore.isLoggedIn, (val) => {
 .fullscreen-fade-enter-from,
 .fullscreen-fade-leave-to {
   opacity: 0;
+}
+
+.rating-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1400;
+  pointer-events: auto;
+}
+
+.rating-dialog {
+  background: #222;
+  border-radius: 12px;
+  padding: 24px;
+  width: 340px;
+  max-width: 90vw;
+  text-align: center;
+}
+
+.rating-dialog h3 {
+  color: #fff;
+  font-size: 16px;
+  margin: 0 0 16px 0;
+  font-weight: 500;
+}
+
+.rating-stars {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.rating-stars .star {
+  font-size: 32px;
+  color: #444;
+  cursor: pointer;
+  transition: color 0.2s;
+  user-select: none;
+}
+
+.rating-stars .star.active {
+  color: #d4a574;
+}
+
+.rating-comment {
+  width: 100%;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  color: #fff;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+}
+
+.rating-comment:focus {
+  border-color: #d4a574;
+}
+
+.rating-comment::placeholder {
+  color: #666;
+}
+
+.rating-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.rating-cancel {
+  background: none;
+  border: 1px solid #555;
+  color: #999;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rating-cancel:hover {
+  border-color: #888;
+  color: #fff;
+}
+
+.rating-submit {
+  background: #d4a574;
+  color: #0f0f0f;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.rating-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rating-submit:hover:not(:disabled) {
+  background: #e0b88a;
 }
 
 @media (max-width: 480px) {

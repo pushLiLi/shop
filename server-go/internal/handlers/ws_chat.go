@@ -25,6 +25,7 @@ type WSMessage struct {
 	Content        string `json:"content,omitempty"`
 	MessageType    string `json:"messageType,omitempty"`
 	ThumbnailURL   string `json:"thumbnailUrl,omitempty"`
+	MessageID      uint   `json:"messageId,omitempty"`
 }
 
 type WSResponse struct {
@@ -32,6 +33,8 @@ type WSResponse struct {
 	Message        interface{} `json:"message,omitempty"`
 	Conversation   interface{} `json:"conversation,omitempty"`
 	ConversationID uint        `json:"conversationId,omitempty"`
+	MessageID      uint        `json:"messageId,omitempty"`
+	Status         string      `json:"status,omitempty"`
 	Count          int         `json:"count,omitempty"`
 	Stats          interface{} `json:"stats,omitempty"`
 	TotalUnread    int64       `json:"totalUnread,omitempty"`
@@ -126,6 +129,8 @@ func handleAdminMessage(client *ws.Client, raw []byte) {
 		handleAdminMarkRead(client, msg)
 	case "typing":
 		handleAdminTyping(client, msg)
+	case "recall_message":
+		handleAdminRecallMessage(client, msg)
 	case "service_online":
 		wasEmpty := ws.DefaultHub.SetServiceOnline(client.UserID)
 		if wasEmpty {
@@ -172,6 +177,7 @@ func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
 		MessageType:    msgType,
 		Content:        msg.Content,
 		ThumbnailURL:   msg.ThumbnailURL,
+		Status:         "sent",
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		return
@@ -186,6 +192,13 @@ func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
 		Type:           "new_message",
 		Message:        message,
 		ConversationID: msg.ConversationID,
+	})
+
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:           "ack",
+		ConversationID: msg.ConversationID,
+		MessageID:      message.ID,
+		Status:         "sent",
 	})
 
 	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
@@ -232,6 +245,7 @@ func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
 		MessageType:    msgType,
 		Content:        msg.Content,
 		ThumbnailURL:   msg.ThumbnailURL,
+		Status:         "sent",
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		return
@@ -243,8 +257,9 @@ func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
 	database.DB.Where("id = ?", msg.ConversationID).Limit(1).Find(&conversation)
 
 	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
-		Type:    "new_message",
-		Message: message,
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: msg.ConversationID,
 	})
 
 	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
@@ -261,17 +276,36 @@ func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
 	})
 
 	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "ack",
+		ConversationID: msg.ConversationID,
+		MessageID:      message.ID,
+		Status:         "sent",
+	})
+
+	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:         "conversation_updated",
 		Conversation: buildConversationDetail(msg.ConversationID),
 	})
 }
 
 func handleCustomerMarkRead(client *ws.Client, msg WSMessage) {
+	var msgs []models.Message
+	database.DB.Where("conversation_id = ? AND sender_type = ? AND is_read = ?", msg.ConversationID, "service", false).Find(&msgs)
+
 	database.DB.Model(&models.Message{}).
 		Where("conversation_id = ? AND sender_type = ? AND is_read = ?", msg.ConversationID, "service", false).
-		Update("is_read", true)
+		Updates(map[string]interface{}{"is_read": true, "status": "read"})
 
 	sendUnreadCountToCustomer(client.UserID)
+
+	for _, m := range msgs {
+		ws.DefaultHub.SendToAdmins(WSResponse{
+			Type:           "message_status",
+			ConversationID: msg.ConversationID,
+			MessageID:      m.ID,
+			Status:         "read",
+		})
+	}
 
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:         "conversation_updated",
@@ -317,6 +351,10 @@ func handleCustomerCloseConvWS(client *ws.Client, msg WSMessage) {
 		Type:           "conversation_closed",
 		ConversationID: convID,
 	})
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:           "rating_request",
+		ConversationID: convID,
+	})
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:           "new_message",
 		Message:        systemMsg,
@@ -342,11 +380,37 @@ func handleAdminTyping(client *ws.Client, msg WSMessage) {
 func handleAdminMarkRead(client *ws.Client, msg WSMessage) {
 	database.DB.Model(&models.Message{}).
 		Where("conversation_id = ? AND sender_type = ? AND is_read = ?", msg.ConversationID, "customer", false).
-		Update("is_read", true)
+		Updates(map[string]interface{}{"is_read": true, "status": "read"})
 
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:         "conversation_updated",
 		Conversation: buildConversationDetail(msg.ConversationID),
+	})
+}
+
+func handleAdminRecallMessage(client *ws.Client, msg WSMessage) {
+	var message models.Message
+	if err := database.DB.Where("id = ? AND conversation_id = ? AND sender_type = ? AND sender_id = ? AND recalled_at IS NULL",
+		msg.MessageID, msg.ConversationID, "service", client.UserID).First(&message).Error; err != nil {
+		return
+	}
+
+	now := time.Now()
+	database.DB.Model(&message).Update("recalled_at", now)
+	database.DB.Where("id = ?", message.ID).First(&message)
+
+	var conversation models.Conversation
+	database.DB.First(&conversation, msg.ConversationID)
+
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:           "message_recalled",
+		ConversationID: msg.ConversationID,
+		Message:        message,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "message_recalled",
+		ConversationID: msg.ConversationID,
+		Message:        message,
 	})
 }
 
@@ -390,7 +454,7 @@ func sendUnreadStatsToAdmins() {
 
 func buildConversationDetail(convID uint) ConversationWithDetails {
 	var conv models.Conversation
-	if err := database.DB.Preload("User").First(&conv, convID).Error; err != nil {
+	if err := database.DB.Preload("User").Preload("AssignedUser").Preload("Rating").First(&conv, convID).Error; err != nil {
 		return ConversationWithDetails{}
 	}
 

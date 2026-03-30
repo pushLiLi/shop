@@ -350,3 +350,59 @@ func GetServiceStatus(c *gin.Context) {
 		"online": ws.DefaultHub.IsServiceOnline(),
 	})
 }
+
+func RateConversation(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	conversationID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的对话ID")
+		return
+	}
+
+	var conversation models.Conversation
+	if err := database.DB.Where("id = ? AND user_id = ?", conversationID, userID).First(&conversation).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "对话不存在")
+		return
+	}
+
+	if conversation.Status != "closed" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "只能评价已关闭的对话")
+		return
+	}
+
+	var existing models.Rating
+	if err := database.DB.Where("conversation_id = ?", conversationID).First(&existing).Error; err == nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "该对话已评价")
+		return
+	}
+
+	var input struct {
+		Score   int    `json:"score" binding:"required"`
+		Comment string `json:"comment"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "请提供评分")
+		return
+	}
+	if input.Score < 1 || input.Score > 5 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "评分范围为1-5")
+		return
+	}
+
+	rating := models.Rating{
+		ConversationID: uint(conversationID),
+		Score:          input.Score,
+		Comment:        input.Comment,
+	}
+	if err := database.DB.Create(&rating).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "评价失败")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"rating": rating})
+}

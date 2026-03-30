@@ -13,6 +13,7 @@ import (
 	pkgutils "bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -37,6 +38,8 @@ import (
 // @BasePath /api
 // @schemes http
 func main() {
+	godotenv.Load()
+
 	config.LoadConfig()
 	database.Connect()
 	database.Migrate()
@@ -110,6 +113,7 @@ func main() {
 	r.GET("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.GetMessages)
 	r.POST("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.SendMessage)
 	r.PUT("/api/chat/conversations/:id/close", middleware.RequireAuth(), handlers.CustomerCloseConversation)
+	r.POST("/api/chat/conversations/:id/rate", middleware.RequireAuth(), handlers.RateConversation)
 	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
 	r.POST("/api/chat/upload-image", middleware.RequireAuth(), handlers.UploadChatImage)
 	r.GET("/api/chat/service-status", handlers.GetServiceStatus)
@@ -155,9 +159,17 @@ func main() {
 		admin.GET("/chat/conversations/:id/messages", handlers.GetAdminMessages)
 		admin.POST("/chat/conversations/:id/messages", handlers.AdminSendMessage)
 		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
+		admin.PUT("/chat/conversations/:id/assign", handlers.AssignConversation)
+		admin.POST("/chat/conversations/:id/messages/:msgId/recall", handlers.RecallMessage)
 		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
 		admin.GET("/chat/ws", handlers.HandleAdminWS)
 		admin.POST("/chat/service-status", handlers.SetServiceStatus)
+		admin.GET("/quick-replies", handlers.GetQuickReplies)
+		admin.POST("/quick-replies", handlers.CreateQuickReply)
+		admin.PUT("/quick-replies/:id", handlers.UpdateQuickReply)
+		admin.DELETE("/quick-replies/:id", handlers.DeleteQuickReply)
+		admin.GET("/stats/satisfaction", handlers.GetSatisfactionStats)
+		admin.GET("/chat/agent-stats", handlers.GetAgentStats)
 
 		admin.PUT("/payment-proofs/batch-review", handlers.BatchReviewPaymentProofs)
 		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)

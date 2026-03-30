@@ -32,6 +32,15 @@ const lastTypingSent = ref(0)
 const messagesLoaded = ref(false)
 const prevMsgCount = ref(0)
 const serviceOnline = ref(false)
+const quickReplies = ref([])
+const showQuickReplies = ref(false)
+const quickReplySearch = ref('')
+
+const filteredQuickReplies = computed(() => {
+  if (!quickReplySearch.value) return quickReplies.value
+  const q = quickReplySearch.value.toLowerCase()
+  return quickReplies.value.filter(r => r.title.toLowerCase().includes(q) || r.content.toLowerCase().includes(q))
+})
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -140,6 +149,26 @@ const handleWSMessage = (data) => {
         typingTimeout.value = setTimeout(() => {
           isCustomerTyping.value = false
         }, 3000)
+      }
+      break
+    case 'ack':
+      if (data.messageId) {
+        const m = messages.value.find(m => m.id === data.messageId)
+        if (m) m.status = data.status || 'sent'
+      }
+      break
+    case 'message_status':
+      if (data.messageId && data.status) {
+        const m = messages.value.find(m => m.id === data.messageId)
+        if (m) m.status = data.status
+      }
+      break
+    case 'message_recalled':
+      if (data.message) {
+        const idx = messages.value.findIndex(m => m.id === data.message.id)
+        if (idx >= 0) {
+          messages.value[idx] = { ...messages.value[idx], ...data.message }
+        }
       }
       break
   }
@@ -397,10 +426,58 @@ const toggleServiceStatus = () => {
   serviceOnline.value = newStatus
 }
 
+const fetchQuickReplies = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/quick-replies`, { headers: authHeaders() })
+    const data = await res.json()
+    quickReplies.value = data.quickReplies || []
+  } catch (e) {
+    console.error('Fetch quick replies failed:', e)
+  }
+}
+
+const insertQuickReply = (reply) => {
+  replyContent.value = reply.content
+  showQuickReplies.value = false
+  quickReplySearch.value = ''
+  if (textareaRef.value) {
+    textareaRef.value.focus()
+    autoResize()
+  }
+}
+
+const recallMessage = (msg) => {
+  wsSend({
+    type: 'recall_message',
+    conversationId: selectedConversation.value.id,
+    messageId: msg.id
+  })
+}
+
+const assignConversation = async (conv, userId) => {
+  try {
+    await fetch(`${API_BASE}/admin/chat/conversations/${conv.id}/assign`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ assignedTo: userId })
+    })
+    toast.success('已分配客服')
+    fetchConversations()
+  } catch (e) {
+    toast.error('分配失败')
+  }
+}
+
+const getAssignedName = (conv) => {
+  if (!conv.assignedUser) return '未分配'
+  return conv.assignedUser.name || conv.assignedUser.email
+}
+
 onMounted(() => {
   fetchConversations()
   connectWebSocket()
   fetchServiceStatus()
+  fetchQuickReplies()
 })
 
 onUnmounted(() => {
@@ -496,6 +573,9 @@ onUnmounted(() => {
               <div class="message-bubble" v-if="msg.senderType === 'system'">
                 <div class="message-text system-text">{{ msg.content }}</div>
               </div>
+              <div class="message-bubble recalled" v-else-if="msg.recalledAt">
+                <div class="message-text recalled-text">该消息已撤回</div>
+              </div>
               <div class="message-bubble" v-else>
                 <template v-if="msg.messageType === 'image'">
                   <img
@@ -508,7 +588,16 @@ onUnmounted(() => {
                 <template v-else>
                   <div class="message-text">{{ msg.content }}</div>
                 </template>
-                <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
+                <div class="message-meta">
+                  <span class="message-time">{{ formatTime(msg.createdAt) }}</span>
+                  <template v-if="msg.senderType === 'service'">
+                    <button v-if="!msg.recalledAt" class="recall-btn" @click="recallMessage(msg)">撤回</button>
+                    <span class="msg-status">
+                      <svg v-if="msg.status === 'read'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2"><polyline points="18 6 7 17 2 12"></polyline><polyline points="22 6 11 17"></polyline></svg>
+                      <svg v-else width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </span>
+                  </template>
+                </div>
               </div>
             </div>
           </TransitionGroup>
@@ -538,6 +627,28 @@ onUnmounted(() => {
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
             </svg>
           </button>
+          <div class="quick-reply-wrapper">
+            <button class="attach-btn" @click="showQuickReplies = !showQuickReplies" title="快捷回复">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-5.78 2.32l-1.52 1.5a.5.5 0 0 1-.86-.28L9.3 16.5a.5.5 0 0 1 0-1l1.52-1.5A8.5 8.5 0 0 1 11.5 3z"></path>
+              </svg>
+            </button>
+            <div v-if="showQuickReplies" class="quick-reply-panel">
+              <input v-model="quickReplySearch" class="quick-reply-search" placeholder="搜索快捷回复..." />
+              <div class="quick-reply-list">
+                <div
+                  v-for="r in filteredQuickReplies"
+                  :key="r.id"
+                  class="quick-reply-item"
+                  @click="insertQuickReply(r)"
+                >
+                  <div class="qr-title">{{ r.title }}</div>
+                  <div class="qr-content">{{ r.content }}</div>
+                </div>
+                <div v-if="filteredQuickReplies.length === 0" class="qr-empty">暂无快捷回复</div>
+              </div>
+            </div>
+          </div>
           <input
             ref="fileInputRef"
             type="file"
@@ -1160,5 +1271,109 @@ onUnmounted(() => {
 
 .fullscreen-close:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.message-bubble.recalled {
+  background: transparent !important;
+}
+
+.recalled-text {
+  color: #999 !important;
+  font-style: italic;
+  font-size: 12px !important;
+}
+
+.message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.recall-btn {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.recall-btn:hover {
+  color: #e74c3c;
+}
+
+.msg-status {
+  display: flex;
+  align-items: center;
+}
+
+.quick-reply-wrapper {
+  position: relative;
+}
+
+.quick-reply-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 300px;
+  max-height: 320px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 8px;
+  z-index: 10;
+}
+
+.quick-reply-search {
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  outline: none;
+}
+
+.quick-reply-list {
+  overflow-y: auto;
+  max-height: 260px;
+}
+
+.quick-reply-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.quick-reply-item:hover {
+  background: #f9f5f0;
+}
+
+.quick-reply-item .qr-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.quick-reply-item .qr-content {
+  font-size: 12px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qr-empty {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
 }
 </style>

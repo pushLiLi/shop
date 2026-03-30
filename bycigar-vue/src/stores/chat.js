@@ -137,14 +137,42 @@ export const useChatStore = defineStore('chat', {
           break
         case 'conversation_closed':
           if (this.currentConversation && data.conversationId === this.currentConversation.id) {
-            this.clearAutoCloseTimer()
-            this.isOpen = false
-            this.currentConversation = null
-            this.messages = []
+            if (this.currentConversation) {
+              this.currentConversation = { ...this.currentConversation, status: 'closed' }
+            }
           }
           break
         case 'service_status':
           this.serviceOnline = data.serviceOnline || false
+          break
+        case 'ack':
+          if (data.messageId) {
+            const msg = this.messages.find(m => m.id === data.messageId)
+            if (msg) {
+              msg.status = data.status || 'sent'
+            }
+          }
+          break
+        case 'message_status':
+          if (data.messageId && data.status) {
+            const msg = this.messages.find(m => m.id === data.messageId)
+            if (msg) {
+              msg.status = data.status
+            }
+          }
+          break
+        case 'message_recalled':
+          if (data.message) {
+            const idx = this.messages.findIndex(m => m.id === data.message.id)
+            if (idx >= 0) {
+              this.messages[idx] = { ...this.messages[idx], ...data.message }
+            }
+          }
+          break
+        case 'rating_request':
+          if (this.onMessage) {
+            this.onMessage({ type: 'rating_request', conversationId: data.conversationId })
+          }
           break
       }
       if (this.onMessage) {

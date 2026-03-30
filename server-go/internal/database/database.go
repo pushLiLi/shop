@@ -69,6 +69,8 @@ func Migrate() {
 		&models.Notification{},
 		&models.Conversation{},
 		&models.Message{},
+		&models.QuickReply{},
+		&models.Rating{},
 		&models.PaymentMethod{},
 		&models.PaymentProof{},
 		&models.ContactMethod{},
