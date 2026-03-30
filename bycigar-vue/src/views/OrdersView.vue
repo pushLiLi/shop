@@ -1,13 +1,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useToastStore } from '../stores/toast'
 
+const toast = useToastStore()
 const orders = ref([])
 const loading = ref(false)
 const error = ref(null)
+const paymentProofs = ref({})
+const reuploadFile = ref(null)
+const reuploadingOrderId = ref(null)
 
 const statusMap = {
   'pending': '待处理',
   'paid': '已支付',
+  'processing': '处理中',
   'shipped': '已发货',
   'completed': '已完成',
   'cancelled': '已取消'
@@ -16,9 +22,16 @@ const statusMap = {
 const statusClass = {
   'pending': 'status-pending',
   'paid': 'status-paid',
+  'processing': 'status-processing',
   'shipped': 'status-shipped',
   'completed': 'status-completed',
   'cancelled': 'status-cancelled'
+}
+
+const proofStatusMap = {
+  'pending': '待审核',
+  'approved': '已通过',
+  'rejected': '已驳回'
 }
 
 async function fetchOrders() {
@@ -32,11 +45,63 @@ async function fetchOrders() {
     })
     const data = await res.json()
     orders.value = data.orders || []
+    fetchPendingProofs()
   } catch (e) {
     error.value = e.message
   } finally {
     loading.value = false
   }
+}
+
+async function fetchPendingProofs() {
+  const token = localStorage.getItem('token')
+  const headers = { 'Authorization': token ? `Bearer ${token}` : '' }
+  const pendingOrders = orders.value.filter(o => o.status === 'pending')
+  await Promise.all(pendingOrders.map(async (order) => {
+    try {
+      const res = await fetch(`/api/orders/${order.id}/payment-proof`, { headers })
+      const data = await res.json()
+      if (data.paymentProof) {
+        paymentProofs.value[order.id] = data.paymentProof
+      }
+    } catch (e) {
+      // ignore
+    }
+  }))
+}
+
+async function handleReupload(orderId) {
+  if (!reuploadFile.value) return
+  try {
+    reuploadingOrderId.value = orderId
+    const token = localStorage.getItem('token')
+    const proof = paymentProofs.value[orderId]
+    const formData = new FormData()
+    formData.append('file', reuploadFile.value)
+    formData.append('paymentMethodId', proof?.paymentMethodId || proof?.payment_method_id || '')
+
+    const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
+      method: 'POST',
+      headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+      body: formData
+    })
+    const data = await res.json()
+    if (res.ok) {
+      toast.success('付款截图已重新上传')
+      paymentProofs.value[orderId] = data.paymentProof
+      reuploadFile.value = null
+    } else {
+      toast.error(data.error || '上传失败')
+    }
+  } catch (e) {
+    toast.error('上传失败')
+  } finally {
+    reuploadingOrderId.value = null
+  }
+}
+
+function onReuploadFileChange(e) {
+  reuploadFile.value = e.target.files[0] || null
 }
 
 function formatDate(dateStr) {
@@ -57,16 +122,16 @@ onMounted(() => {
   <div class="orders-page">
     <div class="container">
       <h1 class="page-title">我的订单</h1>
-      
+
       <div v-if="loading" class="loading">加载中...</div>
-      
+
       <div v-else-if="error" class="error">{{ error }}</div>
-      
+
       <div v-else-if="orders.length === 0" class="empty">
         <p>暂无订单</p>
         <router-link to="/" class="link">去购物</router-link>
       </div>
-      
+
       <div v-else class="orders-list">
         <div v-for="order in orders" :key="order.id" class="order-card">
           <div class="order-header">
@@ -78,7 +143,7 @@ onMounted(() => {
               {{ statusMap[order.status] || order.status }}
             </span>
           </div>
-          
+
           <div class="order-items-list">
             <div v-for="item in order.items" :key="item.id" class="order-item-row">
               <span class="item-name">{{ item.product?.name || '商品' }}</span>
@@ -86,7 +151,29 @@ onMounted(() => {
               <span class="item-price">{{ formatPrice(item.price) }}</span>
             </div>
           </div>
-          
+
+          <div v-if="paymentProofs[order.id]" class="proof-status-bar">
+            <div class="proof-info">
+              <span class="proof-status-label">付款凭证：</span>
+              <span :class="['proof-badge', `proof-${paymentProofs[order.id].status}`]">
+                {{ proofStatusMap[paymentProofs[order.id].status] }}
+              </span>
+              <span v-if="paymentProofs[order.id].rejectReason" class="reject-reason">
+                （{{ paymentProofs[order.id].rejectReason }}）
+              </span>
+            </div>
+            <div v-if="paymentProofs[order.id].status === 'rejected'" class="reupload-area">
+              <input type="file" accept="image/*" @change="onReuploadFileChange" class="reupload-input" />
+              <button
+                class="reupload-btn"
+                :disabled="!reuploadFile || reuploadingOrderId === order.id"
+                @click="handleReupload(order.id)"
+              >
+                {{ reuploadingOrderId === order.id ? '上传中...' : '重新上传' }}
+              </button>
+            </div>
+          </div>
+
           <div class="order-footer">
             <span class="order-total">总计: {{ formatPrice(order.total) }}</span>
           </div>
@@ -176,6 +263,10 @@ onMounted(() => {
   background: #5cb85c;
   color: #1a1a1a;
 }
+.status-processing {
+  background: #6c757d;
+  color: #fff;
+}
 .status-shipped{
   background: #5bc0de;
   color: #1a1a1a;
@@ -208,6 +299,83 @@ onMounted(() => {
 .item-price {
   color: #d4a574;
 }
+
+.proof-status-bar {
+  padding: 12px 20px;
+  border-top: 1px solid #2a2a2a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.proof-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.proof-status-label {
+  color: #888;
+  font-size: 13px;
+}
+.proof-badge {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.proof-pending {
+  background: #f0ad4e;
+  color: #1a1a1a;
+}
+.proof-approved {
+  background: #5cb85c;
+  color: #1a1a1a;
+}
+.proof-rejected {
+  background: #d9534f;
+  color: #fff;
+}
+.reject-reason {
+  color: #d9534f;
+  font-size: 12px;
+}
+.reupload-area {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reupload-input {
+  font-size: 13px;
+  color: #ccc;
+}
+.reupload-input::file-selector-button {
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.reupload-btn {
+  background: #d4a574;
+  color: #1a1a1a;
+  border: none;
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.reupload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.reupload-btn:hover:not(:disabled) {
+  background: #e5b584;
+}
+
 .order-footer {
   padding: 15px 20px;
   background: #2a2a2a;

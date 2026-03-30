@@ -22,8 +22,14 @@ const showStatusModal = ref(false)
 const statusOrder = ref(null)
 const selectedStatus = ref('')
 
+const detailProof = ref(null)
+const showReviewModal = ref(false)
+const reviewProofId = ref(null)
+const rejectReason = ref('')
+
 const statusLabels = {
   pending: '待处理',
+  paid: '已支付',
   processing: '处理中',
   shipped: '已发货',
   completed: '已完成',
@@ -33,6 +39,7 @@ const statusLabels = {
 const statusBadgeClass = (status) => {
   const map = {
     pending: 'badge-warning',
+    paid: 'badge-paid',
     processing: 'badge-info',
     shipped: 'badge-primary',
     completed: 'badge-success',
@@ -44,7 +51,8 @@ const statusBadgeClass = (status) => {
 const nextStatuses = computed(() => {
   if (!statusOrder.value) return []
   const transitions = {
-    pending: ['processing', 'cancelled'],
+    pending: ['paid', 'cancelled'],
+    paid: ['processing', 'cancelled'],
     processing: ['shipped', 'cancelled'],
     shipped: ['completed'],
     completed: [],
@@ -94,6 +102,18 @@ const openDetail = async (order) => {
     const data = await res.json()
     detailOrder.value = data.order
     detailUser.value = data.user
+    detailProof.value = null
+
+    if (data.order?.status === 'pending' || data.order?.status === 'paid') {
+      try {
+        const proofRes = await fetch(`${API_BASE}/orders/${data.order.id}/payment-proof`, { headers: authHeaders() })
+        const proofData = await proofRes.json()
+        detailProof.value = proofData.paymentProof || null
+      } catch (e) {
+        // ignore
+      }
+    }
+
     showDetailModal.value = true
   } catch (e) {
     toast.error('获取订单详情失败')
@@ -124,6 +144,36 @@ const updateStatus = async () => {
     }
     toast.success('订单状态已更新')
     showStatusModal.value = false
+    fetchOrders()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const openReviewModal = (proofId) => {
+  reviewProofId.value = proofId
+  rejectReason.value = ''
+  showReviewModal.value = true
+}
+
+const reviewProof = async (action) => {
+  try {
+    const body = { action }
+    if (action === 'reject' && rejectReason.value) {
+      body.rejectReason = rejectReason.value
+    }
+    const res = await fetch(`${API_BASE}/admin/payment-proofs/${reviewProofId.value}/review`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || '审核失败')
+    }
+    toast.success(action === 'approve' ? '已通过审核' : '已驳回凭证')
+    showReviewModal.value = false
+    showDetailModal.value = false
     fetchOrders()
   } catch (e) {
     toast.error(e.message)
@@ -263,6 +313,33 @@ onMounted(() => fetchOrders())
               </div>
             </div>
           </div>
+
+          <div v-if="detailProof" class="detail-section">
+            <div class="section-title">付款凭证</div>
+            <div class="proof-detail-grid">
+              <div class="detail-item"><span class="label">付款方式</span><span>{{ detailProof.paymentMethod?.name || '-' }}</span></div>
+              <div class="detail-item">
+                <span class="label">凭证状态</span>
+                <span :class="['badge', detailProof.status === 'pending' ? 'badge-warning' : detailProof.status === 'approved' ? 'badge-success' : 'badge-danger']">
+                  {{ detailProof.status === 'pending' ? '待审核' : detailProof.status === 'approved' ? '已通过' : '已驳回' }}
+                </span>
+              </div>
+              <div v-if="detailProof.imageUrl" class="detail-item full">
+                <span class="label">付款截图</span>
+                <div class="proof-image-wrapper">
+                  <a :href="detailProof.imageUrl" target="_blank">
+                    <img :src="detailProof.imageUrl" class="proof-image" />
+                  </a>
+                </div>
+              </div>
+              <div v-if="detailProof.rejectReason" class="detail-item full">
+                <span class="label">驳回原因</span><span style="color:#c62828">{{ detailProof.rejectReason }}</span>
+              </div>
+            </div>
+            <div v-if="detailProof.status === 'pending'" class="proof-actions">
+              <button class="btn-approve" @click="openReviewModal(detailProof.id)">审核凭证</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -288,6 +365,26 @@ onMounted(() => fetchOrders())
         <div class="modal-footer">
           <button class="btn-cancel" @click="showStatusModal = false">取消</button>
           <button class="btn-save" @click="updateStatus">确认变更</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showReviewModal" class="modal-overlay" @click.self="showReviewModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>审核付款凭证</h3>
+          <button class="modal-close" @click="showReviewModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>驳回原因（驳回时填写）</label>
+            <textarea v-model="rejectReason" placeholder="可选" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;min-height:80px;resize:vertical;box-sizing:border-box"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showReviewModal = false">取消</button>
+          <button class="btn-reject" @click="reviewProof('reject')">驳回</button>
+          <button class="btn-save" @click="reviewProof('approve')">通过</button>
         </div>
       </div>
     </div>
@@ -449,6 +546,7 @@ select {
 .badge-warning { background: #fff8e1; color: #f57c00; }
 .badge-info { background: #e3f2fd; color: #1565c0; }
 .badge-primary { background: #e8eaf6; color: #283593; }
+.badge-paid { background: #e8f5e9; color: #388e3c; }
 .badge-default { background: #f5f5f5; color: #999; }
 
 .btn-view,
@@ -716,5 +814,59 @@ select {
   font-size: 14px;
   font-weight: 600;
   color: #333;
+}
+
+.proof-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.proof-image-wrapper {
+  margin-top: 8px;
+}
+
+.proof-image {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  cursor: pointer;
+}
+
+.proof-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.btn-approve {
+  padding: 8px 16px;
+  background: #d4a574;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover {
+  background: #c49464;
+}
+
+.btn-reject {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  background: #ffebee;
+  color: #c62828;
+  transition: all 0.2s;
+}
+
+.btn-reject:hover {
+  background: #ffcdd2;
 }
 </style>

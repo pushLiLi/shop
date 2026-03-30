@@ -66,6 +66,8 @@ func Migrate() {
 		&models.Notification{},
 		&models.Conversation{},
 		&models.Message{},
+		&models.PaymentMethod{},
+		&models.PaymentProof{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)

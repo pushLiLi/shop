@@ -160,6 +160,7 @@ func UpdateOrderStatus(c *gin.Context) {
 	if oldStatus != input.Status {
 		statusMap := map[string]string{
 			"pending":    "待处理",
+			"paid":       "已支付",
 			"processing": "处理中",
 			"shipped":    "已发货",
 			"completed":  "已完成",

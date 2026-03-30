@@ -19,20 +19,29 @@ const error = ref(null)
 const addresses = ref([])
 const selectedAddressId = ref(null)
 const remark = ref('')
+const paymentMethods = ref([])
+const selectedPaymentMethodId = ref(null)
+const proofFile = ref(null)
+const proofPreview = ref(null)
+
+const selectedPaymentMethod = computed(() =>
+  paymentMethods.value.find(m => m.id === selectedPaymentMethodId.value)
+)
 
 onMounted(async () => {
   if (!authStore.isLoggedIn) {
     router.push('/login')
     return
   }
-  
+
   const isValid = await authStore.validateToken()
   if (!isValid) {
     router.push('/login')
     return
   }
-  
+
   fetchAddresses()
+  fetchPaymentMethods()
 })
 
 async function fetchAddresses() {
@@ -55,6 +64,41 @@ async function fetchAddresses() {
   }
 }
 
+async function fetchPaymentMethods() {
+  try {
+    const res = await fetch('/api/payment-methods')
+    if (res.ok) {
+      const data = await res.json()
+      paymentMethods.value = data.paymentMethods || []
+      if (paymentMethods.value.length > 0) {
+        selectedPaymentMethodId.value = paymentMethods.value[0].id
+      }
+    }
+  } catch (e) {
+    console.error('获取付款方式失败:', e)
+  }
+}
+
+function handleProofUpload(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    toast.error('图片大小不能超过 10MB')
+    return
+  }
+  proofFile.value = file
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    proofPreview.value = ev.target.result
+  }
+  reader.readAsDataURL(file)
+}
+
+function removeProof() {
+  proofFile.value = null
+  proofPreview.value = null
+}
+
 async function createOrder() {
   if (items.value.length === 0) {
     error.value = '购物车是空的'
@@ -64,21 +108,60 @@ async function createOrder() {
     error.value = '请选择收货地址'
     return
   }
+  if (!selectedPaymentMethodId.value) {
+    error.value = '请选择付款方式'
+    return
+  }
+  if (!proofFile.value) {
+    error.value = '请上传付款截图'
+    return
+  }
   try {
     loading.value = true
     error.value = null
+
     const orderData = {
       addressId: selectedAddressId.value,
       remark: remark.value
     }
     const res = await fetch('/api/orders', {
       method: 'POST',
-      headers: authStore.getAuthHeaders(),
+      headers: {
+        ...authStore.getAuthHeaders(),
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(orderData)
     })
-    await res.json()
+    const orderResult = await res.json()
+    if (!res.ok) {
+      error.value = orderResult.error || '创建订单失败'
+      return
+    }
+
+    const orderId = orderResult.order?.id || orderResult.order?.ID || orderResult.id
+    if (!orderId) {
+      error.value = '订单创建异常，请查看订单列表'
+      cartStore.clear()
+      router.push('/orders')
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('file', proofFile.value)
+    formData.append('paymentMethodId', selectedPaymentMethodId.value)
+
+    const proofRes = await fetch(`/api/orders/${orderId}/payment-proof`, {
+      method: 'POST',
+      headers: authStore.getAuthHeaders(),
+      body: formData
+    })
+    if (!proofRes.ok) {
+      const proofData = await proofRes.json()
+      toast.warning('订单已创建，但付款凭证上传失败：' + (proofData.error || '未知错误'))
+    }
+
     cartStore.clear()
-    toast.success('订单创建成功！')
+    toast.success('订单提交成功！')
     router.push('/orders')
   } catch (e) {
     error.value = e.message
@@ -90,7 +173,6 @@ async function createOrder() {
 function formatPrice(price) {
   return '$' + Number(price).toFixed(2)
 }
-
 </script>
 
 <template>
@@ -111,16 +193,16 @@ function formatPrice(price) {
         </div>
         <div class="shipping-info">
           <h2 class="section-title">收货地址</h2>
-          
+
           <div v-if="addresses.length === 0" class="no-address">
             <p>您还没有保存收货地址</p>
             <p class="hint">请先添加收货地址后再进行结算</p>
             <router-link to="/profile" class="btn-add-address">去添加地址</router-link>
           </div>
-          
+
           <div v-else class="address-list">
-            <div 
-              v-for="addr in addresses" 
+            <div
+              v-for="addr in addresses"
               :key="addr.id"
               :class="['address-option', { selected: selectedAddressId === addr.id, default: addr.isDefault }]"
               @click="selectedAddressId = addr.id"
@@ -148,13 +230,65 @@ function formatPrice(price) {
               </div>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label>备注</label>
             <textarea v-model="remark" placeholder="可选"></textarea>
           </div>
         </div>
-        
+
+        <div class="payment-section">
+          <h2 class="section-title">付款方式</h2>
+
+          <div v-if="paymentMethods.length === 0" class="no-payment">
+            <p>暂无可用的付款方式，请联系客服</p>
+          </div>
+
+          <div v-else class="payment-method-list">
+            <div
+              v-for="method in paymentMethods"
+              :key="method.id"
+              :class="['payment-method-option', { selected: selectedPaymentMethodId === method.id }]"
+              @click="selectedPaymentMethodId = method.id"
+            >
+              <div class="payment-radio">
+                <span :class="['radio', { checked: selectedPaymentMethodId === method.id }]"></span>
+              </div>
+              <span class="payment-name">{{ method.name }}</span>
+            </div>
+          </div>
+
+          <div v-if="selectedPaymentMethod" class="payment-detail">
+            <div v-if="selectedPaymentMethod.qrCodeUrl" class="qrcode-wrapper">
+              <img :src="selectedPaymentMethod.qrCodeUrl" :alt="selectedPaymentMethod.name" class="qrcode-img" />
+            </div>
+            <div v-if="selectedPaymentMethod.instructions" class="instructions">
+              <p class="instructions-label">付款说明：</p>
+              <p class="instructions-text">{{ selectedPaymentMethod.instructions }}</p>
+            </div>
+          </div>
+
+          <div class="proof-upload">
+            <p class="proof-label">上传付款截图</p>
+            <div v-if="!proofPreview" class="upload-area" @click="$refs.proofInput.click()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-icon">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span>点击选择付款截图</span>
+              <span class="upload-hint">支持 JPG、PNG、GIF、WebP，最大 10MB</span>
+            </div>
+            <div v-else class="proof-preview-wrapper">
+              <img :src="proofPreview" class="proof-preview-img" />
+              <button class="remove-proof-btn" @click="removeProof">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <input ref="proofInput" type="file" accept="image/*" @change="handleProofUpload" hidden />
+          </div>
+        </div>
+
         <div class="order-summary">
           <h2 class="section-title">订单汇总</h2>
           <div class="summary-row">
@@ -165,9 +299,9 @@ function formatPrice(price) {
             <span>总计:</span>
             <span class="total-value">{{ formatPrice(total) }}</span>
           </div>
-          <button 
-            class="submit-btn" 
-            @click="createOrder" 
+          <button
+            class="submit-btn"
+            @click="createOrder"
             :disabled="loading || addresses.length === 0"
           >
             {{ loading ? '提交中...' : '提交订单' }}
@@ -390,6 +524,146 @@ function formatPrice(price) {
   border-color: #d4a574;
   outline: none;
 }
+
+.payment-section{
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+}
+.no-payment{
+  text-align: center;
+  padding: 30px 20px;
+  color: #888;
+}
+.payment-method-list{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.payment-method-option{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  background: #2a2a2a;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.3s;
+}
+.payment-method-option:hover{
+  border-color: #555;
+}
+.payment-method-option.selected{
+  border-color: #d4a574;
+  background: rgba(212, 165, 116, 0.1);
+}
+.payment-radio{
+  flex-shrink: 0;
+}
+.payment-name{
+  color: #fff;
+  font-weight: 500;
+}
+.payment-detail{
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+.qrcode-wrapper{
+  max-width: 220px;
+}
+.qrcode-img{
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+.instructions{
+  width: 100%;
+  text-align: left;
+}
+.instructions-label{
+  color: #d4a574;
+  font-weight: 600;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.instructions-text{
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.proof-upload{
+  margin-top: 5px;
+}
+.proof-label{
+  color: #888;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.upload-area{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 30px;
+  border: 2px dashed #444;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #888;
+  transition: all 0.3s;
+}
+.upload-area:hover{
+  border-color: #d4a574;
+  color: #d4a574;
+}
+.upload-icon{
+  width: 36px;
+  height: 36px;
+}
+.upload-hint{
+  font-size: 12px;
+  color: #666;
+}
+.proof-preview-wrapper{
+  position: relative;
+  display: inline-block;
+}
+.proof-preview-img{
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+.remove-proof-btn{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.remove-proof-btn svg{
+  width: 16px;
+  height: 16px;
+  stroke: #fff;
+}
+
 .order-summary{
   background: #1a1a1a;
   padding: 20px;

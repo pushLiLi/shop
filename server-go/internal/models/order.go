@@ -6,6 +6,7 @@ import (
 
 const (
 	OrderStatusPending    = "pending"
+	OrderStatusPaid       = "paid"
 	OrderStatusProcessing = "processing"
 	OrderStatusShipped    = "shipped"
 	OrderStatusCompleted  = "completed"
@@ -13,7 +14,8 @@ const (
 )
 
 var ValidOrderStatusTransitions = map[string][]string{
-	OrderStatusPending:    {OrderStatusProcessing, OrderStatusCancelled},
+	OrderStatusPending:    {OrderStatusPaid, OrderStatusCancelled},
+	OrderStatusPaid:       {OrderStatusProcessing, OrderStatusCancelled},
 	OrderStatusProcessing: {OrderStatusShipped, OrderStatusCancelled},
 	OrderStatusShipped:    {OrderStatusCompleted},
 	OrderStatusCompleted:  {},
