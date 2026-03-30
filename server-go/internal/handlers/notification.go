@@ -117,6 +117,39 @@ func GetNotification(c *gin.Context) {
 	c.JSON(http.StatusOK, notification)
 }
 
+func DeleteNotification(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的通知ID")
+		return
+	}
+
+	result := database.DB.Where("id = ? AND user_id = ?", id, userID).Delete(&models.Notification{})
+	if result.RowsAffected == 0 {
+		utils.ErrorResponse(c, http.StatusNotFound, "通知不存在")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func DeleteReadNotifications(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	result := database.DB.Where("user_id = ? AND is_read = ?", userID, true).Delete(&models.Notification{})
+	c.JSON(http.StatusOK, gin.H{"success": true, "deleted": result.RowsAffected})
+}
+
 func MarkAllRead(c *gin.Context) {
 	userID, exists := c.Get("userID")
 	if !exists {

@@ -46,6 +46,7 @@ func main() {
 	pkgutils.InitSnowflake(1)
 	database.BackfillOrderNo()
 	pkgutils.StartChatCleanup(database.DB)
+	pkgutils.StartNotificationCleanup(database.DB)
 
 	ws.DefaultHub = ws.NewHub()
 	go ws.DefaultHub.Run()
@@ -91,11 +92,17 @@ func main() {
 	r.POST("/api/orders", handlers.CreateOrder)
 	r.GET("/api/orders/:id", handlers.GetOrder)
 
+	r.GET("/api/payment-methods", handlers.GetPaymentMethods)
+	r.POST("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.UploadPaymentProof)
+	r.GET("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.GetOrderPaymentProof)
+
 	r.GET("/api/notifications", middleware.RequireAuth(), handlers.GetNotifications)
 	r.GET("/api/notifications/unread-count", middleware.RequireAuth(), handlers.GetUnreadCount)
 	r.GET("/api/notifications/:id", middleware.RequireAuth(), handlers.GetNotification)
 	r.PUT("/api/notifications/:id/read", middleware.RequireAuth(), handlers.MarkAsRead)
 	r.PUT("/api/notifications/read-all", middleware.RequireAuth(), handlers.MarkAllRead)
+	r.DELETE("/api/notifications/:id", middleware.RequireAuth(), handlers.DeleteNotification)
+	r.DELETE("/api/notifications/read", middleware.RequireAuth(), handlers.DeleteReadNotifications)
 
 	r.POST("/api/chat/conversations", middleware.RequireAuth(), handlers.CreateConversation)
 	r.GET("/api/chat/conversations", middleware.RequireAuth(), handlers.GetConversations)
@@ -145,6 +152,8 @@ func main() {
 		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
 		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
 		admin.GET("/chat/ws", handlers.HandleAdminWS)
+
+		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)
 	}
 
 	superAdmin := r.Group("/api/admin")
@@ -162,6 +171,11 @@ func main() {
 		superAdmin.PUT("/settings/:key", handlers.UpdateSetting)
 
 		superAdmin.PUT("/users/:id/role", handlers.UpdateUserRole)
+
+		superAdmin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
+		superAdmin.POST("/payment-methods", handlers.CreatePaymentMethod)
+		superAdmin.PUT("/payment-methods/:id", handlers.UpdatePaymentMethod)
+		superAdmin.DELETE("/payment-methods/:id", handlers.DeletePaymentMethod)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

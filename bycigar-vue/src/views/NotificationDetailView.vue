@@ -65,6 +65,17 @@ function handleAction() {
   }
 }
 
+async function handleDelete() {
+  if (!notification.value) return
+  const success = await store.deleteNotification(notification.value.id)
+  if (success) {
+    toast.success('通知已删除')
+    router.replace('/orders')
+  } else {
+    toast.error('删除失败')
+  }
+}
+
 onMounted(async () => {
   try {
     await store.fetchNotification(route.params.id)
@@ -118,6 +129,16 @@ onMounted(async () => {
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 18 15 12 9 6"></polyline>
           </svg>
+        </button>
+
+        <div class="detail-divider"></div>
+
+        <button class="delete-btn" @click="handleDelete">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>删除通知</span>
         </button>
       </div>
     </div>
@@ -244,6 +265,27 @@ onMounted(async () => {
 
 .action-btn:active {
   transform: scale(0.98);
+}
+
+.delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 24px;
+  background: transparent;
+  color: #e74c3c;
+  border: 1px solid #3a2020;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.delete-btn:hover {
+  background: rgba(231, 76, 60, 0.1);
+  border-color: #e74c3c;
 }
 
 @media (max-width: 480px) {

@@ -47,6 +47,15 @@ async function handleMarkAllRead() {
   await store.markAllRead()
 }
 
+async function handleDeleteRead() {
+  await store.deleteReadNotifications()
+}
+
+async function handleDeleteItem(e, item) {
+  e.stopPropagation()
+  await store.deleteNotification(item.id)
+}
+
 function closePanel() {
   store.closePanel()
 }
@@ -74,6 +83,7 @@ watch(() => store.isOpen, (isOpen) => {
           <div class="panel-header">
             <h2>通知</h2>
             <div class="panel-header-actions">
+              <button v-if="items.some(n => n.isRead)" class="delete-read-btn" @click="handleDeleteRead">删除已读</button>
               <button v-if="unreadCount > 0" class="mark-all-btn" @click="handleMarkAllRead">全部已读</button>
               <button class="close-btn" @click="closePanel">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -110,6 +120,12 @@ watch(() => store.isOpen, (isOpen) => {
                   <div class="item-content">{{ item.content }}</div>
                   <div class="item-time">{{ formatTime(item.createdAt) }}</div>
                 </div>
+                <button class="item-delete-btn" @click="handleDeleteItem($event, item)" title="删除">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
@@ -174,6 +190,20 @@ watch(() => store.isOpen, (isOpen) => {
 }
 
 .mark-all-btn:hover {
+  opacity: 0.8;
+}
+
+.delete-read-btn {
+  background: transparent;
+  border: none;
+  color: #e74c3c;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.2s;
+}
+
+.delete-read-btn:hover {
   opacity: 0.8;
 }
 
@@ -289,6 +319,30 @@ watch(() => store.isOpen, (isOpen) => {
 .item-body {
   flex: 1;
   min-width: 0;
+}
+
+.item-delete-btn {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.notification-item:hover .item-delete-btn {
+  opacity: 1;
+}
+
+.item-delete-btn:hover {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
 }
 
 .item-title {

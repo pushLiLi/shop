@@ -103,6 +103,44 @@ export const useNotificationsStore = defineStore('notifications', {
       }
     },
 
+    async deleteNotification(id) {
+      try {
+        const res = await fetch(`${API_BASE}/notifications/${id}`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        })
+        const data = await res.json()
+        if (data.success) {
+          const item = this.items.find(n => n.id === id)
+          if (item && !item.isRead) {
+            this.unreadCount = Math.max(0, this.unreadCount - 1)
+          }
+          this.items = this.items.filter(n => n.id !== id)
+        }
+        return data.success
+      } catch (e) {
+        console.error('Delete notification failed:', e)
+        return false
+      }
+    },
+
+    async deleteReadNotifications() {
+      try {
+        const res = await fetch(`${API_BASE}/notifications/read`, {
+          method: 'DELETE',
+          headers: getAuthHeaders()
+        })
+        const data = await res.json()
+        if (data.success) {
+          this.items = this.items.filter(n => !n.isRead)
+        }
+        return data.success
+      } catch (e) {
+        console.error('Delete read notifications failed:', e)
+        return false
+      }
+    },
+
     startPolling() {
       this.stopPolling()
       this.fetchUnreadCount()

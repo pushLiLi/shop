@@ -76,6 +76,8 @@ func CleanDB() {
 	db.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	db.Exec("TRUNCATE TABLE order_items")
 	db.Exec("TRUNCATE TABLE orders")
+	db.Exec("TRUNCATE TABLE payment_proofs")
+	db.Exec("TRUNCATE TABLE payment_methods")
 	db.Exec("TRUNCATE TABLE favorites")
 	db.Exec("TRUNCATE TABLE cart_items")
 	db.Exec("TRUNCATE TABLE addresses")
@@ -86,6 +88,7 @@ func CleanDB() {
 	db.Exec("TRUNCATE TABLE settings")
 	db.Exec("TRUNCATE TABLE site_configs")
 	db.Exec("TRUNCATE TABLE users")
+	db.Exec("TRUNCATE TABLE notifications")
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 }
 
@@ -250,9 +253,21 @@ func SetupRouter() *gin.Engine {
 	r.PUT("/api/addresses/:id/default", handlers.SetDefaultAddress)
 	r.DELETE("/api/addresses/:id", handlers.DeleteAddress)
 
+	r.GET("/api/notifications", middleware.RequireAuth(), handlers.GetNotifications)
+	r.GET("/api/notifications/unread-count", middleware.RequireAuth(), handlers.GetUnreadCount)
+	r.GET("/api/notifications/:id", middleware.RequireAuth(), handlers.GetNotification)
+	r.PUT("/api/notifications/:id/read", middleware.RequireAuth(), handlers.MarkAsRead)
+	r.PUT("/api/notifications/read-all", middleware.RequireAuth(), handlers.MarkAllRead)
+	r.DELETE("/api/notifications/:id", middleware.RequireAuth(), handlers.DeleteNotification)
+	r.DELETE("/api/notifications/read", middleware.RequireAuth(), handlers.DeleteReadNotifications)
+
 	r.GET("/api/orders", handlers.GetOrders)
 	r.POST("/api/orders", handlers.CreateOrder)
 	r.GET("/api/orders/:id", handlers.GetOrder)
+
+	r.GET("/api/payment-methods", handlers.GetPaymentMethods)
+	r.POST("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.UploadPaymentProof)
+	r.GET("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.GetOrderPaymentProof)
 
 	admin := r.Group("/api/admin")
 	admin.Use(middleware.AdminOnly)
@@ -274,6 +289,12 @@ func SetupRouter() *gin.Engine {
 		admin.PUT("/pages/:slug", handlers.UpdatePage)
 		admin.PUT("/config/:key", handlers.UpdateConfig)
 		admin.PUT("/settings/:key", handlers.UpdateSetting)
+		admin.PUT("/users/:id/role", handlers.UpdateUserRole)
+		admin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
+		admin.POST("/payment-methods", handlers.CreatePaymentMethod)
+		admin.PUT("/payment-methods/:id", handlers.UpdatePaymentMethod)
+		admin.DELETE("/payment-methods/:id", handlers.DeletePaymentMethod)
+		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)
 	}
 
 	return r
