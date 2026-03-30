@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
@@ -9,6 +11,43 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+var (
+	settingCache     map[string]string
+	settingCacheTime time.Time
+	settingCacheMu   sync.RWMutex
+	settingCacheTTL  = 5 * time.Minute
+)
+
+func getSettingsCached() (map[string]string, error) {
+	settingCacheMu.RLock()
+	if settingCache != nil && time.Since(settingCacheTime) < settingCacheTTL {
+		result := settingCache
+		settingCacheMu.RUnlock()
+		return result, nil
+	}
+	settingCacheMu.RUnlock()
+
+	settingCacheMu.Lock()
+	defer settingCacheMu.Unlock()
+
+	if settingCache != nil && time.Since(settingCacheTime) < settingCacheTTL {
+		return settingCache, nil
+	}
+
+	var settings []models.Setting
+	if err := database.DB.Find(&settings).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]string)
+	for _, s := range settings {
+		result[s.Key] = s.Value
+	}
+	settingCache = result
+	settingCacheTime = time.Now()
+	return result, nil
+}
 
 type UpdateSettingRequest struct {
 	Value string `json:"value"`
@@ -22,15 +61,10 @@ type UpdateSettingRequest struct {
 // @Success 200 {object} map[string]interface{}
 // @Router /settings [get]
 func GetSettings(c *gin.Context) {
-	var settings []models.Setting
-	if err := database.DB.Find(&settings).Error; err != nil {
+	result, err := getSettingsCached()
+	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "获取设置失败")
 		return
-	}
-
-	result := make(map[string]string)
-	for _, s := range settings {
-		result[s.Key] = s.Value
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
@@ -74,6 +108,10 @@ func UpdateSetting(c *gin.Context) {
 			return
 		}
 	}
+
+	settingCacheMu.Lock()
+	settingCache = nil
+	settingCacheMu.Unlock()
 
 	utils.SuccessResponse(c, setting)
 }

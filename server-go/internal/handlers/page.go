@@ -13,13 +13,14 @@ import (
 func GetPage(c *gin.Context) {
 	slug := c.Param("slug")
 
-	var page models.Page
-	if err := database.DB.Where("slug = ?", slug).First(&page).Error; err != nil {
+	var pages []models.Page
+	result := database.DB.Where("slug = ?", slug).Limit(1).Find(&pages)
+	if result.RowsAffected == 0 {
 		utils.ErrorResponse(c, http.StatusNotFound, "页面不存在")
 		return
 	}
 
-	c.JSON(http.StatusOK, page)
+	c.JSON(http.StatusOK, pages[0])
 }
 
 func GetAdminPages(c *gin.Context) {
@@ -41,11 +42,13 @@ func UpdatePage(c *gin.Context) {
 		return
 	}
 
-	var page models.Page
-	if err := database.DB.Where("slug = ?", slug).First(&page).Error; err != nil {
+	var pages []models.Page
+	result := database.DB.Where("slug = ?", slug).Limit(1).Find(&pages)
+	if result.RowsAffected == 0 {
 		utils.ErrorResponse(c, http.StatusNotFound, "页面不存在")
 		return
 	}
+	page := pages[0]
 
 	page.Title = input.Title
 	page.Content = input.Content

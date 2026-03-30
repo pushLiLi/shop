@@ -33,7 +33,9 @@ func Connect() {
 		DefaultStringSize:         255,
 		SkipInitializeWithVersion: false,
 	})
-	DB, err = gorm.Open(mysqlConfig, &gorm.Config{})
+	DB, err = gorm.Open(mysqlConfig, &gorm.Config{
+		PrepareStmt: true,
+	})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -42,8 +44,9 @@ func Connect() {
 	sqlDB, err = DB.DB()
 	if err == nil {
 		sqlDB.SetConnMaxLifetime(5 * time.Minute)
+		sqlDB.SetConnMaxIdleTime(time.Minute)
 		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetMaxOpenConns(100)
+		sqlDB.SetMaxOpenConns(25)
 	}
 
 	log.Println("Database connected successfully")

@@ -15,11 +15,11 @@ type Product struct {
 	Image          string         `json:"imageUrl"`
 	Images         string         `json:"images"`
 	ThumbnailImage string         `json:"thumbnailUrl" gorm:"column:thumbnail_image"`
-	CategoryID     uint           `json:"categoryId"`
+	CategoryID     uint           `json:"categoryId" gorm:"index:idx_category_active"`
 	Category       Category       `json:"category" gorm:"foreignKey:CategoryID"`
 	Stock          int            `json:"stock" gorm:"default:0"`
-	IsActive       bool           `json:"isActive" gorm:"default:true"`
-	IsFeatured     bool           `json:"isFeatured" gorm:"default:false"`
+	IsActive       bool           `json:"isActive" gorm:"default:true;index:idx_category_active;index:idx_active_featured"`
+	IsFeatured     bool           `json:"isFeatured" gorm:"default:false;index:idx_active_featured"`
 	CreatedAt      time.Time      `json:"createdAt"`
 	UpdatedAt      time.Time      `json:"updatedAt"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`

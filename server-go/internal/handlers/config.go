@@ -2,12 +2,49 @@ package handlers
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
+
+var (
+	configCache     map[string]string
+	configCacheTime time.Time
+	configCacheMu   sync.RWMutex
+	configCacheTTL  = 5 * time.Minute
+)
+
+func getConfigCached() map[string]string {
+	configCacheMu.RLock()
+	if configCache != nil && time.Since(configCacheTime) < configCacheTTL {
+		result := configCache
+		configCacheMu.RUnlock()
+		return result
+	}
+	configCacheMu.RUnlock()
+
+	configCacheMu.Lock()
+	defer configCacheMu.Unlock()
+
+	if configCache != nil && time.Since(configCacheTime) < configCacheTTL {
+		return configCache
+	}
+
+	var configs []models.SiteConfig
+	database.DB.Find(&configs)
+
+	result := make(map[string]string)
+	for _, config := range configs {
+		result[config.ConfigKey] = config.ConfigValue
+	}
+	configCache = result
+	configCacheTime = time.Now()
+	return result
+}
 
 // GetConfig godoc
 // @Summary 获取网站配置
@@ -18,15 +55,7 @@ import (
 // @Success 200 {object} map[string]string
 // @Router /config [get]
 func GetConfig(c *gin.Context) {
-	var configs []models.SiteConfig
-	database.DB.Find(&configs)
-
-	result := make(map[string]string)
-	for _, config := range configs {
-		result[config.ConfigKey] = config.ConfigValue
-	}
-
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, getConfigCached())
 }
 
 // UpdateConfig godoc
@@ -64,6 +93,10 @@ func UpdateConfig(c *gin.Context) {
 		config.ConfigValue = input.Value
 		database.DB.Save(&config)
 	}
+
+	configCacheMu.Lock()
+	configCache = nil
+	configCacheMu.Unlock()
 
 	c.JSON(http.StatusOK, config)
 }

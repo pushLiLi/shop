@@ -29,18 +29,22 @@ func StartNotificationCleanup(db *gorm.DB) {
 
 func cleanupNotifications(db *gorm.DB) {
 	readCutoff := time.Now().AddDate(0, 0, -readNotificationRetentionDays)
-	result := db.Where("is_read = ? AND created_at < ?", true, readCutoff).Delete(&models.Notification{})
-	if result.Error != nil {
-		log.Printf("Notification cleanup: failed to delete read notifications: %v", result.Error)
-	} else if result.RowsAffected > 0 {
-		log.Printf("Notification cleanup: deleted %d read notifications older than %s", result.RowsAffected, readCutoff.Format("2006-01-02"))
-	}
+	batchDeleteNotifications(db, "is_read = ? AND created_at < ?", []interface{}{true, readCutoff}, "read", readCutoff)
 
 	unreadCutoff := time.Now().AddDate(0, 0, -unreadNotificationRetentionDays)
-	result = db.Where("is_read = ? AND created_at < ?", false, unreadCutoff).Delete(&models.Notification{})
-	if result.Error != nil {
-		log.Printf("Notification cleanup: failed to delete unread notifications: %v", result.Error)
-	} else if result.RowsAffected > 0 {
-		log.Printf("Notification cleanup: deleted %d unread notifications older than %s", result.RowsAffected, unreadCutoff.Format("2006-01-02"))
+	batchDeleteNotifications(db, "is_read = ? AND created_at < ?", []interface{}{false, unreadCutoff}, "unread", unreadCutoff)
+}
+
+func batchDeleteNotifications(db *gorm.DB, query string, args []interface{}, label string, cutoff time.Time) {
+	for {
+		result := db.Where(query, args...).Limit(1000).Delete(&models.Notification{})
+		if result.Error != nil {
+			log.Printf("Notification cleanup: failed to delete %s notifications: %v", label, result.Error)
+			return
+		}
+		if result.RowsAffected == 0 {
+			return
+		}
+		log.Printf("Notification cleanup: deleted %d %s notifications older than %s", result.RowsAffected, label, cutoff.Format("2006-01-02"))
 	}
 }
