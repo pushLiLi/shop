@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 
 const cartStore = useCartStore()
+const router = useRouter()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
@@ -10,6 +12,10 @@ const loading = computed(() => cartStore.loading)
 
 function formatPrice(price) {
   return `$${Number(price).toFixed(2)}`
+}
+
+function goToProduct(item) {
+  router.push('/products/' + item.productId)
 }
 
 function handleInput(item, e) {
@@ -49,7 +55,7 @@ onMounted(() => {
       
       <div v-else>
         <div class="cart-items">
-          <div v-for="item in items" :key="item.productId" class="cart-item">
+          <div v-for="item in items" :key="item.productId" class="cart-item" @click="goToProduct(item)">
             <router-link :to="'/products/' + item.productId" class="item-image">
               <img :src="item.product?.thumbnailUrl || item.product?.imageUrl" :alt="item.product?.name" loading="lazy">
             </router-link>
@@ -60,7 +66,7 @@ onMounted(() => {
               <div class="item-price">单价: {{ formatPrice(item.product?.price) }}</div>
                <div class="item-actions">
                  <div class="quantity-control">
-                    <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
+                    <button @click.stop="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
                     <input 
                       type="number"
                       :value="item.quantity"
@@ -69,10 +75,10 @@ onMounted(() => {
                       @keyup.enter="handleBlur(item)"
                       min="1"
                     />
-                    <button @click="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
+                    <button @click.stop="cartStore.updateQuantity(item.id, item.quantity + 1)">+</button>
                   </div>
-                  <button 
-                    @click="cartStore.removeItem(item.id)" 
+                  <button
+                    @click.stop="cartStore.removeItem(item.id)"
                     class="remove-btn"
                   >删除</button>
                </div>
@@ -142,6 +148,7 @@ onMounted(() => {
   background: #1a1a1a;
   border-radius: 8px;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .item-image {
