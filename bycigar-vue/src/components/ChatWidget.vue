@@ -419,10 +419,7 @@ watch(() => authStore.isLoggedIn, (val) => {
   height: 100%;
   pointer-events: none;
   z-index: 1200;
-}
-
-.chat-widget > * {
-  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 .chat-fab {
@@ -443,6 +440,7 @@ watch(() => authStore.isLoggedIn, (val) => {
   transition: transform 0.2s, box-shadow 0.2s;
   z-index: 1201;
   user-select: none;
+  pointer-events: auto;
 }
 
 .chat-fab:hover {
@@ -487,6 +485,7 @@ watch(() => authStore.isLoggedIn, (val) => {
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   z-index: 1200;
+  pointer-events: auto;
 }
 
 .chat-slide-enter-active {
@@ -982,6 +981,7 @@ watch(() => authStore.isLoggedIn, (val) => {
   justify-content: center;
   z-index: 1300;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .fullscreen-img {

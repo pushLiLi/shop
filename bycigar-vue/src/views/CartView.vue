@@ -1,10 +1,8 @@
 <script setup>
 import { computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 
 const cartStore = useCartStore()
-const router = useRouter()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
@@ -12,10 +10,6 @@ const loading = computed(() => cartStore.loading)
 
 function formatPrice(price) {
   return `$${Number(price).toFixed(2)}`
-}
-
-function goToProduct(item) {
-  router.push('/products/' + item.productId)
 }
 
 function handleInput(item, e) {
@@ -55,19 +49,22 @@ onMounted(() => {
       
       <div v-else>
         <div class="cart-items">
-          <div v-for="item in items" :key="item.productId" class="cart-item" @click="goToProduct(item)">
-            <router-link :to="'/products/' + item.productId" class="item-image">
+          <router-link
+            v-for="item in items"
+            :key="item.productId"
+            :to="'/products/' + item.productId"
+            class="cart-item"
+          >
+            <div class="item-image">
               <img :src="item.product?.thumbnailUrl || item.product?.imageUrl" :alt="item.product?.name" loading="lazy">
-            </router-link>
+            </div>
             <div class="item-info">
-              <h3 class="item-name">
-                <router-link :to="'/products/' + item.productId">{{ item.product?.name }}</router-link>
-              </h3>
+              <h3 class="item-name">{{ item.product?.name }}</h3>
               <div class="item-price">单价: {{ formatPrice(item.product?.price) }}</div>
                <div class="item-actions">
-                 <div class="quantity-control">
+                 <div class="quantity-control" @click.prevent>
                     <button @click.stop="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
-                    <input 
+                    <input
                       type="number"
                       :value="item.quantity"
                       @input="handleInput(item, $event)"
@@ -86,7 +83,7 @@ onMounted(() => {
                 小计: {{ formatPrice((item.product?.price || 0) * item.quantity) }}
               </div>
             </div>
-          </div>
+          </router-link>
         </div>
         
         <div class="cart-summary">
@@ -173,7 +170,8 @@ onMounted(() => {
   margin: 0 0 10px;
 }
 
-.item-name a {
+.item-name a,
+.item-name span {
   color: #fff;
   text-decoration: none;
   font-size: 16px;
