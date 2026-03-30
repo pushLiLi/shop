@@ -181,7 +181,8 @@ func Login(c *gin.Context) {
 	}
 
 	var user models.User
-	if err := database.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+	loginEmail := strings.ToLower(input.Email)
+	if err := database.DB.Where("email = ?", loginEmail).First(&user).Error; err != nil {
 		recordFailure(key)
 		requireCaptcha := getRequireCaptcha(key)
 		resp := gin.H{"error": "邮箱或密码错误"}

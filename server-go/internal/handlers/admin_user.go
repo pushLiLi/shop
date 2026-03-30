@@ -139,7 +139,10 @@ func ResetUserPassword(c *gin.Context) {
 	}
 
 	user.Password = string(hashedPassword)
-	database.DB.Save(&user)
+	if err := database.DB.Save(&user).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "密码重置失败")
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "密码已重置为 123456，请通知用户尽快修改"})
 }
