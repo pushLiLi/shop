@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia'
+import { useChatStore } from './chat'
+import { useNotificationSound } from '../composables/useNotificationSound'
 
 const API_BASE = '/api'
 
@@ -10,6 +12,15 @@ function getAuthHeaders() {
   }
 }
 
+let notificationSoundPlay = null
+function getNotificationSound() {
+  if (!notificationSoundPlay) {
+    const { play } = useNotificationSound()
+    notificationSoundPlay = play
+  }
+  return notificationSoundPlay
+}
+
 export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
     items: [],
@@ -19,8 +30,7 @@ export const useNotificationsStore = defineStore('notifications', {
     page: 1,
     totalPages: 1,
     currentNotification: null,
-    detailLoading: false,
-    pollingTimer: null
+    detailLoading: false
   }),
 
   actions: {
@@ -141,29 +151,41 @@ export const useNotificationsStore = defineStore('notifications', {
       }
     },
 
-    startPolling() {
-      this.stopPolling()
+    initWSListener() {
+      const chatStore = useChatStore()
+      chatStore.onMessage = (data) => {
+        if (data.type === 'notification') {
+          this.handleWSNotification(data.notification)
+          try { getNotificationSound()() } catch {}
+        }
+      }
       this.fetchUnreadCount()
-      this.pollingTimer = setInterval(() => {
-        this.fetchUnreadCount()
-      }, 30000)
     },
 
-    stopPolling() {
-      if (this.pollingTimer) {
-        clearInterval(this.pollingTimer)
-        this.pollingTimer = null
+    cleanupWSListener() {
+      const chatStore = useChatStore()
+      if (chatStore.onMessage) {
+        chatStore.onMessage = null
+      }
+    },
+
+    handleWSNotification(notification) {
+      const exists = this.items.some(n => n.id === notification.id)
+      if (!exists) {
+        this.items.unshift(notification)
+        this.unreadCount += 1
       }
     },
 
     clear() {
-      this.stopPolling()
+      this.cleanupWSListener()
       this.items = []
       this.unreadCount = 0
     },
 
     async fetchNotification(id) {
       try {
+        this.currentNotification = null
         this.detailLoading = true
         const res = await fetch(`${API_BASE}/notifications/${id}`, {
           headers: getAuthHeaders()
@@ -177,7 +199,6 @@ export const useNotificationsStore = defineStore('notifications', {
           this.unreadCount = Math.max(0, this.unreadCount - 1)
         }
       } catch (e) {
-        this.currentNotification = null
         throw e
       } finally {
         this.detailLoading = false
