@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useNotificationsStore } from '../stores/notifications'
 import { useToastStore } from '../stores/toast'
@@ -79,14 +79,18 @@ async function handleDelete() {
   }
 }
 
-onMounted(async () => {
+async function fetchNotification() {
   try {
     await store.fetchNotification(route.params.id)
   } catch {
     toast.error('通知不存在或已被删除')
     router.replace('/orders')
   }
-})
+}
+
+onMounted(fetchNotification)
+
+watch(() => route.params.id, fetchNotification)
 </script>
 
 <template>
