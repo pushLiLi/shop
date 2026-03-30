@@ -265,6 +265,13 @@ function formatPrice(price) {
             <div v-if="selectedPaymentMethod.qrCodeUrl" class="qrcode-wrapper">
               <img :src="selectedPaymentMethod.qrCodeUrl" :alt="selectedPaymentMethod.name" class="qrcode-img" />
             </div>
+            <div v-if="selectedPaymentMethod.paymentUrl" class="payment-link-wrapper">
+              <a :href="selectedPaymentMethod.paymentUrl" target="_blank" class="payment-link-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="paypal-icon"><path d="M21 8V12.5C21 16.5 18.5 20 14 20H10C8.9 20 8 19.1 8 18V14C8 13.4 8.4 13 9 13H11.5C12.1 13 12.5 12.6 12.5 12C12.5 11.4 12.1 11 11.5 11H10C9.4 11 9 10.6 9 10V8H11.5C12.1 8 12.5 7.6 12.5 7C12.5 6.4 12.1 6 11.5 6H9C7.3 6 6 7.3 6 9V12C6 12.6 6.4 13 7 13H9V16C9 16.6 9.4 17 10 17H14C14.6 17 15 16.6 15 16V13H16C16.6 13 17 12.6 17 12V9C17 7.3 15.7 6 14 6H10V7.3C10.6 6.7 11.3 6.4 12 6.4H14C15.7 6.4 17 7.7 17 9.4V10H14C13.4 10 13 10.4 13 11C13 11.6 13.4 12 14 12H17V13H14C13.4 13 13 13.4 13 14C13 14.6 13.4 15 14 15H17V16H14C12.3 16 11 17.3 11 19V20C11 20.6 11.4 21 12 21H14C17.3 21 20 18.3 20 15V8H21Z"/></svg>
+                前往 PayPal 付款
+              </a>
+              <p class="payment-link-hint">点击按钮跳转到 PayPal 完成付款</p>
+            </div>
             <div v-if="selectedPaymentMethod.instructions" class="instructions">
               <p class="instructions-label">付款说明：</p>
               <p class="instructions-text">{{ selectedPaymentMethod.instructions }}</p>
@@ -586,6 +593,34 @@ function formatPrice(price) {
   width: 100%;
   border-radius: 8px;
   border: 1px solid #444;
+}
+.payment-link-wrapper{
+  text-align: center;
+}
+.payment-link-btn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #0070ba;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 15px;
+  transition: background 0.3s;
+}
+.payment-link-btn:hover{
+  background: #005ea6;
+}
+.paypal-icon{
+  width: 20px;
+  height: 20px;
+}
+.payment-link-hint{
+  color: #888;
+  font-size: 12px;
+  margin-top: 8px;
 }
 .instructions{
   width: 100%;

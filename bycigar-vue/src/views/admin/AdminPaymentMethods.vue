@@ -15,6 +15,7 @@ const saving = ref(false)
 const form = ref({
   name: '',
   qrCodeUrl: '',
+  paymentUrl: '',
   instructions: '',
   isActive: true,
   sortOrder: 0
@@ -40,7 +41,7 @@ async function fetchMethods() {
 
 function openCreateModal() {
   editingMethod.value = null
-  form.value = { name: '', qrCodeUrl: '', instructions: '', isActive: true, sortOrder: 0 }
+  form.value = { name: '', qrCodeUrl: '', paymentUrl: '', instructions: '', isActive: true, sortOrder: 0 }
   showModal.value = true
 }
 
@@ -49,6 +50,7 @@ function openEditModal(method) {
   form.value = {
     name: method.name,
     qrCodeUrl: method.qrCodeUrl,
+    paymentUrl: method.paymentUrl,
     instructions: method.instructions,
     isActive: method.isActive,
     sortOrder: method.sortOrder
@@ -144,6 +146,7 @@ onMounted(fetchMethods)
             </span>
           </div>
           <div v-if="method.instructions" class="method-instructions">{{ method.instructions }}</div>
+          <div v-if="method.paymentUrl" class="method-url"><a :href="method.paymentUrl" target="_blank">{{ method.paymentUrl }}</a></div>
           <div class="method-meta">
             <span>排序: {{ method.sortOrder }}</span>
           </div>
@@ -175,6 +178,10 @@ onMounted(fetchMethods)
           <div class="form-group">
             <label>收款码/收款信息图片</label>
             <AdminImageUpload v-model="form.qrCodeUrl" :aspect-ratio="1" />
+          </div>
+          <div class="form-group">
+            <label>付款链接（如 PayPal.me）</label>
+            <input v-model="form.paymentUrl" type="url" placeholder="https://paypal.me/你的账号" />
           </div>
           <div class="form-group">
             <label>付款说明</label>
@@ -312,6 +319,18 @@ onMounted(fetchMethods)
   color: #666;
   font-size: 13px;
   margin-bottom: 4px;
+}
+
+.method-url {
+  font-size: 12px;
+  color: #1565c0;
+  margin-top: 4px;
+}
+
+.method-url a {
+  color: #1565c0;
+  text-decoration: none;
+  word-break: break-all;
 }
 
 .method-meta {

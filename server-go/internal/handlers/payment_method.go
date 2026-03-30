@@ -38,6 +38,7 @@ func CreatePaymentMethod(c *gin.Context) {
 	method := models.PaymentMethod{
 		Name:         input.Name,
 		QRCodeUrl:    input.QRCodeUrl,
+		PaymentUrl:   input.PaymentUrl,
 		Instructions: input.Instructions,
 		IsActive:     isActive,
 		SortOrder:    input.SortOrder,
@@ -72,6 +73,9 @@ func UpdatePaymentMethod(c *gin.Context) {
 	}
 	if input.QRCodeUrl != "" {
 		updates["qr_code_url"] = input.QRCodeUrl
+	}
+	if input.PaymentUrl != "" {
+		updates["payment_url"] = input.PaymentUrl
 	}
 	if input.Instructions != "" {
 		updates["instructions"] = input.Instructions

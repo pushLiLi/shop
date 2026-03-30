@@ -294,7 +294,7 @@ func seedPaymentMethodsData() {
 		{Name: "微信支付(旧版)", QRCodeUrl: "https://picsum.photos/seed/wxpay-old/200/200", Instructions: "已停用，请使用新版", IsActive: false, SortOrder: 4},
 		{Name: "支付宝(旧版)", QRCodeUrl: "https://picsum.photos/seed/alipay-old/200/200", Instructions: "已停用，请使用新版", IsActive: false, SortOrder: 5},
 		{Name: "货到付款", QRCodeUrl: "", Instructions: "收货时付款", IsActive: true, SortOrder: 6},
-		{Name: "PayPal", QRCodeUrl: "https://picsum.photos/seed/paypal/200/200", Instructions: "支持国际信用卡支付", IsActive: true, SortOrder: 7},
+		{Name: "PayPal", QRCodeUrl: "", PaymentUrl: "https://paypal.me/yourname", Instructions: "点击上方按钮前往 PayPal 完成付款，付款后请上传截图", IsActive: true, SortOrder: 7},
 		{Name: "企业转账", QRCodeUrl: "", Instructions: "仅限企业客户", IsActive: false, SortOrder: 8},
 	}
 
