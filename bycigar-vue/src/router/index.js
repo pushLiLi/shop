@@ -23,6 +23,7 @@ import AdminDashboard from '../views/admin/AdminDashboard.vue'
 import AdminUsers from '../views/admin/AdminUsers.vue'
 import AdminChat from '../views/admin/AdminChat.vue'
 import AdminPaymentMethods from '../views/admin/AdminPaymentMethods.vue'
+import AdminContactMethods from '../views/admin/AdminContactMethods.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -167,6 +168,12 @@ const router = createRouter({
           name: 'admin-payment-methods',
           component: AdminPaymentMethods,
           meta: { title: '付款方式', requiresSuperAdmin: true }
+        },
+        {
+          path: 'contact-methods',
+          name: 'admin-contact-methods',
+          component: AdminContactMethods,
+          meta: { title: '联系方式', requiresSuperAdmin: true }
         }
       ]
     }

@@ -13,6 +13,7 @@ const limit = 20
 
 const filterStatus = ref('')
 const search = ref('')
+const pendingProofTotal = ref(0)
 
 const showDetailModal = ref(false)
 const detailOrder = ref(null)
@@ -74,10 +75,6 @@ const nextStatuses = computed(() => {
   return statusTransitions[detailOrder.value.status] || []
 })
 
-const pendingProofCount = computed(() =>
-  orders.value.filter(o => o.paymentProof?.status === 'pending').length
-)
-
 const allSelected = computed(() =>
   orders.value.length > 0 && orders.value.every(o =>
     o.paymentProof?.status === 'pending' ? selectedIds.value.includes(o.id) : true
@@ -102,6 +99,7 @@ const fetchOrders = async () => {
     const data = await res.json()
     orders.value = data.orders || []
     totalPages.value = data.totalPages || 1
+    pendingProofTotal.value = data.pendingProofCount || 0
     selectedIds.value = []
   } catch (e) {
     console.error('Error fetching orders:', e)
@@ -120,21 +118,6 @@ const resetFilters = () => {
   filterStatus.value = ''
   currentPage.value = 1
   fetchOrders()
-}
-
-const filterPendingProofs = () => {
-  filterStatus.value = 'pending'
-  currentPage.value = 1
-  loading.value = true
-  fetch(`${API_BASE}/admin/orders?page=${currentPage.value}&limit=${limit}&proof_status=pending`, { headers: authHeaders() })
-    .then(r => r.json())
-    .then(data => {
-      orders.value = data.orders || []
-      totalPages.value = data.totalPages || 1
-      selectedIds.value = []
-    })
-    .catch(() => toast.error('获取订单失败'))
-    .finally(() => { loading.value = false })
 }
 
 const openDetail = async (order) => {
@@ -330,11 +313,8 @@ onMounted(() => fetchOrders())
         </div>
         <select v-model="filterStatus" @change="handleSearch">
           <option value="">全部状态</option>
-          <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
+          <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}{{ key === 'pending' && pendingProofTotal ? ` (${pendingProofTotal})` : '' }}</option>
         </select>
-        <button class="btn-proof-filter" @click="filterPendingProofs">
-          待审核凭证<span v-if="pendingProofCount"> ({{ pendingProofCount }})</span>
-        </button>
         <button class="btn-reset" @click="resetFilters">重置</button>
       </div>
     </div>
@@ -685,22 +665,6 @@ select {
 
 .btn-reset:hover {
   background: #e0e0e0;
-}
-
-.btn-proof-filter {
-  padding: 8px 16px;
-  border: 2px solid #ff9800;
-  border-radius: 4px;
-  background: #fff8e1;
-  color: #e65100;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-
-.btn-proof-filter:hover {
-  background: #ffecb3;
 }
 
 .batch-bar {

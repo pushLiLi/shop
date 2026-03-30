@@ -6,6 +6,7 @@ import TheFooter from './components/TheFooter.vue'
 import Toast from './components/Toast.vue'
 import CartDrawer from './components/CartDrawer.vue'
 import ChatWidget from './components/ChatWidget.vue'
+import ContactWidget from './components/ContactWidget.vue'
 
 const route = useRoute()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
@@ -37,6 +38,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
     <Toast />
     <CartDrawer />
     <ChatWidget v-if="!isAdminRoute" />
+    <ContactWidget v-if="!isAdminRoute" />
     <Transition name="scroll-top">
       <button
         v-if="showScrollTop && !isAdminRoute"

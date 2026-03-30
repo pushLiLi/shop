@@ -17,6 +17,7 @@ var seedCategories []models.Category
 var seedProducts []models.Product
 var seedAddresses []models.Address
 var seedPaymentMethods []models.PaymentMethod
+var seedContactMethods []models.ContactMethod
 
 func SeedTestData() {
 	log.Println("Clearing existing data for re-seeding...")
@@ -34,6 +35,7 @@ func SeedTestData() {
 	DB.Exec("TRUNCATE TABLE notifications")
 	DB.Exec("TRUNCATE TABLE payment_proofs")
 	DB.Exec("TRUNCATE TABLE payment_methods")
+	DB.Exec("TRUNCATE TABLE contact_methods")
 	DB.Exec("TRUNCATE TABLE settings")
 	DB.Exec("TRUNCATE TABLE pages")
 	DB.Exec("TRUNCATE TABLE configs")
@@ -56,6 +58,7 @@ func SeedTestData() {
 	seedCartAndFavorites()
 	seedConversationsAndMessages()
 	seedNotificationsData()
+	seedContactMethodsData()
 
 	log.Println("Test data seeded successfully")
 }
@@ -1075,4 +1078,26 @@ func seedNotificationsData() {
 	}
 
 	log.Printf("Notifications seeded: %d", len(notifications))
+}
+
+func seedContactMethodsData() {
+	methods := []models.ContactMethod{
+		{Type: "phone", Label: "客服热线", Value: "400-888-9999", IsActive: true, SortOrder: 1},
+		{Type: "email", Label: "邮箱支持", Value: "support@bycigar.com", IsActive: true, SortOrder: 2},
+		{Type: "wechat", Label: "微信客服", Value: "BYCIGAR_CS", QRCodeUrl: "https://picsum.photos/seed/wechat-qr/200/200", IsActive: true, SortOrder: 3},
+		{Type: "whatsapp", Label: "WhatsApp", Value: "8613800138000", IsActive: true, SortOrder: 4},
+		{Type: "telegram", Label: "Telegram", Value: "bycigar_support", IsActive: false, SortOrder: 5},
+		{Type: "qq", Label: "QQ客服", Value: "88889999", QRCodeUrl: "https://picsum.photos/seed/qq-qr/200/200", IsActive: false, SortOrder: 6},
+	}
+
+	for i := range methods {
+		var existing models.ContactMethod
+		if err := DB.Where("type = ? AND label = ?", methods[i].Type, methods[i].Label).First(&existing).Error; err != nil {
+			DB.Create(&methods[i])
+		} else {
+			methods[i].ID = existing.ID
+		}
+	}
+	seedContactMethods = methods
+	log.Printf("ContactMethods seeded: %d", len(seedContactMethods))
 }

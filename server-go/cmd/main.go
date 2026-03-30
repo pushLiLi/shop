@@ -93,6 +93,7 @@ func main() {
 	r.GET("/api/orders/:id", handlers.GetOrder)
 
 	r.GET("/api/payment-methods", handlers.GetPaymentMethods)
+	r.GET("/api/contact-methods", handlers.GetContactMethods)
 	r.POST("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.UploadPaymentProof)
 	r.GET("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.GetOrderPaymentProof)
 
@@ -180,6 +181,11 @@ func main() {
 		superAdmin.POST("/payment-methods", handlers.CreatePaymentMethod)
 		superAdmin.PUT("/payment-methods/:id", handlers.UpdatePaymentMethod)
 		superAdmin.DELETE("/payment-methods/:id", handlers.DeletePaymentMethod)
+
+		superAdmin.GET("/contact-methods", handlers.GetAdminContactMethods)
+		superAdmin.POST("/contact-methods", handlers.CreateContactMethod)
+		superAdmin.PUT("/contact-methods/:id", handlers.UpdateContactMethod)
+		superAdmin.DELETE("/contact-methods/:id", handlers.DeleteContactMethod)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

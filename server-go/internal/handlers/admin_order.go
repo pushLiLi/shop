@@ -117,17 +117,21 @@ func GetAdminOrders(c *gin.Context) {
 		result = append(result, OrderWithUser{Order: o, User: userInfo, PaymentProof: proofSummary})
 	}
 
+	var pendingProofCount int64
+	database.DB.Model(&models.PaymentProof{}).Where("status = ?", "pending").Count(&pendingProofCount)
+
 	totalPages := int(total) / limit
 	if int(total)%limit != 0 {
 		totalPages++
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"orders":     result,
-		"total":      total,
-		"page":       page,
-		"limit":      limit,
-		"totalPages": totalPages,
+		"orders":            result,
+		"total":             total,
+		"page":              page,
+		"limit":             limit,
+		"totalPages":        totalPages,
+		"pendingProofCount": pendingProofCount,
 	})
 }
 
