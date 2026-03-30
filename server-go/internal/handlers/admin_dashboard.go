@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"bycigar-server/internal/database"
@@ -102,6 +103,47 @@ func GetDashboardLowStock(c *gin.Context) {
 		Find(&products)
 
 	c.JSON(http.StatusOK, gin.H{"products": products})
+}
+
+func GetRevenueByDate(c *gin.Context) {
+	days := 7
+	if d := c.Query("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+
+	startDate := time.Now().AddDate(0, 0, -days+1).Truncate(24 * time.Hour)
+
+	type DailyRevenue struct {
+		Date     string  `json:"date"`
+		Revenue  float64 `json:"revenue"`
+		Orders   int     `json:"orders"`
+	}
+
+	var results []DailyRevenue
+	for i := 0; i < days; i++ {
+		day := startDate.AddDate(0, 0, i)
+		nextDay := day.AddDate(0, 0, 1)
+
+		var revenue float64
+		var orders int64
+		database.DB.Model(&models.Order{}).
+			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
+			Select("COALESCE(SUM(total), 0)").
+			Scan(&revenue)
+		database.DB.Model(&models.Order{}).
+			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
+			Count(&orders)
+
+		results = append(results, DailyRevenue{
+			Date:    day.Format("2006-01-02"),
+			Revenue: revenue,
+			Orders:  int(orders),
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": results})
 }
 
 func GetDashboardTopProducts(c *gin.Context) {

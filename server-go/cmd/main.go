@@ -143,6 +143,7 @@ func main() {
 		admin.GET("/dashboard/recent-orders", handlers.GetDashboardRecentOrders)
 		admin.GET("/dashboard/low-stock", handlers.GetDashboardLowStock)
 		admin.GET("/dashboard/top-products", handlers.GetDashboardTopProducts)
+		admin.GET("/stats/revenue", handlers.GetRevenueByDate)
 
 		admin.GET("/users", handlers.GetAdminUsers)
 		admin.GET("/users/:id", handlers.GetAdminUser)

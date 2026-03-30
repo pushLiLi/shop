@@ -1,6 +1,21 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { Line, Bar } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
 
 const API_BASE = '/api'
 const authStore = useAuthStore()
@@ -15,6 +30,8 @@ const statsLoading = ref(false)
 const ordersLoading = ref(false)
 const lowStockLoading = ref(false)
 const topProductsLoading = ref(false)
+const revenueData = ref([])
+const revenueLoading = ref(false)
 
 const collapsedOrders = ref(false)
 const collapsedLowStock = ref(false)
@@ -87,12 +104,102 @@ const fetchTopProducts = async () => {
   }
 }
 
+const fetchRevenue = async () => {
+  revenueLoading.value = true
+  try {
+    const res = await fetch(`${API_BASE}/admin/stats/revenue?days=7`, { headers: authHeaders() })
+    const data = await res.json()
+    revenueData.value = data.data || []
+  } finally {
+    revenueLoading.value = false
+  }
+}
+
 const formatPrice = (price) => `¥${parseFloat(price || 0).toFixed(2)}`
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
+const revenueChartData = computed(() => {
+  const labels = revenueData.value.map(d => d.date.slice(5))
+  return {
+    labels,
+    datasets: [
+      {
+        label: '营收',
+        data: revenueData.value.map(d => d.revenue),
+        borderColor: '#d4a574',
+        backgroundColor: 'rgba(212, 165, 116, 0.1)',
+        fill: true,
+        tension: 0.4,
+        yAxisID: 'y'
+      },
+      {
+        label: '订单',
+        data: revenueData.value.map(d => d.orders),
+        borderColor: '#1565c0',
+        backgroundColor: 'rgba(21, 101, 192, 0.1)',
+        fill: true,
+        tension: 0.4,
+        yAxisID: 'y1'
+      }
+    ]
+  }
+})
+
+const revenueChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { position: 'top' } },
+  scales: {
+    y: {
+      type: 'linear',
+      display: true,
+      position: 'left',
+      title: { display: true, text: '营收 (¥)' },
+      grid: { color: '#f5f5f5' }
+    },
+    y1: {
+      type: 'linear',
+      display: true,
+      position: 'right',
+      title: { display: true, text: '订单' },
+      grid: { drawOnChartArea: false }
+    },
+    x: { grid: { display: false } }
+  }
+}
+
+const top5Products = computed(() => topProducts.value.slice(0, 5))
+
+const topProductsChartData = computed(() => {
+  const labels = top5Products.value.map(p => p.productName.length > 8 ? p.productName.slice(0, 8) + '...' : p.productName)
+  return {
+    labels,
+    datasets: [
+      {
+        label: '销量',
+        data: top5Products.value.map(p => p.totalSold),
+        backgroundColor: ['#d4a574', '#c69c6d', '#b8926a', '#a98867', '#9a7e64'],
+        borderRadius: 6
+      }
+    ]
+  }
+})
+
+const topProductsChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  indexAxis: 'y',
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: '#f5f5f5' } },
+    y: { grid: { display: false } }
+  }
+}
+
 onMounted(async () => {
   try {
-    await Promise.all([fetchStats(), fetchRecentOrders(), fetchLowStock(), fetchTopProducts()])
+    await Promise.all([fetchStats(), fetchRecentOrders(), fetchLowStock(), fetchTopProducts(), fetchRevenue()])
   } finally {
     loading.value = false
   }
@@ -152,6 +259,34 @@ onMounted(async () => {
         <button class="btn-refresh btn-refresh-float" :class="{ spinning: statsLoading }" @click="fetchStats" title="刷新统计">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
         </button>
+      </div>
+
+      <div class="charts-grid" v-if="showRevenue">
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3>营收趋势（近7天）</h3>
+            <div class="section-header-right">
+              <button class="btn-refresh" :class="{ spinning: revenueLoading }" @click.stop="fetchRevenue" title="刷新">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="chart-container">
+              <Line :data="revenueChartData" :options="revenueChartOptions" />
+            </div>
+          </div>
+        </div>
+        <div class="dashboard-section">
+          <div class="section-header">
+            <h3>热销商品 TOP 5</h3>
+          </div>
+          <div class="section-body">
+            <div class="chart-container">
+              <Bar :data="topProductsChartData" :options="topProductsChartOptions" />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="dashboard-grid">
@@ -567,11 +702,25 @@ onMounted(async () => {
   font-weight: 600;
 }
 
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.chart-container {
+  padding: 20px;
+  height: 280px;
+}
+
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .charts-grid {
     grid-template-columns: 1fr;
   }
 }
