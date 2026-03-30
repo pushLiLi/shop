@@ -313,7 +313,7 @@ func (s *PaymentTestSuite) TestReviewPaymentProofApprove() {
 
 	var updatedOrder models.Order
 	database.DB.First(&updatedOrder, orderID)
-	s.Equal("paid", updatedOrder.Status)
+	s.Equal("processing", updatedOrder.Status)
 }
 
 func (s *PaymentTestSuite) TestReviewPaymentProofReject() {

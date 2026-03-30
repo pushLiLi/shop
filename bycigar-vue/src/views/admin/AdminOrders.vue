@@ -36,8 +36,8 @@ const statusLabels = {
 }
 
 const statusTransitions = {
-  pending: ['paid', 'cancelled'],
-  paid: ['processing', 'cancelled'],
+  pending: ['cancelled'],
+  paid: [],
   processing: ['shipped', 'cancelled'],
   shipped: ['completed'],
   completed: [],

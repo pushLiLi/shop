@@ -14,8 +14,8 @@ const (
 )
 
 var ValidOrderStatusTransitions = map[string][]string{
-	OrderStatusPending:    {OrderStatusPaid, OrderStatusCancelled},
-	OrderStatusPaid:       {OrderStatusProcessing, OrderStatusCancelled},
+	OrderStatusPending:    {OrderStatusCancelled},
+	OrderStatusPaid:       {},
 	OrderStatusProcessing: {OrderStatusShipped, OrderStatusCancelled},
 	OrderStatusShipped:    {OrderStatusCompleted},
 	OrderStatusCompleted:  {},

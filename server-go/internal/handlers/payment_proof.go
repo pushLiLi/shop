@@ -159,7 +159,7 @@ func ReviewPaymentProof(c *gin.Context) {
 		proof.ReviewedAt = &now
 		database.DB.Save(&proof)
 
-		database.DB.Model(&models.Order{}).Where("id = ?", proof.OrderID).Update("status", models.OrderStatusPaid)
+		database.DB.Model(&models.Order{}).Where("id = ?", proof.OrderID).Update("status", models.OrderStatusProcessing)
 
 		var order models.Order
 		database.DB.First(&order, proof.OrderID)
@@ -168,7 +168,7 @@ func ReviewPaymentProof(c *gin.Context) {
 			UserID:  order.UserID,
 			Type:    models.NotificationTypeOrderStatus,
 			Title:   "订单状态更新",
-			Content: "您的订单 " + order.OrderNo + " 付款已确认，状态已更新为「已支付」",
+			Content: "您的订单 " + order.OrderNo + " 付款已确认，订单开始处理",
 			Link:    "/orders",
 			OrderID: &order.ID,
 		}
@@ -259,7 +259,7 @@ func BatchReviewPaymentProofs(c *gin.Context) {
 				UserID:  order.UserID,
 				Type:    models.NotificationTypeOrderStatus,
 				Title:   "订单状态更新",
-				Content: "您的订单 " + order.OrderNo + " 付款已确认，状态已更新为「已支付」",
+				Content: "您的订单 " + order.OrderNo + " 付款已确认，订单开始处理",
 				Link:    "/orders",
 				OrderID: &order.ID,
 			}
