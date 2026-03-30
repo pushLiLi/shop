@@ -29,7 +29,8 @@ export const useChatStore = defineStore('chat', {
     isServiceTyping: false,
     typingTimeout: null,
     lastTypingSent: 0,
-    soundEnabled: localStorage.getItem('chat_sound_enabled') !== 'false'
+    soundEnabled: localStorage.getItem('chat_sound_enabled') !== 'false',
+    serviceOnline: false
   }),
 
   actions: {
@@ -141,6 +142,9 @@ export const useChatStore = defineStore('chat', {
             this.currentConversation = null
             this.messages = []
           }
+          break
+        case 'service_status':
+          this.serviceOnline = data.serviceOnline || false
           break
       }
       if (this.onMessage) {
@@ -383,8 +387,19 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    async fetchServiceStatus() {
+      try {
+        const res = await fetch(`${API_BASE}/chat/service-status`)
+        const data = await res.json()
+        this.serviceOnline = data.online || false
+      } catch (e) {
+        console.error('Fetch service status failed:', e)
+      }
+    },
+
     init() {
       this.connectWebSocket()
+      this.fetchServiceStatus()
     },
 
     cleanup() {

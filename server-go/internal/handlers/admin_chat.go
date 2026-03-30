@@ -246,3 +246,36 @@ func GetAdminUnreadStats(c *gin.Context) {
 		"totalUnread": totalUnread,
 	})
 }
+
+func SetServiceStatus(c *gin.Context) {
+	var input struct {
+		Online bool `json:"online"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("userID")
+	uid := userID.(uint)
+
+	if input.Online {
+		wasEmpty := ws.DefaultHub.SetServiceOnline(uid)
+		if wasEmpty {
+			ws.DefaultHub.SendToAllCustomers(WSResponse{
+				Type:          "service_status",
+				ServiceOnline: true,
+			})
+		}
+	} else {
+		nowEmpty := ws.DefaultHub.SetServiceOffline(uid)
+		if nowEmpty {
+			ws.DefaultHub.SendToAllCustomers(WSResponse{
+				Type:          "service_status",
+				ServiceOnline: false,
+			})
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "online": input.Online})
+}

@@ -31,6 +31,7 @@ const typingTimeout = ref(null)
 const lastTypingSent = ref(0)
 const messagesLoaded = ref(false)
 const prevMsgCount = ref(0)
+const serviceOnline = ref(false)
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -380,9 +381,26 @@ watch(() => messages.value.length, (newLen) => {
   })
 })
 
+const fetchServiceStatus = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/chat/service-status`)
+    const data = await res.json()
+    serviceOnline.value = data.online || false
+  } catch (e) {
+    console.error('Fetch service status failed:', e)
+  }
+}
+
+const toggleServiceStatus = () => {
+  const newStatus = !serviceOnline.value
+  wsSend({ type: newStatus ? 'service_online' : 'service_offline' })
+  serviceOnline.value = newStatus
+}
+
 onMounted(() => {
   fetchConversations()
   connectWebSocket()
+  fetchServiceStatus()
 })
 
 onUnmounted(() => {
@@ -395,6 +413,15 @@ onUnmounted(() => {
   <div class="admin-chat">
     <div class="chat-sidebar">
       <div class="sidebar-header">
+        <div class="service-status-bar">
+          <div class="status-indicator" :class="{ online: serviceOnline }">
+            <span class="status-dot-admin"></span>
+            <span>{{ serviceOnline ? '在线接客中' : '当前离线' }}</span>
+          </div>
+          <button class="toggle-status-btn" :class="{ online: serviceOnline }" @click="toggleServiceStatus">
+            {{ serviceOnline ? '下线' : '上线' }}
+          </button>
+        </div>
         <div class="filter-tabs">
           <button
             :class="{ active: filterStatus === '' }"
@@ -575,6 +602,52 @@ onUnmounted(() => {
 .sidebar-header {
   padding: 16px;
   border-bottom: 1px solid #eee;
+}
+
+.service-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 12px;
+}
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #999;
+}
+.status-dot-admin {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: background 0.3s;
+}
+.status-indicator.online .status-dot-admin {
+  background: #4caf50;
+}
+.status-indicator.online {
+  color: #4caf50;
+  font-weight: 500;
+}
+.toggle-status-btn {
+  padding: 4px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #666;
+  transition: all 0.2s;
+}
+.toggle-status-btn.online {
+  background: #4caf50;
+  color: #fff;
+  border-color: #4caf50;
+}
+.toggle-status-btn:hover {
+  opacity: 0.85;
 }
 
 .filter-tabs {

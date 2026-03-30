@@ -235,8 +235,8 @@ watch(() => authStore.isLoggedIn, (val) => {
       <div v-if="chatStore.isOpen" class="chat-panel">
         <div class="chat-header">
           <div class="header-left">
-            <span class="status-dot"></span>
-            <span class="header-title">在线客服</span>
+            <span class="status-dot" :class="{ online: chatStore.serviceOnline }"></span>
+            <span class="header-title">{{ chatStore.serviceOnline ? '在线客服' : '客服离线' }}</span>
           </div>
           <div class="header-right">
             <button class="end-btn" @click="handleEndChat" v-if="chatStore.currentConversation && chatStore.currentConversation.status === 'open'" title="结束对话">结束对话</button>
@@ -264,6 +264,10 @@ watch(() => authStore.isLoggedIn, (val) => {
         <div v-if="chatStore.autoCloseWarning" class="auto-close-warning">
           <span>由于长时间未操作，对话将在 {{ chatStore.autoCloseCountdown }} 秒后暂停</span>
           <button class="keep-btn" @click="keepConversation">继续对话</button>
+        </div>
+
+        <div v-if="!chatStore.serviceOnline && chatStore.isOpen" class="offline-notice">
+          <span>客服当前离线，您的消息将在客服上线后回复</span>
         </div>
 
         <div class="messages-area" ref="messagesContainer" :class="{ 'animate-msgs': messagesLoaded }">
@@ -388,7 +392,10 @@ watch(() => authStore.isLoggedIn, (val) => {
 
     <button
       class="chat-fab"
-      :class="{ 'has-unread': chatStore.unreadCount > 0 && !chatStore.isOpen }"
+      :class="{
+        'has-unread': chatStore.unreadCount > 0 && !chatStore.isOpen,
+        'is-offline': !chatStore.serviceOnline
+      }"
       @click="handleOpen"
     >
       <svg v-if="!chatStore.isOpen" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -445,6 +452,11 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 .chat-fab.has-unread {
   animation: pulse-badge 2s ease-in-out 3;
+}
+
+.chat-fab.is-offline {
+  background: #555;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes pulse-badge {
@@ -521,6 +533,10 @@ watch(() => authStore.isLoggedIn, (val) => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: #666;
+  transition: background 0.3s;
+}
+.status-dot.online {
   background: #4caf50;
 }
 
@@ -606,6 +622,16 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 .keep-btn:hover {
   background: #e0b88a;
+}
+
+.offline-notice {
+  padding: 8px 14px;
+  background: rgba(255, 152, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 152, 0, 0.2);
+  text-align: center;
+  color: #ffb74d;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .messages-area {

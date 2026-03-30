@@ -112,6 +112,7 @@ func main() {
 	r.PUT("/api/chat/conversations/:id/close", middleware.RequireAuth(), handlers.CustomerCloseConversation)
 	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
 	r.POST("/api/chat/upload-image", middleware.RequireAuth(), handlers.UploadChatImage)
+	r.GET("/api/chat/service-status", handlers.GetServiceStatus)
 	r.GET("/api/chat/ws", middleware.RequireAuth(), handlers.HandleCustomerWS)
 
 	r.GET("/api/auth/me", handlers.GetProfile)
@@ -156,6 +157,7 @@ func main() {
 		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
 		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
 		admin.GET("/chat/ws", handlers.HandleAdminWS)
+		admin.POST("/chat/service-status", handlers.SetServiceStatus)
 
 		admin.PUT("/payment-proofs/batch-review", handlers.BatchReviewPaymentProofs)
 		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)

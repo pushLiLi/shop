@@ -344,3 +344,9 @@ func CustomerCloseConversation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
+
+func GetServiceStatus(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"online": ws.DefaultHub.IsServiceOnline(),
+	})
+}
