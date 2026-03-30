@@ -154,6 +154,7 @@ func main() {
 		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
 		admin.GET("/chat/ws", handlers.HandleAdminWS)
 
+		admin.PUT("/payment-proofs/batch-review", handlers.BatchReviewPaymentProofs)
 		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)
 	}
 

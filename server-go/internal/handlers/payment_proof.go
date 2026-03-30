@@ -204,6 +204,83 @@ func ReviewPaymentProof(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "paymentProof": proof})
 }
 
+func BatchReviewPaymentProofs(c *gin.Context) {
+	var input struct {
+		IDs          []uint `json:"ids" binding:"required"`
+		Action       string `json:"action" binding:"required"`
+		RejectReason string `json:"rejectReason"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Action != "approve" && input.Action != "reject" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的审核操作"})
+		return
+	}
+	if len(input.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择要审核的凭证"})
+		return
+	}
+
+	var proofs []models.PaymentProof
+	database.DB.Where("id IN ? AND status = ?", input.IDs, models.PaymentProofStatusPending).Find(&proofs)
+	if len(proofs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "没有可审核的凭证"})
+		return
+	}
+
+	reviewerID, _ := c.Get("userID")
+	now := time.Now()
+	reviewed := 0
+
+	for _, p := range proofs {
+		p.Status = models.PaymentProofStatusApproved
+		if input.Action == "reject" {
+			p.Status = models.PaymentProofStatusRejected
+			p.RejectReason = input.RejectReason
+		}
+		p.ReviewerID = func() *uint { v := reviewerID.(uint); return &v }()
+		p.ReviewedAt = &now
+		database.DB.Save(&p)
+
+		var order models.Order
+		database.DB.First(&order, p.OrderID)
+
+		if input.Action == "approve" {
+			database.DB.Model(&models.Order{}).Where("id = ?", p.OrderID).Update("status", models.OrderStatusPaid)
+			notification := models.Notification{
+				UserID:  order.UserID,
+				Type:    models.NotificationTypeOrderStatus,
+				Title:   "订单状态更新",
+				Content: "您的订单 " + order.OrderNo + " 付款已确认，状态已更新为「已支付」",
+				Link:    "/orders",
+				OrderID: &order.ID,
+			}
+			database.DB.Create(&notification)
+		} else {
+			content := "您的订单 " + order.OrderNo + " 付款凭证未通过审核"
+			if input.RejectReason != "" {
+				content += "，原因：" + input.RejectReason
+			}
+			content += "。请重新上传付款凭证或联系客服处理退款。"
+			notification := models.Notification{
+				UserID:  order.UserID,
+				Type:    models.NotificationTypeOrderStatus,
+				Title:   "付款凭证审核未通过",
+				Content: content,
+				Link:    "/orders",
+				OrderID: &order.ID,
+			}
+			database.DB.Create(&notification)
+		}
+		reviewed++
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "reviewed": reviewed})
+}
+
 func GetOrderPaymentProof(c *gin.Context) {
 	orderID := c.Param("id")
 

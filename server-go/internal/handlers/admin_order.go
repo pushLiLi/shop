@@ -11,11 +11,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type PaymentProofSummary struct {
+	ID              uint   `json:"id"`
+	Status          string `json:"status"`
+	ImageUrl        string `json:"imageUrl"`
+	PaymentMethod   string `json:"paymentMethod"`
+	RejectReason    string `json:"rejectReason,omitempty"`
+	CreatedAt       string `json:"createdAt"`
+}
+
 func GetAdminOrders(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	status := c.Query("status")
 	search := c.Query("search")
+	proofStatus := c.Query("proof_status")
 
 	if page < 1 {
 		page = 1
@@ -31,6 +41,9 @@ func GetAdminOrders(c *gin.Context) {
 	}
 	if search != "" {
 		query = query.Where("order_no LIKE ?", "%"+search+"%")
+	}
+	if proofStatus != "" {
+		query = query.Where("id IN (SELECT order_id FROM payment_proofs WHERE status = ?)", proofStatus)
 	}
 
 	var total int64
@@ -56,9 +69,28 @@ func GetAdminOrders(c *gin.Context) {
 		userMap[u.ID] = u
 	}
 
+	proofMap := make(map[uint]models.PaymentProof)
+	if len(orders) > 0 {
+		orderIDs := make([]uint, len(orders))
+		for i, o := range orders {
+			orderIDs[i] = o.ID
+		}
+		var proofs []models.PaymentProof
+		database.DB.Where("order_id IN ?", orderIDs).
+			Preload("PaymentMethod").
+			Order("created_at desc").
+			Find(&proofs)
+		for _, p := range proofs {
+			if _, exists := proofMap[p.OrderID]; !exists {
+				proofMap[p.OrderID] = p
+			}
+		}
+	}
+
 	type OrderWithUser struct {
 		models.Order
-		User interface{} `json:"user"`
+		User         interface{}           `json:"user"`
+		PaymentProof *PaymentProofSummary  `json:"paymentProof"`
 	}
 	var result []OrderWithUser
 	for _, o := range orders {
@@ -67,7 +99,18 @@ func GetAdminOrders(c *gin.Context) {
 		if ok {
 			userInfo = gin.H{"id": u.ID, "name": u.Name, "email": u.Email}
 		}
-		result = append(result, OrderWithUser{Order: o, User: userInfo})
+		var proofSummary *PaymentProofSummary
+		if p, exists := proofMap[o.ID]; exists {
+			proofSummary = &PaymentProofSummary{
+				ID:            p.ID,
+				Status:        p.Status,
+				ImageUrl:      p.ImageUrl,
+				PaymentMethod: p.PaymentMethod.Name,
+				RejectReason:  p.RejectReason,
+				CreatedAt:     p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			}
+		}
+		result = append(result, OrderWithUser{Order: o, User: userInfo, PaymentProof: proofSummary})
 	}
 
 	totalPages := int(total) / limit

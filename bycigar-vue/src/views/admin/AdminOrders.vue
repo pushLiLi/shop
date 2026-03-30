@@ -17,15 +17,13 @@ const search = ref('')
 const showDetailModal = ref(false)
 const detailOrder = ref(null)
 const detailUser = ref(null)
-
-const showStatusModal = ref(false)
-const statusOrder = ref(null)
-const selectedStatus = ref('')
-
 const detailProof = ref(null)
-const showReviewModal = ref(false)
-const reviewProofId = ref(null)
+
+const showQuickReview = ref(false)
+const quickReviewOrder = ref(null)
 const rejectReason = ref('')
+
+const selectedIds = ref([])
 
 const statusLabels = {
   pending: '待处理',
@@ -34,6 +32,21 @@ const statusLabels = {
   shipped: '已发货',
   completed: '已完成',
   cancelled: '已取消'
+}
+
+const statusTransitions = {
+  pending: ['paid', 'cancelled'],
+  paid: ['processing', 'cancelled'],
+  processing: ['shipped', 'cancelled'],
+  shipped: ['completed'],
+  completed: [],
+  cancelled: []
+}
+
+const proofStatusLabels = {
+  pending: '待审核',
+  approved: '已通过',
+  rejected: '已驳回'
 }
 
 const statusBadgeClass = (status) => {
@@ -49,17 +62,21 @@ const statusBadgeClass = (status) => {
 }
 
 const nextStatuses = computed(() => {
-  if (!statusOrder.value) return []
-  const transitions = {
-    pending: ['paid', 'cancelled'],
-    paid: ['processing', 'cancelled'],
-    processing: ['shipped', 'cancelled'],
-    shipped: ['completed'],
-    completed: [],
-    cancelled: []
-  }
-  return transitions[statusOrder.value.status] || []
+  if (!detailOrder.value) return []
+  return statusTransitions[detailOrder.value.status] || []
 })
+
+const pendingProofCount = computed(() =>
+  orders.value.filter(o => o.paymentProof?.status === 'pending').length
+)
+
+const allSelected = computed(() =>
+  orders.value.length > 0 && orders.value.every(o =>
+    o.paymentProof?.status === 'pending' ? selectedIds.value.includes(o.id) : true
+  )
+)
+
+const hasSelected = computed(() => selectedIds.value.length > 0)
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -77,6 +94,7 @@ const fetchOrders = async () => {
     const data = await res.json()
     orders.value = data.orders || []
     totalPages.value = data.totalPages || 1
+    selectedIds.value = []
   } catch (e) {
     console.error('Error fetching orders:', e)
   } finally {
@@ -96,22 +114,35 @@ const resetFilters = () => {
   fetchOrders()
 }
 
+const filterPendingProofs = () => {
+  filterStatus.value = 'pending'
+  currentPage.value = 1
+  loading.value = true
+  fetch(`${API_BASE}/admin/orders?page=${currentPage.value}&limit=${limit}&proof_status=pending`, { headers: authHeaders() })
+    .then(r => r.json())
+    .then(data => {
+      orders.value = data.orders || []
+      totalPages.value = data.totalPages || 1
+      selectedIds.value = []
+    })
+    .catch(() => toast.error('获取订单失败'))
+    .finally(() => { loading.value = false })
+}
+
 const openDetail = async (order) => {
   try {
     const res = await fetch(`${API_BASE}/admin/orders/${order.id}`, { headers: authHeaders() })
     const data = await res.json()
     detailOrder.value = data.order
     detailUser.value = data.user
-    detailProof.value = null
+    detailProof.value = order.paymentProof || null
 
-    if (data.order?.status === 'pending' || data.order?.status === 'paid') {
+    if (!detailProof.value && (data.order?.status === 'pending' || data.order?.status === 'paid')) {
       try {
         const proofRes = await fetch(`${API_BASE}/orders/${data.order.id}/payment-proof`, { headers: authHeaders() })
         const proofData = await proofRes.json()
         detailProof.value = proofData.paymentProof || null
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     }
 
     showDetailModal.value = true
@@ -120,60 +151,112 @@ const openDetail = async (order) => {
   }
 }
 
-const openStatusModal = (order) => {
-  statusOrder.value = order
-  selectedStatus.value = ''
-  showStatusModal.value = true
-}
+const quickStatusChange = async (order, newStatus) => {
+  if (!newStatus) return
 
-const updateStatus = async () => {
-  if (!selectedStatus.value) {
-    toast.error('请选择新状态')
-    return
-  }
+  if (newStatus === 'cancelled' && !confirm('确定要取消该订单吗？')) return
 
   try {
-    const res = await fetch(`${API_BASE}/admin/orders/${statusOrder.value.id}/status`, {
+    const res = await fetch(`${API_BASE}/admin/orders/${order.id}/status`, {
       method: 'PUT',
       headers: authHeaders(),
-      body: JSON.stringify({ status: selectedStatus.value })
+      body: JSON.stringify({ status: newStatus })
     })
     const data = await res.json()
-    if (!res.ok) {
-      throw new Error(data.error || '更新失败')
-    }
+    if (!res.ok) throw new Error(data.error || '更新失败')
     toast.success('订单状态已更新')
-    showStatusModal.value = false
     fetchOrders()
   } catch (e) {
     toast.error(e.message)
   }
 }
 
-const openReviewModal = (proofId) => {
-  reviewProofId.value = proofId
+const openQuickReview = (order) => {
+  quickReviewOrder.value = order
   rejectReason.value = ''
-  showReviewModal.value = true
+  showQuickReview.value = true
 }
 
-const reviewProof = async (action) => {
+const submitReview = async (action) => {
+  const order = quickReviewOrder.value
+  if (!order?.paymentProof) return
+
   try {
     const body = { action }
     if (action === 'reject' && rejectReason.value) {
       body.rejectReason = rejectReason.value
     }
-    const res = await fetch(`${API_BASE}/admin/payment-proofs/${reviewProofId.value}/review`, {
+    const res = await fetch(`${API_BASE}/admin/payment-proofs/${order.paymentProof.id}/review`, {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify(body)
     })
     const data = await res.json()
-    if (!res.ok) {
-      throw new Error(data.error || '审核失败')
-    }
+    if (!res.ok) throw new Error(data.error || '审核失败')
     toast.success(action === 'approve' ? '已通过审核' : '已驳回凭证')
-    showReviewModal.value = false
+    showQuickReview.value = false
+    fetchOrders()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const reviewProofFromDetail = async (action) => {
+  if (!detailProof.value) return
+
+  try {
+    const body = { action }
+    if (action === 'reject' && rejectReason.value) {
+      body.rejectReason = rejectReason.value
+    }
+    const res = await fetch(`${API_BASE}/admin/payment-proofs/${detailProof.value.id}/review`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '审核失败')
+    toast.success(action === 'approve' ? '已通过审核' : '已驳回凭证')
     showDetailModal.value = false
+    fetchOrders()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const toggleSelect = (id) => {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx >= 0) selectedIds.value.splice(idx, 1)
+  else selectedIds.value.push(id)
+}
+
+const toggleSelectAll = () => {
+  const pendingOrders = orders.value.filter(o => o.paymentProof?.status === 'pending')
+  if (allSelected.value) {
+    selectedIds.value = []
+  } else {
+    selectedIds.value = pendingOrders.map(o => o.id)
+  }
+}
+
+const batchReview = async (action) => {
+  if (selectedIds.value.length === 0) return
+  if (action === 'reject' && !confirm(`确定要驳回 ${selectedIds.value.length} 个凭证吗？`)) return
+
+  try {
+    const body = { ids: selectedIds.value, action }
+    if (action === 'reject' && rejectReason.value) {
+      body.rejectReason = rejectReason.value
+    }
+    const res = await fetch(`${API_BASE}/admin/payment-proofs/batch-review`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(body)
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '批量审核失败')
+    toast.success(`已${action === 'approve' ? '通过' : '驳回'} ${data.reviewed} 个凭证`)
+    selectedIds.value = []
     fetchOrders()
   } catch (e) {
     toast.error(e.message)
@@ -214,7 +297,18 @@ onMounted(() => fetchOrders())
           <option value="">全部状态</option>
           <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
         </select>
+        <button class="btn-proof-filter" @click="filterPendingProofs">
+          待审核凭证<span v-if="pendingProofCount"> ({{ pendingProofCount }})</span>
+        </button>
         <button class="btn-reset" @click="resetFilters">重置</button>
+      </div>
+    </div>
+
+    <div v-if="hasSelected" class="batch-bar">
+      <span class="batch-info">已选 {{ selectedIds.length }} 个待审核凭证</span>
+      <div class="batch-actions">
+        <button class="btn-batch-approve" @click="batchReview('approve')">批量通过</button>
+        <button class="btn-batch-reject" @click="batchReview('reject')">批量驳回</button>
       </div>
     </div>
 
@@ -224,40 +318,66 @@ onMounted(() => fetchOrders())
       <table class="data-table">
         <thead>
           <tr>
+            <th style="width: 40px">
+              <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" title="全选待审核" />
+            </th>
             <th style="width: 60px">ID</th>
-            <th style="width: 180px">订单号</th>
+            <th style="width: 170px">订单号</th>
             <th>用户</th>
-            <th style="width: 100px">商品数</th>
-            <th style="width: 120px">总金额</th>
+            <th style="width: 100px">总金额</th>
             <th style="width: 100px">状态</th>
-            <th style="width: 170px">下单时间</th>
-            <th style="width: 160px">操作</th>
+            <th style="width: 100px">付款凭证</th>
+            <th style="width: 160px">下单时间</th>
+            <th style="width: 180px">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in orders" :key="order.id">
+          <tr v-for="order in orders" :key="order.id"
+              :class="{ 'has-pending-proof': order.paymentProof?.status === 'pending' }">
+            <td>
+              <input v-if="order.paymentProof?.status === 'pending'"
+                     type="checkbox" :checked="selectedIds.includes(order.id)"
+                     @change="toggleSelect(order.id)" />
+            </td>
             <td>{{ order.id }}</td>
             <td class="order-no">{{ order.orderNo }}</td>
             <td>{{ order.user?.name || order.user?.email || '-' }}</td>
-            <td>{{ order.items?.length || 0 }} 件</td>
             <td>{{ formatPrice(order.total) }}</td>
             <td>
               <span class="badge" :class="statusBadgeClass(order.status)">
                 {{ statusLabels[order.status] || order.status }}
               </span>
             </td>
+            <td>
+              <span v-if="!order.paymentProof" class="proof-badge proof-none">未提交</span>
+              <span v-else class="proof-badge"
+                    :class="{
+                      'proof-pending': order.paymentProof.status === 'pending',
+                      'proof-approved': order.paymentProof.status === 'approved',
+                      'proof-rejected': order.paymentProof.status === 'rejected'
+                    }"
+                    @click="order.paymentProof.status !== 'approved' && openQuickReview(order)">
+                {{ proofStatusLabels[order.paymentProof.status] }}
+              </span>
+            </td>
             <td class="time-cell">{{ formatDate(order.createdAt) }}</td>
             <td>
               <button class="btn-view" @click="openDetail(order)">详情</button>
-              <button
-                v-if="order.status !== 'completed' && order.status !== 'cancelled'"
-                class="btn-status"
-                @click="openStatusModal(order)"
-              >状态</button>
+              <button v-if="order.paymentProof?.status === 'pending'"
+                      class="btn-review-proof" @click="openQuickReview(order)">审核</button>
+              <select v-if="statusTransitions[order.status]?.length"
+                      class="inline-status-select"
+                      @change="quickStatusChange(order, $event.target.value)"
+                      :value="''">
+                <option value="" disabled>状态 ▾</option>
+                <option v-for="s in statusTransitions[order.status]" :key="s" :value="s">
+                  {{ statusLabels[s] }}
+                </option>
+              </select>
             </td>
           </tr>
           <tr v-if="orders.length === 0">
-            <td colspan="8" class="empty-text">暂无订单数据</td>
+            <td colspan="9" class="empty-text">暂无订单数据</td>
           </tr>
         </tbody>
       </table>
@@ -337,54 +457,62 @@ onMounted(() => fetchOrders())
               </div>
             </div>
             <div v-if="detailProof.status === 'pending'" class="proof-actions">
-              <button class="btn-approve" @click="openReviewModal(detailProof.id)">审核凭证</button>
+              <textarea v-model="rejectReason" placeholder="驳回原因（可选）" class="reject-textarea"></textarea>
+              <div class="proof-actions-buttons">
+                <button class="btn-reject" @click="reviewProofFromDetail('reject')">驳回</button>
+                <button class="btn-approve" @click="reviewProofFromDetail('approve')">通过</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div v-if="showStatusModal" class="modal-overlay" @click.self="showStatusModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>更新订单状态</h3>
-          <button class="modal-close" @click="showStatusModal = false">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div class="current-status">
-            当前状态：<span class="badge" :class="statusBadgeClass(statusOrder?.status)">{{ statusLabels[statusOrder?.status] }}</span>
-          </div>
-          <div class="form-group">
-            <label>变更至</label>
-            <select v-model="selectedStatus">
-              <option value="">请选择</option>
-              <option v-for="s in nextStatuses" :key="s" :value="s">{{ statusLabels[s] }}</option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" @click="showStatusModal = false">取消</button>
-          <button class="btn-save" @click="updateStatus">确认变更</button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="showReviewModal" class="modal-overlay" @click.self="showReviewModal = false">
-      <div class="modal">
+    <div v-if="showQuickReview" class="modal-overlay" @click.self="showQuickReview = false">
+      <div class="modal review-modal">
         <div class="modal-header">
           <h3>审核付款凭证</h3>
-          <button class="modal-close" @click="showReviewModal = false">&times;</button>
+          <button class="modal-close" @click="showQuickReview = false">&times;</button>
         </div>
         <div class="modal-body">
+          <div class="review-order-info">
+            <div class="review-info-item">
+              <span class="label">订单号</span>
+              <span class="order-no">{{ quickReviewOrder?.orderNo }}</span>
+            </div>
+            <div class="review-info-item">
+              <span class="label">用户</span>
+              <span>{{ quickReviewOrder?.user?.name || quickReviewOrder?.user?.email || '-' }}</span>
+            </div>
+            <div class="review-info-item">
+              <span class="label">金额</span>
+              <span class="price">{{ formatPrice(quickReviewOrder?.total) }}</span>
+            </div>
+            <div class="review-info-item">
+              <span class="label">付款方式</span>
+              <span>{{ quickReviewOrder?.paymentProof?.paymentMethod || '-' }}</span>
+            </div>
+          </div>
+
+          <div v-if="quickReviewOrder?.paymentProof?.imageUrl" class="review-proof-image">
+            <a :href="quickReviewOrder.paymentProof.imageUrl" target="_blank">
+              <img :src="quickReviewOrder.paymentProof.imageUrl" />
+            </a>
+          </div>
+
+          <div v-if="quickReviewOrder?.paymentProof?.rejectReason" class="review-reject-reason">
+            <span class="label">上次驳回原因：</span>{{ quickReviewOrder.paymentProof.rejectReason }}
+          </div>
+
           <div class="form-group">
             <label>驳回原因（驳回时填写）</label>
-            <textarea v-model="rejectReason" placeholder="可选" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;min-height:80px;resize:vertical;box-sizing:border-box"></textarea>
+            <textarea v-model="rejectReason" placeholder="可选" class="reject-textarea"></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-cancel" @click="showReviewModal = false">取消</button>
-          <button class="btn-reject" @click="reviewProof('reject')">驳回</button>
-          <button class="btn-save" @click="reviewProof('approve')">通过</button>
+          <button class="btn-cancel" @click="showQuickReview = false">取消</button>
+          <button class="btn-reject" @click="submitReview('reject')">驳回</button>
+          <button class="btn-save" @click="submitReview('approve')">通过</button>
         </div>
       </div>
     </div>
@@ -491,6 +619,70 @@ select {
   background: #e0e0e0;
 }
 
+.btn-proof-filter {
+  padding: 8px 16px;
+  border: 2px solid #ff9800;
+  border-radius: 4px;
+  background: #fff8e1;
+  color: #e65100;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-proof-filter:hover {
+  background: #ffecb3;
+}
+
+.batch-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: #fff3e0;
+  border-bottom: 1px solid #ffe0b2;
+}
+
+.batch-info {
+  font-size: 14px;
+  color: #e65100;
+  font-weight: 500;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-batch-approve,
+.btn-batch-reject {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-batch-approve {
+  background: #d4a574;
+  color: #fff;
+}
+
+.btn-batch-approve:hover {
+  background: #c49464;
+}
+
+.btn-batch-reject {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.btn-batch-reject:hover {
+  background: #ffcdd2;
+}
+
 .loading {
   padding: 40px;
   text-align: center;
@@ -524,6 +716,11 @@ select {
   color: #666;
 }
 
+.data-table tr.has-pending-proof {
+  border-left: 3px solid #ff9800;
+  background: #fffdf7;
+}
+
 .order-no {
   font-family: monospace;
   font-size: 13px;
@@ -549,8 +746,53 @@ select {
 .badge-paid { background: #e8f5e9; color: #388e3c; }
 .badge-default { background: #f5f5f5; color: #999; }
 
+.proof-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.proof-none {
+  background: #f5f5f5;
+  color: #bbb;
+}
+
+.proof-pending {
+  background: #fff3e0;
+  color: #e65100;
+  cursor: pointer;
+  font-weight: 600;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.proof-pending:hover {
+  background: #ffe0b2;
+}
+
+.proof-approved {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.proof-rejected {
+  background: #ffebee;
+  color: #c62828;
+  cursor: pointer;
+}
+
+.proof-rejected:hover {
+  background: #ffcdd2;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3); }
+}
+
 .btn-view,
-.btn-status {
+.btn-review-proof {
   padding: 5px 10px;
   border: none;
   border-radius: 4px;
@@ -569,13 +811,30 @@ select {
   background: #bbdefb;
 }
 
-.btn-status {
-  background: #fff8e1;
-  color: #f57c00;
+.btn-review-proof {
+  background: #fff3e0;
+  color: #e65100;
+  font-weight: 600;
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.btn-status:hover {
-  background: #ffecb3;
+.btn-review-proof:hover {
+  background: #ffe0b2;
+}
+
+.inline-status-select {
+  padding: 5px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  color: #666;
+  transition: border-color 0.2s;
+}
+
+.inline-status-select:hover {
+  border-color: #d4a574;
 }
 
 .empty-text {
@@ -638,6 +897,10 @@ select {
 
 .detail-modal {
   max-width: 700px;
+}
+
+.review-modal {
+  max-width: 600px;
 }
 
 .modal-header {
@@ -703,10 +966,34 @@ select {
   background: #c49464;
 }
 
-.current-status {
-  margin-bottom: 15px;
+.btn-reject {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
   font-size: 14px;
-  color: #333;
+  background: #ffebee;
+  color: #c62828;
+  transition: all 0.2s;
+}
+
+.btn-reject:hover {
+  background: #ffcdd2;
+}
+
+.btn-approve {
+  padding: 8px 16px;
+  background: #d4a574;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover {
+  background: #c49464;
 }
 
 .form-group {
@@ -720,9 +1007,66 @@ select {
   color: #333;
 }
 
-.form-group select {
+.reject-textarea {
   width: 100%;
-  padding: 10px 12px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-height: 70px;
+  resize: vertical;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.reject-textarea:focus {
+  outline: none;
+  border-color: #d4a574;
+}
+
+.review-order-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.review-info-item {
+  font-size: 14px;
+  color: #666;
+}
+
+.review-info-item .label {
+  color: #999;
+  margin-right: 8px;
+}
+
+.review-proof-image {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.review-proof-image img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  cursor: pointer;
+}
+
+.review-reject-reason {
+  font-size: 13px;
+  color: #c62828;
+  padding: 8px 12px;
+  background: #fff5f5;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.review-reject-reason .label {
+  color: #999;
 }
 
 .detail-section {
@@ -795,21 +1139,6 @@ select {
   border-radius: 4px;
 }
 
-.item-info {
-  flex: 1;
-}
-
-.item-name {
-  font-size: 14px;
-  color: #333;
-}
-
-.item-meta {
-  font-size: 13px;
-  color: #999;
-  margin-top: 4px;
-}
-
 .item-total {
   font-size: 14px;
   font-weight: 600;
@@ -837,36 +1166,12 @@ select {
 .proof-actions {
   margin-top: 15px;
   display: flex;
+  flex-direction: column;
   gap: 10px;
 }
 
-.btn-approve {
-  padding: 8px 16px;
-  background: #d4a574;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s;
-}
-
-.btn-approve:hover {
-  background: #c49464;
-}
-
-.btn-reject {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  background: #ffebee;
-  color: #c62828;
-  transition: all 0.2s;
-}
-
-.btn-reject:hover {
-  background: #ffcdd2;
+.proof-actions-buttons {
+  display: flex;
+  gap: 10px;
 }
 </style>
