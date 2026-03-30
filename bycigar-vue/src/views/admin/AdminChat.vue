@@ -417,7 +417,8 @@ onUnmounted(() => {
           class="conversation-item"
           :class="{
             active: selectedConversation?.id === conv.id,
-            unread: conv.unreadCount > 0
+            unread: conv.unreadCount > 0,
+            closed: conv.status === 'closed'
           }"
           @click="selectConversation(conv)"
         >
@@ -461,10 +462,14 @@ onUnmounted(() => {
               class="message-wrapper"
               :class="{
                 'is-customer': msg.senderType === 'customer',
-                'is-service': msg.senderType === 'service'
+                'is-service': msg.senderType === 'service',
+                'is-system': msg.senderType === 'system',
               }"
             >
-              <div class="message-bubble">
+              <div class="message-bubble" v-if="msg.senderType === 'system'">
+                <div class="message-text system-text">{{ msg.content }}</div>
+              </div>
+              <div class="message-bubble" v-else>
                 <template v-if="msg.messageType === 'image'">
                   <img
                     :src="msg.thumbnailUrl || msg.content"
@@ -624,6 +629,15 @@ onUnmounted(() => {
 
 .conversation-item.unread {
   background: #fef9f3;
+}
+
+.conversation-item.closed {
+  opacity: 0.6;
+}
+
+.conversation-item.closed .conv-name,
+.conversation-item.closed .conv-preview {
+  text-decoration: line-through;
 }
 
 .conv-avatar {
@@ -841,6 +855,23 @@ onUnmounted(() => {
   background: #d4a574;
   color: #fff;
   border-bottom-right-radius: 4px;
+}
+
+.message-wrapper.is-system {
+  justify-content: center;
+}
+
+.message-wrapper.is-system .message-bubble {
+  background: transparent;
+  color: #888;
+  padding: 4px 12px;
+  max-width: 90%;
+}
+
+.system-text {
+  font-size: 12px !important;
+  color: #888 !important;
+  text-align: center;
 }
 
 .message-text {

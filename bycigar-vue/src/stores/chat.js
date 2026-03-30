@@ -134,6 +134,14 @@ export const useChatStore = defineStore('chat', {
             }, 3000)
           }
           break
+        case 'conversation_closed':
+          if (this.currentConversation && data.conversationId === this.currentConversation.id) {
+            this.clearAutoCloseTimer()
+            this.isOpen = false
+            this.currentConversation = null
+            this.messages = []
+          }
+          break
       }
       if (this.onMessage) {
         this.onMessage(data)
@@ -250,6 +258,23 @@ export const useChatStore = defineStore('chat', {
         }
       }
       this.resetAutoCloseTimer()
+    },
+
+    async closeConversation() {
+      if (!this.currentConversation) return
+      const convId = this.currentConversation.id
+      try {
+        await fetch(`${API_BASE}/chat/conversations/${convId}/close`, {
+          method: 'PUT',
+          headers: getAuthHeaders()
+        })
+      } catch (e) {
+        console.error('Close conversation failed:', e)
+      }
+      this.clearAutoCloseTimer()
+      this.isOpen = false
+      this.currentConversation = null
+      this.messages = []
     },
 
     async sendImageMessage(imageBlob, caption) {

@@ -109,6 +109,7 @@ func main() {
 	r.GET("/api/chat/conversations", middleware.RequireAuth(), handlers.GetConversations)
 	r.GET("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.GetMessages)
 	r.POST("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.SendMessage)
+	r.PUT("/api/chat/conversations/:id/close", middleware.RequireAuth(), handlers.CustomerCloseConversation)
 	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
 	r.POST("/api/chat/upload-image", middleware.RequireAuth(), handlers.UploadChatImage)
 	r.GET("/api/chat/ws", middleware.RequireAuth(), handlers.HandleCustomerWS)

@@ -107,6 +107,8 @@ func handleCustomerMessage(client *ws.Client, raw []byte) {
 		handleCustomerMarkRead(client, msg)
 	case "typing":
 		handleCustomerTyping(client, msg)
+	case "close_conversation":
+		handleCustomerCloseConvWS(client, msg)
 	}
 }
 
@@ -264,6 +266,48 @@ func handleCustomerTyping(client *ws.Client, msg WSMessage) {
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:           "typing",
 		ConversationID: msg.ConversationID,
+	})
+}
+
+func handleCustomerCloseConvWS(client *ws.Client, msg WSMessage) {
+	var conversation models.Conversation
+	if err := database.DB.Where("id = ? AND user_id = ?", msg.ConversationID, client.UserID).First(&conversation).Error; err != nil {
+		return
+	}
+	if conversation.Status == "closed" {
+		return
+	}
+
+	convID := msg.ConversationID
+
+	systemMsg := models.Message{
+		ConversationID: convID,
+		SenderType:    "system",
+		SenderID:      0,
+		MessageType:   "text",
+		Content:       "客户已结束对话",
+	}
+	database.DB.Create(&systemMsg)
+
+	database.DB.Model(&conversation).Update("status", "closed")
+
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:           "conversation_closed",
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
 	})
 }
 

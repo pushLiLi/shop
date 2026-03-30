@@ -183,7 +183,42 @@ func CloseConversation(c *gin.Context) {
 		return
 	}
 
+	if conversation.Status == "closed" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "对话已关闭")
+		return
+	}
+
+	convID := uint(conversationID)
+
+	systemMsg := models.Message{
+		ConversationID: convID,
+		SenderType:     "system",
+		SenderID:       0,
+		MessageType:    "text",
+		Content:        "客服已结束对话",
+	}
+	database.DB.Create(&systemMsg)
+
 	database.DB.Model(&conversation).Update("status", "closed")
+
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:           "conversation_closed",
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }

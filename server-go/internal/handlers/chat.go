@@ -285,3 +285,62 @@ func UploadChatImage(c *gin.Context) {
 		"success":      true,
 	})
 }
+
+func CustomerCloseConversation(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	conversationID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的对话ID")
+		return
+	}
+
+	var conversation models.Conversation
+	if err := database.DB.Where("id = ? AND user_id = ?", conversationID, userID).First(&conversation).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "对话不存在")
+		return
+	}
+
+	if conversation.Status == "closed" {
+		utils.ErrorResponse(c, http.StatusBadRequest, "对话已关闭")
+		return
+	}
+
+	convID := uint(conversationID)
+
+	systemMsg := models.Message{
+		ConversationID: convID,
+		SenderType:     "system",
+		SenderID:       0,
+		MessageType:    "text",
+		Content:        "客户已结束对话",
+	}
+	database.DB.Create(&systemMsg)
+
+	database.DB.Model(&conversation).Update("status", "closed")
+
+	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+		Type:           "conversation_closed",
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "new_message",
+		Message:        systemMsg,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}

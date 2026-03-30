@@ -186,6 +186,16 @@ const keepConversation = () => {
   chatStore.resetAutoCloseTimer()
 }
 
+const handleEndChat = async () => {
+  if (!chatStore.currentConversation) return
+  await chatStore.closeConversation()
+}
+
+const handleNewChat = async () => {
+  await chatStore.fetchOrCreateConversation()
+  scrollToBottom()
+}
+
 watch(() => chatStore.messages.length, (newLen) => {
   if (messagesLoaded.value && newLen > prevMsgCount.value) {
     const lastMsg = chatStore.messages[chatStore.messages.length - 1]
@@ -229,6 +239,7 @@ watch(() => authStore.isLoggedIn, (val) => {
             <span class="header-title">在线客服</span>
           </div>
           <div class="header-right">
+            <button class="end-btn" @click="handleEndChat" v-if="chatStore.currentConversation && chatStore.currentConversation.status === 'open'" title="结束对话">结束对话</button>
             <button class="sound-btn" @click="chatStore.toggleSound()" :title="chatStore.soundEnabled ? '关闭提示音' : '开启提示音'">
               <svg v-if="chatStore.soundEnabled" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -273,9 +284,13 @@ watch(() => authStore.isLoggedIn, (val) => {
                   :class="{
                     'is-customer': item.msg.senderType === 'customer',
                     'is-service': item.msg.senderType === 'service',
+                    'is-system': item.msg.senderType === 'system',
                   }"
                 >
-                  <div class="message-bubble">
+                  <div class="message-bubble" v-if="item.msg.senderType === 'system'">
+                    <div class="message-text system-text">{{ item.msg.content }}</div>
+                  </div>
+                  <div class="message-bubble" v-else>
                     <template v-if="item.msg.messageType === 'image'">
                       <img
                         :src="item.msg.thumbnailUrl || item.msg.content"
@@ -317,38 +332,44 @@ watch(() => authStore.isLoggedIn, (val) => {
         </div>
 
         <div class="input-area">
-          <button class="attach-btn" @click="triggerFileInput" title="发送图片">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
-            </svg>
-          </button>
-          <input
-            ref="fileInputRef"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            style="display:none"
-            @change="handleFileSelect"
-          />
-          <textarea
-            ref="textareaRef"
-            v-model="messageInput"
-            placeholder="输入消息..."
-            rows="1"
-            maxlength="500"
-            @keydown="handleKeydown"
-            @input="onInput"
-          ></textarea>
-          <button
-            class="send-btn"
-            :class="{ active: canSend }"
-            :disabled="!canSend"
-            @click="handleSend"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-          </button>
+          <template v-if="chatStore.currentConversation && chatStore.currentConversation.status === 'open'">
+            <button class="attach-btn" @click="triggerFileInput" title="发送图片">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+              </svg>
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style="display:none"
+              @change="handleFileSelect"
+            />
+            <textarea
+              ref="textareaRef"
+              v-model="messageInput"
+              placeholder="输入消息..."
+              rows="1"
+              maxlength="500"
+              @keydown="handleKeydown"
+              @input="onInput"
+            ></textarea>
+            <button
+              class="send-btn"
+              :class="{ active: canSend }"
+              :disabled="!canSend"
+              @click="handleSend"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </template>
+          <div v-else class="closed-hint">
+            <span>对话已结束</span>
+            <button class="new-chat-btn" @click="handleNewChat">开启新对话</button>
+          </div>
         </div>
       </div>
     </Transition>
@@ -537,6 +558,24 @@ watch(() => authStore.isLoggedIn, (val) => {
   color: #d4a574;
 }
 
+.end-btn {
+  background: none;
+  border: 1px solid #555;
+  color: #999;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.end-btn:hover {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
 .auto-close-warning {
   display: flex;
   align-items: center;
@@ -681,6 +720,23 @@ watch(() => authStore.isLoggedIn, (val) => {
   background: #2a2a2a;
   color: #fff;
   border-bottom-left-radius: 4px;
+}
+
+.message-wrapper.is-system {
+  justify-content: center;
+}
+
+.message-wrapper.is-system .message-bubble {
+  background: transparent;
+  color: #888;
+  padding: 4px 12px;
+  max-width: 90%;
+  text-align: center;
+}
+
+.system-text {
+  font-size: 12px !important;
+  color: #888 !important;
 }
 
 .message-text {
@@ -860,6 +916,31 @@ watch(() => authStore.isLoggedIn, (val) => {
 }
 
 .send-btn.active:hover {
+  background: #e0b88a;
+}
+
+.closed-hint {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #666;
+  font-size: 13px;
+}
+
+.new-chat-btn {
+  background: #d4a574;
+  color: #0f0f0f;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.new-chat-btn:hover {
   background: #e0b88a;
 }
 
