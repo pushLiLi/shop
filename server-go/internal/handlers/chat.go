@@ -1,15 +1,25 @@
 package handlers
 
 import (
+	"bytes"
+	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	imagepkg "bycigar-server/pkg/image"
+	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/minio/minio-go/v7"
 )
 
 func CreateConversation(c *gin.Context) {
@@ -125,7 +135,16 @@ func SendMessage(c *gin.Context) {
 
 	var input models.SendMessageInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能为空且不超过500字")
+		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能为空")
+		return
+	}
+
+	msgType := input.MessageType
+	if msgType == "" {
+		msgType = "text"
+	}
+	if msgType == "text" && len(input.Content) > 500 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能超过500字")
 		return
 	}
 
@@ -133,7 +152,9 @@ func SendMessage(c *gin.Context) {
 		ConversationID: uint(conversationID),
 		SenderType:     "customer",
 		SenderID:       userID.(uint),
+		MessageType:    msgType,
 		Content:        input.Content,
+		ThumbnailURL:   input.ThumbnailURL,
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "发送失败")
@@ -160,4 +181,72 @@ func GetChatUnreadCount(c *gin.Context) {
 		Count(&count)
 
 	c.JSON(http.StatusOK, gin.H{"count": count})
+}
+
+func UploadChatImage(c *gin.Context) {
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请选择要上传的图片"})
+		return
+	}
+	defer file.Close()
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".webp": true}
+	if !allowedExts[ext] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "只支持 jpg, png, webp 格式的图片"})
+		return
+	}
+	if header.Size > 5*1024*1024 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "图片大小不能超过 5MB"})
+		return
+	}
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "读取文件失败"})
+		return
+	}
+
+	result, _ := imagepkg.Process(fileBytes, ext)
+
+	baseName := fmt.Sprintf("chat_%d_%s", time.Now().Unix(), uuid.New().String())
+	origName := baseName + result.OrigExt
+
+	_, err = miniopkg.Client.PutObject(
+		context.Background(),
+		miniopkg.Bucket,
+		origName,
+		bytes.NewReader(result.Original),
+		int64(len(result.Original)),
+		minio.PutObjectOptions{ContentType: result.ContentType},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "上传图片失败"})
+		return
+	}
+
+	url := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, origName)
+	thumbnailUrl := ""
+
+	if len(result.Thumbnail) > 0 {
+		thumbName := baseName + "_thumb.jpg"
+		_, err = miniopkg.Client.PutObject(
+			context.Background(),
+			miniopkg.Bucket,
+			thumbName,
+			bytes.NewReader(result.Thumbnail),
+			int64(len(result.Thumbnail)),
+			minio.PutObjectOptions{ContentType: "image/jpeg"},
+		)
+		if err == nil {
+			thumbnailUrl = fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, thumbName)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"url":          url,
+		"thumbnailUrl": thumbnailUrl,
+		"success":      true,
+	})
 }

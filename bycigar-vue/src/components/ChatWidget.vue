@@ -11,108 +11,58 @@ const router = useRouter()
 const messageInput = ref('')
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
-const fabRef = ref(null)
+const fileInputRef = ref(null)
+const previewImage = ref(null)
+const previewBlob = ref(null)
+const fullscreenImage = ref(null)
+const draftRestored = ref(false)
 
-const fabX = ref(window.innerWidth - 86)
-const fabY = ref(window.innerHeight - 86)
-const isDragging = ref(false)
-const dragStartX = ref(0)
-const dragStartY = ref(0)
-const dragOffsetX = ref(0)
-const dragOffsetY = ref(0)
-const hasMoved = ref(false)
+const canSend = computed(() => messageInput.value.trim().length > 0 || previewImage.value)
 
-const canSend = computed(() => messageInput.value.trim().length > 0)
-
-const panelStyle = computed(() => {
-  const panelW = window.innerWidth <= 480 ? window.innerWidth : 380
-  const panelH = window.innerWidth <= 480 ? window.innerHeight : 520
-  let left = fabX.value + 56 / 2 - panelW / 2
-  left = Math.max(10, Math.min(window.innerWidth - panelW - 10, left))
-  let top = fabY.value - panelH - 14
-  if (top < 10) top = 10
-  return { left: left + 'px', top: top + 'px' }
+const displayMessages = computed(() => {
+  const result = []
+  const msgs = chatStore.messages
+  for (let i = 0; i < msgs.length; i++) {
+    const msg = msgs[i]
+    const prev = i > 0 ? msgs[i - 1] : null
+    if (!prev || (new Date(msg.createdAt) - new Date(prev.createdAt)) > 5 * 60 * 1000) {
+      result.push({ type: 'divider', time: msg.createdAt, id: `d-${msg.id}` })
+    }
+    result.push({ type: 'message', msg, id: msg.id })
+  }
+  return result
 })
-
-const clampPosition = (x, y) => {
-  const btnSize = 56
-  const margin = 10
-  const maxX = window.innerWidth - btnSize - margin
-  const maxY = window.innerHeight - btnSize - margin
-  return {
-    x: Math.max(margin, Math.min(maxX, x)),
-    y: Math.max(margin, Math.min(maxY, y))
-  }
-}
-
-const onDragStart = (clientX, clientY) => {
-  isDragging.value = true
-  hasMoved.value = false
-  dragStartX.value = clientX
-  dragStartY.value = clientY
-  dragOffsetX.value = clientX - fabX.value
-  dragOffsetY.value = clientY - fabY.value
-}
-
-const onDragMove = (clientX, clientY) => {
-  if (!isDragging.value) return
-  const dx = Math.abs(clientX - dragStartX.value)
-  const dy = Math.abs(clientY - dragStartY.value)
-  if (dx > 4 || dy > 4) {
-    hasMoved.value = true
-  }
-  const pos = clampPosition(clientX - dragOffsetX.value, clientY - dragOffsetY.value)
-  fabX.value = pos.x
-  fabY.value = pos.y
-}
-
-const onDragEnd = () => {
-  if (!isDragging.value) return
-  isDragging.value = false
-  if (!hasMoved.value) {
-    handleOpen()
-  }
-}
-
-const onMouseDown = (e) => {
-  e.preventDefault()
-  onDragStart(e.clientX, e.clientY)
-}
-
-const onTouchStart = (e) => {
-  const t = e.touches[0]
-  onDragStart(t.clientX, t.clientY)
-}
-
-const onMouseMove = (e) => {
-  onDragMove(e.clientX, e.clientY)
-}
-
-const onTouchMove = (e) => {
-  if (!isDragging.value) return
-  e.preventDefault()
-  const t = e.touches[0]
-  onDragMove(t.clientX, t.clientY)
-}
-
-const onMouseUp = () => {
-  onDragEnd()
-}
-
-const onTouchEnd = () => {
-  onDragEnd()
-}
 
 const formatTime = (dateStr) => {
   const date = new Date(dateStr)
   const now = new Date()
   const isToday = date.toDateString() === now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.toDateString() === yesterday.toDateString()
   const hh = String(date.getHours()).padStart(2, '0')
   const mm = String(date.getMinutes()).padStart(2, '0')
   if (isToday) return `${hh}:${mm}`
+  if (isYesterday) return `昨天 ${hh}:${mm}`
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${month}-${day} ${hh}:${mm}`
+}
+
+const formatDividerTime = (dateStr) => {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const isToday = date.toDateString() === now.toDateString()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = date.toDateString() === yesterday.toDateString()
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mm = String(date.getMinutes()).padStart(2, '0')
+  if (isToday) return `${hh}:${mm}`
+  if (isYesterday) return `昨天 ${hh}:${mm}`
+  const month = String(date.getMonth() + 1)
+  const day = date.getDate()
+  return `${month}月${day}日 ${hh}:${mm}`
 }
 
 const scrollToBottom = async () => {
@@ -130,15 +80,99 @@ const handleOpen = async () => {
   if (chatStore.isOpen) {
     chatStore.closePanel()
   } else {
-    await chatStore.openPanel()
+    const draft = await chatStore.openPanel()
+    if (draft && !draftRestored.value) {
+      messageInput.value = draft
+      draftRestored.value = true
+    }
     scrollToBottom()
   }
 }
 
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const maxDim = 800
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round(h * maxDim / w)
+            w = maxDim
+          } else {
+            w = Math.round(w * maxDim / h)
+            h = maxDim
+          }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, w, h)
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
+          'image/jpeg',
+          0.7
+        )
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+const handleFileSelect = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) {
+    alert('图片大小不能超过 5MB')
+    return
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    alert('只支持 JPG、PNG、WebP 格式')
+    return
+  }
+  try {
+    const blob = await compressImage(file)
+    previewBlob.value = blob
+    previewImage.value = URL.createObjectURL(blob)
+    nextTick(() => scrollToBottom())
+  } catch (err) {
+    console.error('Image compression failed:', err)
+  }
+  e.target.value = ''
+}
+
+const removePreview = () => {
+  if (previewImage.value) {
+    URL.revokeObjectURL(previewImage.value)
+  }
+  previewImage.value = null
+  previewBlob.value = null
+}
+
 const handleSend = async () => {
   if (!canSend.value) return
+
+  if (previewBlob.value) {
+    await chatStore.sendImageMessage(previewBlob.value, messageInput.value.trim())
+    removePreview()
+    messageInput.value = ''
+    scrollToBottom()
+    if (textareaRef.value) {
+      textareaRef.value.style.height = 'auto'
+    }
+    return
+  }
+
   const content = messageInput.value
   messageInput.value = ''
+  localStorage.removeItem('chat_draft')
   await chatStore.sendMessage(content)
   scrollToBottom()
   if (textareaRef.value) {
@@ -158,6 +192,28 @@ const autoResize = () => {
     textareaRef.value.style.height = 'auto'
     textareaRef.value.style.height = Math.min(textareaRef.value.scrollHeight, 72) + 'px'
   }
+  chatStore.notifyUserActivity()
+}
+
+const onInput = () => {
+  autoResize()
+  localStorage.setItem('chat_draft', messageInput.value)
+}
+
+const openFullscreen = (url) => {
+  fullscreenImage.value = url
+}
+
+const closeFullscreen = () => {
+  fullscreenImage.value = null
+}
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click()
+}
+
+const keepConversation = () => {
+  chatStore.resetAutoCloseTimer()
 }
 
 watch(() => chatStore.messages.length, () => {
@@ -168,21 +224,10 @@ onMounted(() => {
   if (authStore.isLoggedIn) {
     chatStore.init()
   }
-  const pos = clampPosition(window.innerWidth - 86, window.innerHeight - 86)
-  fabX.value = pos.x
-  fabY.value = pos.y
-  document.addEventListener('mousemove', onMouseMove)
-  document.addEventListener('mouseup', onMouseUp)
-  document.addEventListener('touchmove', onTouchMove, { passive: false })
-  document.addEventListener('touchend', onTouchEnd)
 })
 
 onUnmounted(() => {
   chatStore.cleanup()
-  document.removeEventListener('mousemove', onMouseMove)
-  document.removeEventListener('mouseup', onMouseUp)
-  document.removeEventListener('touchmove', onTouchMove)
-  document.removeEventListener('touchend', onTouchEnd)
 })
 
 watch(() => authStore.isLoggedIn, (val) => {
@@ -197,7 +242,7 @@ watch(() => authStore.isLoggedIn, (val) => {
 <template>
   <div class="chat-widget" v-if="authStore.isLoggedIn">
     <Transition name="chat-slide">
-      <div v-if="chatStore.isOpen" class="chat-panel" :style="panelStyle">
+      <div v-if="chatStore.isOpen" class="chat-panel">
         <div class="chat-header">
           <div class="header-left">
             <span class="status-dot"></span>
@@ -211,6 +256,11 @@ watch(() => authStore.isLoggedIn, (val) => {
           </button>
         </div>
 
+        <div v-if="chatStore.autoCloseWarning" class="auto-close-warning">
+          <span>由于长时间未操作，对话将在 {{ chatStore.autoCloseCountdown }} 秒后暂停</span>
+          <button class="keep-btn" @click="keepConversation">继续对话</button>
+        </div>
+
         <div class="messages-area" ref="messagesContainer">
           <div v-if="chatStore.isLoading" class="loading-state">
             <div class="loading-dots">
@@ -218,28 +268,65 @@ watch(() => authStore.isLoggedIn, (val) => {
             </div>
           </div>
           <template v-else>
-            <div
-              v-for="msg in chatStore.messages"
-              :key="msg.id"
-              class="message-wrapper"
-              :class="{
-                'is-customer': msg.senderType === 'customer',
-                'is-service': msg.senderType === 'service',
-                'is-system': msg.senderType === 'system'
-              }"
-            >
-              <div class="message-bubble">
-                <div class="message-text">{{ msg.content }}</div>
-                <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
+            <template v-for="item in displayMessages" :key="item.id">
+              <div v-if="item.type === 'divider'" class="time-divider">
+                <span class="divider-text">{{ formatDividerTime(item.time) }}</span>
               </div>
-            </div>
+              <div
+                v-else
+                class="message-wrapper"
+                :class="{
+                  'is-customer': item.msg.senderType === 'customer',
+                  'is-service': item.msg.senderType === 'service',
+                }"
+              >
+                <div class="message-bubble">
+                  <template v-if="item.msg.messageType === 'image'">
+                    <img
+                      :src="item.msg.thumbnailUrl || item.msg.content"
+                      class="chat-image"
+                      @click="openFullscreen(item.msg.content)"
+                      loading="lazy"
+                    />
+                  </template>
+                  <template v-else>
+                    <div class="message-text">{{ item.msg.content }}</div>
+                  </template>
+                  <div class="message-time">{{ formatTime(item.msg.createdAt) }}</div>
+                </div>
+              </div>
+            </template>
             <div v-if="chatStore.messages.length === 0" class="empty-state">
               <p>您好，有什么可以帮助您的吗？</p>
             </div>
           </template>
         </div>
 
+        <div v-if="previewImage" class="preview-area">
+          <div class="preview-thumb">
+            <img :src="previewImage" alt="preview" />
+            <button class="preview-remove" @click="removePreview">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
         <div class="input-area">
+          <button class="attach-btn" @click="triggerFileInput" title="发送图片">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+            </svg>
+          </button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style="display:none"
+            @change="handleFileSelect"
+          />
           <textarea
             ref="textareaRef"
             v-model="messageInput"
@@ -247,7 +334,7 @@ watch(() => authStore.isLoggedIn, (val) => {
             rows="1"
             maxlength="500"
             @keydown="handleKeydown"
-            @input="autoResize"
+            @input="onInput"
           ></textarea>
           <button
             class="send-btn"
@@ -264,24 +351,31 @@ watch(() => authStore.isLoggedIn, (val) => {
       </div>
     </Transition>
 
+    <Transition name="fullscreen-fade">
+      <div v-if="fullscreenImage" class="fullscreen-overlay" @click="closeFullscreen">
+        <img :src="fullscreenImage" class="fullscreen-img" @click.stop />
+        <button class="fullscreen-close" @click="closeFullscreen">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
     <button
-      ref="fabRef"
       class="chat-fab"
-      :class="{ 'has-unread': chatStore.unreadCount > 0, 'is-dragging': isDragging }"
-      :style="{ left: fabX + 'px', top: fabY + 'px' }"
-      @mousedown="onMouseDown"
-      @touchstart="onTouchStart"
+      :class="{ 'has-unread': chatStore.unreadCount > 0 && !chatStore.isOpen }"
+      @click="handleOpen"
     >
-      <svg v-if="!chatStore.isOpen" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg v-if="!chatStore.isOpen" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
       </svg>
-      <svg v-else width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <line x1="18" y1="6" x2="6" y2="18"></line>
         <line x1="6" y1="6" x2="18" y2="18"></line>
       </svg>
-      <span v-if="chatStore.unreadCount > 0 && !chatStore.isOpen" class="unread-badge">
-        {{ chatStore.unreadCount > 99 ? '99+' : chatStore.unreadCount }}
-      </span>
+      <span v-if="chatStore.unreadCount > 0 && !chatStore.isOpen" class="unread-dot"></span>
     </button>
   </div>
 </template>
@@ -303,30 +397,27 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 .chat-fab {
   position: fixed;
-  width: 56px;
-  height: 56px;
+  right: 24px;
+  bottom: 24px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: none;
   background: #d4a574;
   color: #fff;
-  cursor: grab;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 16px rgba(212, 165, 116, 0.4);
-  transition: box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
   z-index: 1201;
   user-select: none;
-  touch-action: none;
 }
 
 .chat-fab:hover {
+  transform: scale(1.08);
   box-shadow: 0 6px 20px rgba(212, 165, 116, 0.5);
-}
-
-.chat-fab.is-dragging {
-  cursor: grabbing;
-  transition: none;
 }
 
 .chat-fab.has-unread {
@@ -335,30 +426,25 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 @keyframes pulse-badge {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.08); }
 }
 
-.unread-badge {
+.unread-dot {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
   background: #e74c3c;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  min-width: 20px;
-  height: 20px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
 }
 
 .chat-panel {
   position: fixed;
-  width: 380px;
-  height: 520px;
+  right: 24px;
+  bottom: 84px;
+  width: 400px;
+  height: 560px;
   background: #1a1a1a;
   border-radius: 12px;
   display: flex;
@@ -368,15 +454,22 @@ watch(() => authStore.isLoggedIn, (val) => {
   z-index: 1200;
 }
 
-.chat-slide-enter-active,
-.chat-slide-leave-active {
-  transition: all 0.3s ease;
+.chat-slide-enter-active {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.chat-slide-enter-from,
+.chat-slide-leave-active {
+  transition: all 0.2s ease-in;
+}
+
+.chat-slide-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
 .chat-slide-leave-to {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translateY(10px) scale(0.98);
 }
 
 .chat-header {
@@ -422,13 +515,45 @@ watch(() => authStore.isLoggedIn, (val) => {
   color: #fff;
 }
 
+.auto-close-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(255, 152, 0, 0.15);
+  border-bottom: 1px solid rgba(255, 152, 0, 0.3);
+  flex-shrink: 0;
+}
+
+.auto-close-warning span {
+  color: #ffb74d;
+  font-size: 12px;
+}
+
+.keep-btn {
+  background: #d4a574;
+  color: #0f0f0f;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.keep-btn:hover {
+  background: #e0b88a;
+}
+
 .messages-area {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .messages-area::-webkit-scrollbar {
@@ -438,6 +563,29 @@ watch(() => authStore.isLoggedIn, (val) => {
 .messages-area::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 2px;
+}
+
+.time-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.divider-text {
+  color: #666;
+  font-size: 11px;
+  background: #1a1a1a;
+  padding: 0 12px;
+  position: relative;
+}
+
+.time-divider::before,
+.time-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #333;
 }
 
 .message-wrapper {
@@ -450,10 +598,6 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 .message-wrapper.is-service {
   justify-content: flex-start;
-}
-
-.message-wrapper.is-system {
-  justify-content: center;
 }
 
 .message-bubble {
@@ -480,6 +624,20 @@ watch(() => authStore.isLoggedIn, (val) => {
   line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
+}
+
+.chat-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+  object-fit: contain;
+  transition: opacity 0.2s;
+}
+
+.chat-image:hover {
+  opacity: 0.85;
 }
 
 .message-time {
@@ -526,14 +684,70 @@ watch(() => authStore.isLoggedIn, (val) => {
   40% { transform: scale(1); opacity: 1; }
 }
 
+.preview-area {
+  padding: 8px 16px;
+  background: #1a1a1a;
+  border-top: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.preview-thumb {
+  position: relative;
+  display: inline-block;
+}
+
+.preview-thumb img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #444;
+}
+
+.preview-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .input-area {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
   padding: 12px 16px;
   background: #1a1a1a;
   border-top: 1px solid #333;
   flex-shrink: 0;
+}
+
+.attach-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #2a2a2a;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s, background 0.2s;
+}
+
+.attach-btn:hover {
+  color: #d4a574;
+  background: #333;
 }
 
 .input-area textarea {
@@ -561,8 +775,8 @@ watch(() => authStore.isLoggedIn, (val) => {
 }
 
 .send-btn {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: none;
   background: #333;
@@ -585,11 +799,70 @@ watch(() => authStore.isLoggedIn, (val) => {
   background: #e0b88a;
 }
 
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1300;
+  cursor: pointer;
+}
+
+.fullscreen-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.fullscreen-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.fullscreen-fade-enter-active,
+.fullscreen-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fullscreen-fade-enter-from,
+.fullscreen-fade-leave-to {
+  opacity: 0;
+}
+
 @media (max-width: 480px) {
   .chat-panel {
+    right: 0;
+    bottom: 0;
     width: 100vw;
     height: 100vh;
     border-radius: 0;
+  }
+
+  .chat-fab {
+    right: 16px;
+    bottom: 16px;
   }
 }
 </style>

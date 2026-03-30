@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useToastStore } from '../../stores/toast'
 
 const API_BASE = '/api'
@@ -14,6 +14,10 @@ const messagesLoading = ref(false)
 const replyContent = ref('')
 const messagesContainer = ref(null)
 const textareaRef = ref(null)
+const fileInputRef = ref(null)
+const previewImage = ref(null)
+const previewBlob = ref(null)
+const fullscreenImage = ref(null)
 const ws = ref(null)
 const wsReconnectTimer = ref(null)
 const wsReconnectDelay = ref(3000)
@@ -166,30 +170,70 @@ const fetchMessages = async (afterId) => {
 }
 
 const sendReply = async () => {
-  if (!replyContent.value.trim() || !selectedConversation.value) return
-  const content = replyContent.value
-  replyContent.value = ''
-  if (textareaRef.value) {
-    textareaRef.value.style.height = 'auto'
-  }
+  if (!selectedConversation.value) return
+  if (!replyContent.value.trim() && !previewBlob.value) return
 
   const convId = selectedConversation.value.id
-  if (wsConnected.value) {
-    wsSend({ type: 'send_message', conversationId: convId, content: content.trim() })
-  } else {
+
+  if (previewBlob.value) {
     try {
-      const res = await fetch(`${API_BASE}/admin/chat/conversations/${convId}/messages`, {
+      const formData = new FormData()
+      formData.append('file', previewBlob.value, 'chat_image.jpg')
+      const token = localStorage.getItem('token')
+      const uploadRes = await fetch(`${API_BASE}/admin/upload`, {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ content: content.trim() })
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       })
-      const data = await res.json()
-      if (data.message) {
-        messages.value.push(data.message)
-        scrollToBottom()
+      const uploadData = await uploadRes.json()
+      if (!uploadData.success) { toast.error('图片上传失败'); return }
+
+      if (wsConnected.value) {
+        wsSend({
+          type: 'send_message',
+          conversationId: convId,
+          content: uploadData.url,
+          messageType: 'image',
+          thumbnailUrl: uploadData.thumbnailUrl || ''
+        })
+      } else {
+        const res = await fetch(`${API_BASE}/admin/chat/conversations/${convId}/messages`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            content: uploadData.url,
+            messageType: 'image',
+            thumbnailUrl: uploadData.thumbnailUrl || ''
+          })
+        })
+        const data = await res.json()
+        if (data.message) { messages.value.push(data.message); scrollToBottom() }
       }
+      removePreview()
     } catch (e) {
-      toast.error('发送失败')
+      toast.error('图片发送失败')
+    }
+  }
+
+  if (replyContent.value.trim()) {
+    const content = replyContent.value.trim()
+    replyContent.value = ''
+    if (textareaRef.value) textareaRef.value.style.height = 'auto'
+
+    if (wsConnected.value) {
+      wsSend({ type: 'send_message', conversationId: convId, content })
+    } else {
+      try {
+        const res = await fetch(`${API_BASE}/admin/chat/conversations/${convId}/messages`, {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ content })
+        })
+        const data = await res.json()
+        if (data.message) { messages.value.push(data.message); scrollToBottom() }
+      } catch (e) {
+        toast.error('发送失败')
+      }
     }
   }
 }
@@ -252,6 +296,77 @@ const truncate = (str, len) => {
   return str.length > len ? str.substring(0, len) + '...' : str
 }
 
+const getPreviewText = (msg) => {
+  if (!msg) return ''
+  if (msg.messageType === 'image') return '[图片]'
+  return truncate(msg.content, 20)
+}
+
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const maxDim = 800
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim }
+          else { w = Math.round(w * maxDim / h); h = maxDim }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
+          'image/jpeg', 0.7
+        )
+      }
+      img.onerror = reject
+      img.src = e.target.result
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+const handleFileSelect = async (e) => {
+  const file = e.target.files[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { toast.error('图片大小不能超过 5MB'); return }
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('只支持 JPG、PNG、WebP 格式'); return }
+  try {
+    const blob = await compressImage(file)
+    previewBlob.value = blob
+    previewImage.value = URL.createObjectURL(blob)
+  } catch (err) {
+    console.error('Image compression failed:', err)
+  }
+  e.target.value = ''
+}
+
+const removePreview = () => {
+  if (previewImage.value) URL.revokeObjectURL(previewImage.value)
+  previewImage.value = null
+  previewBlob.value = null
+}
+
+const triggerFileInput = () => {
+  fileInputRef.value?.click()
+}
+
+const openFullscreen = (url) => {
+  fullscreenImage.value = url
+}
+
+const closeFullscreen = () => {
+  fullscreenImage.value = null
+}
+
+const canSend = computed(() => replyContent.value.trim().length > 0 || previewBlob.value)
+
 watch(filterStatus, () => {
   fetchConversations()
 })
@@ -307,7 +422,7 @@ onUnmounted(() => {
               <span class="conv-time">{{ formatTime(conv.lastMessageAt) }}</span>
             </div>
             <div class="conv-bottom">
-              <span class="conv-preview">{{ truncate(conv.lastMessage?.content, 20) }}</span>
+              <span class="conv-preview">{{ getPreviewText(conv.lastMessage) }}</span>
               <span v-if="conv.unreadCount > 0" class="conv-badge">{{ conv.unreadCount }}</span>
             </div>
           </div>
@@ -343,7 +458,17 @@ onUnmounted(() => {
             }"
           >
             <div class="message-bubble">
-              <div class="message-text">{{ msg.content }}</div>
+              <template v-if="msg.messageType === 'image'">
+                <img
+                  :src="msg.thumbnailUrl || msg.content"
+                  class="chat-image"
+                  @click="openFullscreen(msg.content)"
+                  loading="lazy"
+                />
+              </template>
+              <template v-else>
+                <div class="message-text">{{ msg.content }}</div>
+              </template>
               <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
             </div>
           </div>
@@ -351,6 +476,29 @@ onUnmounted(() => {
         </div>
 
         <div v-if="selectedConversation.status === 'open'" class="main-input">
+          <div v-if="previewImage" class="preview-area">
+            <div class="preview-thumb">
+              <img :src="previewImage" alt="preview" />
+              <button class="preview-remove" @click="removePreview">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button class="attach-btn" @click="triggerFileInput" title="发送图片">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"></path>
+            </svg>
+          </button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style="display:none"
+            @change="handleFileSelect"
+          />
           <textarea
             ref="textareaRef"
             v-model="replyContent"
@@ -362,7 +510,7 @@ onUnmounted(() => {
           ></textarea>
           <button
             class="send-btn"
-            :disabled="!replyContent.trim()"
+            :disabled="!canSend"
             @click="sendReply"
           >发送</button>
         </div>
@@ -373,6 +521,16 @@ onUnmounted(() => {
         </svg>
         <p>选择一个对话开始回复</p>
       </div>
+    </div>
+
+    <div v-if="fullscreenImage" class="fullscreen-overlay" @click="closeFullscreen">
+      <img :src="fullscreenImage" class="fullscreen-img" @click.stop />
+      <button class="fullscreen-close" @click="closeFullscreen">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
   </div>
 </template>
@@ -655,11 +813,66 @@ onUnmounted(() => {
 .main-input {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
-  padding: 16px 20px;
+  gap: 8px;
+  padding: 12px 20px;
   border-top: 1px solid #eee;
   background: #fff;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.preview-area {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.preview-thumb {
+  position: relative;
+  display: inline-block;
+}
+
+.preview-thumb img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.preview-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.attach-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: #fff;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+
+.attach-btn:hover {
+  color: #d4a574;
+  border-color: #d4a574;
 }
 
 .main-input textarea {
@@ -731,5 +944,61 @@ onUnmounted(() => {
     width: 100%;
     max-height: 300px;
   }
+}
+
+.chat-image {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+  object-fit: contain;
+  transition: opacity 0.2s;
+}
+
+.chat-image:hover {
+  opacity: 0.85;
+}
+
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1300;
+  cursor: pointer;
+}
+
+.fullscreen-img {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.fullscreen-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.fullscreen-close:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 </style>

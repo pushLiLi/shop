@@ -23,6 +23,8 @@ type WSMessage struct {
 	Type           string `json:"type"`
 	ConversationID uint   `json:"conversationId,omitempty"`
 	Content        string `json:"content,omitempty"`
+	MessageType    string `json:"messageType,omitempty"`
+	ThumbnailURL   string `json:"thumbnailUrl,omitempty"`
 }
 
 type WSResponse struct {
@@ -121,7 +123,14 @@ func handleAdminMessage(client *ws.Client, raw []byte) {
 }
 
 func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
-	if msg.Content == "" || len(msg.Content) > 500 {
+	if msg.Content == "" {
+		return
+	}
+	msgType := msg.MessageType
+	if msgType == "" {
+		msgType = "text"
+	}
+	if msgType == "text" && len(msg.Content) > 500 {
 		return
 	}
 
@@ -137,7 +146,9 @@ func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
 		ConversationID: msg.ConversationID,
 		SenderType:     "customer",
 		SenderID:       client.UserID,
+		MessageType:    msgType,
 		Content:        msg.Content,
+		ThumbnailURL:   msg.ThumbnailURL,
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		return
@@ -146,7 +157,18 @@ func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
 	now := time.Now()
 	database.DB.Model(&conversation).Update("last_message_at", now)
 
-	database.DB.Where("id = ?", msg.ConversationID).First(&conversation)
+	database.DB.Where("id = ?", msg.ConversationID).Limit(1).Find(&conversation)
+
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: msg.ConversationID,
+	})
+
+	ws.DefaultHub.SendToUser(client.UserID, WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(msg.ConversationID),
+	})
 
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:           "new_message",
@@ -161,7 +183,14 @@ func handleCustomerSendMessage(client *ws.Client, msg WSMessage) {
 }
 
 func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
-	if msg.Content == "" || len(msg.Content) > 500 {
+	if msg.Content == "" {
+		return
+	}
+	msgType := msg.MessageType
+	if msgType == "" {
+		msgType = "text"
+	}
+	if msgType == "text" && len(msg.Content) > 500 {
 		return
 	}
 
@@ -177,7 +206,9 @@ func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
 		ConversationID: msg.ConversationID,
 		SenderType:     "service",
 		SenderID:       client.UserID,
+		MessageType:    msgType,
 		Content:        msg.Content,
+		ThumbnailURL:   msg.ThumbnailURL,
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		return
@@ -186,7 +217,7 @@ func handleAdminSendMessage(client *ws.Client, msg WSMessage) {
 	now := time.Now()
 	database.DB.Model(&conversation).Update("last_message_at", now)
 
-	database.DB.Where("id = ?", msg.ConversationID).First(&conversation)
+	database.DB.Where("id = ?", msg.ConversationID).Limit(1).Find(&conversation)
 
 	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
 		Type:    "new_message",

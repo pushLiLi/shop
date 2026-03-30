@@ -22,7 +22,10 @@ export const useChatStore = defineStore('chat', {
     wsReconnectTimer: null,
     wsReconnectDelay: 3000,
     wsConnected: false,
-    onMessage: null
+    onMessage: null,
+    autoCloseTimer: null,
+    autoCloseWarning: false,
+    autoCloseCountdown: 0
   }),
 
   actions: {
@@ -102,6 +105,7 @@ export const useChatStore = defineStore('chat', {
             }
             this.wsSend({ type: 'mark_read', conversationId: this.currentConversation.id })
           }
+          this.resetAutoCloseTimer()
           break
         case 'unread_count':
           this.unreadCount = data.count || 0
@@ -131,10 +135,14 @@ export const useChatStore = defineStore('chat', {
 
     async openPanel() {
       this.isOpen = true
+      const draft = localStorage.getItem('chat_draft')
+      this.resetAutoCloseTimer()
       await this.fetchOrCreateConversation()
+      return draft
     },
 
     closePanel() {
+      this.clearAutoCloseTimer()
       this.isOpen = false
     },
 
@@ -215,6 +223,59 @@ export const useChatStore = defineStore('chat', {
           console.error('Send message failed:', e)
         }
       }
+      this.resetAutoCloseTimer()
+    },
+
+    async sendImageMessage(imageBlob, caption) {
+      if (!this.currentConversation) return null
+      try {
+        const formData = new FormData()
+        formData.append('file', imageBlob, 'chat_image.jpg')
+
+        const token = localStorage.getItem('token')
+        const uploadRes = await fetch(`${API_BASE}/chat/upload-image`, {
+          method: 'POST',
+          headers: { 'Authorization': token ? `Bearer ${token}` : '' },
+          body: formData
+        })
+        const uploadData = await uploadRes.json()
+        if (!uploadData.success) {
+          console.error('Upload failed:', uploadData.error)
+          return null
+        }
+
+        const convId = this.currentConversation.id
+        const payload = {
+          content: uploadData.url,
+          messageType: 'image',
+          thumbnailUrl: uploadData.thumbnailUrl || ''
+        }
+
+        if (this.wsConnected) {
+          this.wsSend({
+            type: 'send_message',
+            conversationId: convId,
+            content: uploadData.url,
+            messageType: 'image',
+            thumbnailUrl: uploadData.thumbnailUrl || ''
+          })
+        } else {
+          const res = await fetch(`${API_BASE}/chat/conversations/${convId}/messages`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+          })
+          const data = await res.json()
+          if (data.message) {
+            this.messages.push(data.message)
+          }
+        }
+        this.resetAutoCloseTimer()
+        return true
+      } catch (e) {
+        console.error('Send image failed:', e)
+        return null
+      }
     },
 
     async fetchUnreadCount() {
@@ -229,12 +290,55 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
+    resetAutoCloseTimer() {
+      if (this.autoCloseTimer) {
+        clearTimeout(this.autoCloseTimer)
+        this.autoCloseTimer = null
+      }
+      this.autoCloseWarning = false
+      this.autoCloseCountdown = 0
+      if (!this.isOpen) return
+
+      const tenMinutes = 10 * 60 * 1000
+      this.autoCloseTimer = setTimeout(() => {
+        this.autoCloseWarning = true
+        this.autoCloseCountdown = 30
+        const countdownInterval = setInterval(() => {
+          this.autoCloseCountdown--
+          if (this.autoCloseCountdown <= 0) {
+            clearInterval(countdownInterval)
+            const draft = ''
+            localStorage.setItem('chat_draft', draft)
+            this.autoCloseWarning = false
+            this.isOpen = false
+            this.autoCloseTimer = null
+          }
+        }, 1000)
+      }, tenMinutes - 30000)
+    },
+
+    clearAutoCloseTimer() {
+      if (this.autoCloseTimer) {
+        clearTimeout(this.autoCloseTimer)
+        this.autoCloseTimer = null
+      }
+      this.autoCloseWarning = false
+      this.autoCloseCountdown = 0
+    },
+
+    notifyUserActivity() {
+      if (this.isOpen) {
+        this.resetAutoCloseTimer()
+      }
+    },
+
     init() {
       this.connectWebSocket()
     },
 
     cleanup() {
       this.disconnectWebSocket()
+      this.clearAutoCloseTimer()
       this.isOpen = false
       this.currentConversation = null
       this.messages = []

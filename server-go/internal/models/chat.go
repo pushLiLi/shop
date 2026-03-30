@@ -20,11 +20,15 @@ type Message struct {
 	Conversation   Conversation `json:"-" gorm:"foreignKey:ConversationID"`
 	SenderType     string       `json:"senderType" gorm:"size:20;not null"`
 	SenderID       uint         `json:"senderId" gorm:"not null"`
+	MessageType    string       `json:"messageType" gorm:"size:20;default:text"`
 	Content        string       `json:"content" gorm:"type:text;not null"`
+	ThumbnailURL   string       `json:"thumbnailUrl" gorm:"size:500"`
 	IsRead         bool         `json:"isRead" gorm:"default:false"`
 	CreatedAt      time.Time    `json:"createdAt"`
 }
 
 type SendMessageInput struct {
-	Content string `json:"content" binding:"required,max=500"`
+	Content      string `json:"content" binding:"required"`
+	MessageType  string `json:"messageType"`
+	ThumbnailURL string `json:"thumbnailUrl"`
 }

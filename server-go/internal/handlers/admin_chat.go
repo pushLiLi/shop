@@ -116,7 +116,16 @@ func AdminSendMessage(c *gin.Context) {
 
 	var input models.SendMessageInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能为空且不超过500字")
+		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能为空")
+		return
+	}
+
+	msgType := input.MessageType
+	if msgType == "" {
+		msgType = "text"
+	}
+	if msgType == "text" && len(input.Content) > 500 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "消息内容不能超过500字")
 		return
 	}
 
@@ -124,7 +133,9 @@ func AdminSendMessage(c *gin.Context) {
 		ConversationID: uint(conversationID),
 		SenderType:     "service",
 		SenderID:       userID.(uint),
+		MessageType:    msgType,
 		Content:        input.Content,
+		ThumbnailURL:   input.ThumbnailURL,
 	}
 	if err := database.DB.Create(&message).Error; err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "发送失败")
