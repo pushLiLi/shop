@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { useCarousel } from '../composables/useCarousel'
-import { marked } from 'marked'
 import ProductCard from '../components/ProductCard.vue'
 
 const API_BASE = '/api'
@@ -14,8 +13,6 @@ const featuredProducts = ref([])
 const newProducts = ref([])
 const topSellingProducts = ref([])
 const categoryProducts = ref([])
-const brandStory = ref(null)
-const brandPhilosophy = ref(null)
 
 const authStore = useAuthStore()
 const isAdmin = computed(() => authStore.isAdmin)
@@ -35,15 +32,13 @@ const {
 async function fetchData() {
   try {
     loading.value = true
-    const [configRes, featuredRes, bannersRes, categoriesRes, newRes, topSellingRes, storyRes, philosophyRes] = await Promise.all([
+    const [configRes, featuredRes, bannersRes, categoriesRes, newRes, topSellingRes] = await Promise.all([
       fetch(`${API_BASE}/config`),
       fetch(`${API_BASE}/products?featured=true&limit=12`),
       fetch(`${API_BASE}/banners`),
       fetch(`${API_BASE}/categories`),
       fetch(`${API_BASE}/products?sortBy=createdAt&sortOrder=desc&limit=8`),
-      fetch(`${API_BASE}/products/top-selling?limit=8`),
-      fetch(`${API_BASE}/pages/brand-story`),
-      fetch(`${API_BASE}/pages/brand-philosophy`)
+      fetch(`${API_BASE}/products/top-selling?limit=8`)
     ])
     
     config.value = await configRes.json()
@@ -78,21 +73,6 @@ async function fetchData() {
       categoryProducts.value = productResults.filter(item => item.products.length > 0)
     }
 
-    if (storyRes.ok) {
-      const storyData = await storyRes.json()
-      if (storyData.content) {
-        storyData.htmlContent = marked(storyData.content)
-        brandStory.value = storyData
-      }
-    }
-
-    if (philosophyRes.ok) {
-      const philosophyData = await philosophyRes.json()
-      if (philosophyData.content) {
-        philosophyData.htmlContent = marked(philosophyData.content)
-        brandPhilosophy.value = philosophyData
-      }
-    }
   } catch (e) {
     error.value = e.message
     console.error('Error:', e)
@@ -256,19 +236,6 @@ onMounted(() => { fetchData() })
       </div>
     </section>
 
-    <section class="brand-section" v-if="brandStory">
-      <div class="container">
-        <h2 class="section-title centered">{{ brandStory.title }}</h2>
-        <div class="brand-content" v-html="brandStory.htmlContent"></div>
-      </div>
-    </section>
-
-    <section class="philosophy-section" v-if="brandPhilosophy">
-      <div class="container">
-        <h2 class="section-title centered">{{ brandPhilosophy.title }}</h2>
-        <div class="brand-content" v-html="brandPhilosophy.htmlContent"></div>
-      </div>
-    </section>
   </main>
 </template>
 
@@ -586,43 +553,6 @@ onMounted(() => { fetchData() })
   margin: 0;
 }
 
-.brand-section,
-.philosophy-section {
-  padding: 50px 0;
-  border-top: 1px solid rgba(212, 165, 116, 0.15);
-}
-
-.section-title.centered {
-  text-align: center;
-  color: #fff;
-  font-size: 24px;
-  margin-bottom: 30px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #d4a574;
-  display: inline-block;
-  width: 100%;
-}
-
-.brand-content {
-  color: #ccc;
-  line-height: 1.8;
-  font-size: 15px;
-  max-width: 900px;
-  margin: 0 auto;
-}
-
-.brand-content :deep(h1),
-.brand-content :deep(h2),
-.brand-content :deep(h3) {
-  color: #d4a574;
-}
-
-.brand-content :deep(img) {
-  max-width: 100%;
-  border-radius: 8px;
-  margin: 15px 0;
-}
-
 .loading {
   text-align: center;
   color: #d4a574;
@@ -694,8 +624,5 @@ onMounted(() => { fetchData() })
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .brand-content {
-    font-size: 14px;
-  }
 }
 </style>
