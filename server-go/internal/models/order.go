@@ -30,8 +30,10 @@ type Order struct {
 	Address   Address     `json:"address" gorm:"foreignKey:AddressID"`
 	Total     float64     `json:"total" gorm:"not null"`
 	Status    string      `json:"status" gorm:"default:'pending'"`
-	Remark    string      `json:"remark"`
-	Items     []OrderItem `json:"items" gorm:"foreignKey:OrderID"`
+	Remark          string      `json:"remark"`
+	TrackingCompany string      `json:"trackingCompany"`
+	TrackingNumber  string      `json:"trackingNumber"`
+	Items           []OrderItem `json:"items" gorm:"foreignKey:OrderID"`
 	CreatedAt time.Time   `json:"createdAt"`
 	UpdatedAt time.Time   `json:"updatedAt"`
 }

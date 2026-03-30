@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
@@ -171,7 +172,9 @@ func GetAdminOrder(c *gin.Context) {
 }
 
 type UpdateOrderStatusInput struct {
-	Status string `json:"status" binding:"required"`
+	Status          string `json:"status" binding:"required"`
+	TrackingCompany string `json:"trackingCompany"`
+	TrackingNumber  string `json:"trackingNumber"`
 }
 
 func UpdateOrderStatus(c *gin.Context) {
@@ -211,32 +214,45 @@ func UpdateOrderStatus(c *gin.Context) {
 		return
 	}
 
+	if input.Status == models.OrderStatusShipped {
+		if strings.TrimSpace(input.TrackingCompany) == "" || strings.TrimSpace(input.TrackingNumber) == "" {
+			utils.ErrorResponse(c, http.StatusBadRequest, "发货时请填写物流平台和快递单号")
+			return
+		}
+	}
+
 	oldStatus := order.Status
 	order.Status = input.Status
+	order.TrackingCompany = input.TrackingCompany
+	order.TrackingNumber = input.TrackingNumber
 	database.DB.Save(&order)
 
 	database.DB.Preload("Items.Product").Preload("Address").First(&order, id)
 
 	if oldStatus != input.Status {
-		statusMap := map[string]string{
-			"pending":    "待处理",
-			"paid":       "已支付",
-			"processing": "处理中",
-			"shipped":    "已发货",
-			"completed":  "已完成",
-			"cancelled":  "已取消",
-		}
-		statusText := statusMap[input.Status]
-		if statusText == "" {
-			statusText = input.Status
-		}
 		notification := models.Notification{
 			UserID:  order.UserID,
 			Type:    models.NotificationTypeOrderStatus,
-			Title:   "订单状态更新",
-			Content: "您的订单 " + order.OrderNo + " 状态已更新为「" + statusText + "」",
 			Link:    "/orders",
 			OrderID: &order.ID,
+		}
+		if input.Status == models.OrderStatusShipped {
+			notification.Title = "订单已发货"
+			notification.Content = "您的订单 " + order.OrderNo + " 已发货，物流平台：" + order.TrackingCompany + "，快递单号：" + order.TrackingNumber
+		} else {
+			statusMap := map[string]string{
+				"pending":    "待处理",
+				"paid":       "已支付",
+				"processing": "处理中",
+				"completed":  "已完成",
+				"cancelled":  "已取消",
+			}
+			statusText := statusMap[input.Status]
+			if statusText == "" {
+				statusText = input.Status
+			}
+			notification.Title = "订单状态更新"
+			notification.Content = "您的订单 " + order.OrderNo + " 状态已更新为「" + statusText + "」"
 		}
 		database.DB.Create(&notification)
 	}

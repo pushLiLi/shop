@@ -155,6 +155,11 @@ onMounted(() => {
             </div>
           </div>
 
+          <div v-if="order.trackingCompany || order.trackingNumber" class="tracking-bar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <span class="tracking-text">{{ order.trackingCompany }}：{{ order.trackingNumber }}</span>
+          </div>
+
           <div v-if="paymentProofs[order.id]" class="proof-status-bar">
             <div class="proof-info">
               <span class="proof-status-label">付款凭证：</span>
@@ -302,6 +307,22 @@ onMounted(() => {
 }
 .item-price {
   color: #d4a574;
+}
+
+.tracking-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-top: 1px solid #2a2a2a;
+  color: #5bc0de;
+  font-size: 13px;
+}
+
+.tracking-text {
+  color: #ccc;
+  font-family: monospace;
+  font-size: 13px;
 }
 
 .proof-status-bar {

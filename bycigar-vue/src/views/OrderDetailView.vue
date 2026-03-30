@@ -181,6 +181,20 @@ onMounted(() => fetchOrder())
           </div>
         </div>
 
+        <div v-if="order.trackingCompany || order.trackingNumber" class="section">
+          <h2 class="section-title">物流信息</h2>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">物流平台</span>
+              <span class="value">{{ order.trackingCompany }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">快递单号</span>
+              <span class="value mono">{{ order.trackingNumber }}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="section">
           <h2 class="section-title">商品列表</h2>
           <div class="items-list">

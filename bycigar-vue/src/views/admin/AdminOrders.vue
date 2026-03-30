@@ -26,6 +26,11 @@ const proofImageError = ref(false)
 
 const selectedIds = ref([])
 
+const showShipModal = ref(false)
+const shipOrder = ref(null)
+const shipTrackingCompany = ref('')
+const shipTrackingNumber = ref('')
+
 const statusLabels = {
   pending: '待处理',
   paid: '已支付',
@@ -147,6 +152,14 @@ const openDetail = async (order) => {
 const quickStatusChange = async (order, newStatus) => {
   if (!newStatus) return
 
+  if (newStatus === 'shipped') {
+    shipOrder.value = order
+    shipTrackingCompany.value = ''
+    shipTrackingNumber.value = ''
+    showShipModal.value = true
+    return
+  }
+
   if (newStatus === 'cancelled' && !confirm('确定要取消该订单吗？')) return
 
   try {
@@ -258,6 +271,33 @@ const batchReview = async (action) => {
 
 const formatPrice = (price) => `¥${parseFloat(price).toFixed(2)}`
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
+
+const submitShip = async () => {
+  const order = shipOrder.value
+  if (!order) return
+  if (!shipTrackingCompany.value.trim() || !shipTrackingNumber.value.trim()) {
+    toast.error('请填写物流平台和快递单号')
+    return
+  }
+  try {
+    const res = await fetch(`${API_BASE}/admin/orders/${order.id}/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        status: 'shipped',
+        trackingCompany: shipTrackingCompany.value.trim(),
+        trackingNumber: shipTrackingNumber.value.trim()
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || '发货失败')
+    toast.success('已发货')
+    showShipModal.value = false
+    fetchOrders()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
 
 const prevPage = () => {
   if (currentPage.value > 1) {
@@ -417,6 +457,14 @@ onMounted(() => fetchOrders())
             </div>
           </div>
 
+          <div class="detail-section" v-if="detailOrder?.trackingCompany || detailOrder?.trackingNumber">
+            <div class="section-title">物流信息</div>
+            <div class="detail-grid">
+              <div class="detail-item"><span class="label">物流平台</span><span>{{ detailOrder.trackingCompany }}</span></div>
+              <div class="detail-item"><span class="label">快递单号</span><span class="mono">{{ detailOrder.trackingNumber }}</span></div>
+            </div>
+          </div>
+
           <div class="detail-section">
             <div class="section-title">商品列表</div>
             <div class="items-list">
@@ -508,6 +556,29 @@ onMounted(() => fetchOrders())
           <button class="btn-cancel" @click="showQuickReview = false">取消</button>
           <button class="btn-reject" @click="submitReview('reject')">驳回</button>
           <button class="btn-save" @click="submitReview('approve')">通过</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showShipModal" class="modal-overlay" @click.self="showShipModal = false">
+      <div class="modal ship-modal">
+        <div class="modal-header">
+          <h3>发货 - {{ shipOrder?.orderNo }}</h3>
+          <button class="modal-close" @click="showShipModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>物流平台 <span style="color:#c62828">*</span></label>
+            <input v-model="shipTrackingCompany" type="text" placeholder="如：顺丰、中通、圆通" class="form-input" />
+          </div>
+          <div class="form-group">
+            <label>快递单号 <span style="color:#c62828">*</span></label>
+            <input v-model="shipTrackingNumber" type="text" placeholder="请输入快递单号" class="form-input" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showShipModal = false">取消</button>
+          <button class="btn-save" @click="submitShip">确认发货</button>
         </div>
       </div>
     </div>
@@ -1177,5 +1248,28 @@ select {
 .proof-actions-buttons {
   display: flex;
   gap: 10px;
+}
+
+.ship-modal {
+  max-width: 480px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #d4a574;
+}
+
+.mono {
+  font-family: monospace;
 }
 </style>
