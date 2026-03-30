@@ -292,18 +292,46 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .cart-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
   .cart-item {
     flex-direction: column;
   }
-  
+
   .item-image {
     width: 100%;
     height: 200px;
   }
-  
+
+  .quantity-control button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .quantity-control input {
+    width: 48px;
+    height: 36px;
+  }
+
+  .remove-btn {
+    padding: 8px 16px;
+  }
+
   .cart-summary {
     flex-direction: column;
     gap: 20px;
+  }
+
+  .checkout-btn {
+    width: 100%;
+    text-align: center;
+    padding: 14px;
   }
 }
 </style>

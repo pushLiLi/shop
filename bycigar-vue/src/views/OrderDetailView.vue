@@ -625,4 +625,56 @@ onMounted(() => fetchOrder())
 .btn-reupload:hover:not(:disabled) {
   background: #e5b584;
 }
+
+@media (max-width: 768px) {
+  .order-detail-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 15px;
+  }
+
+  .item-row {
+    flex-wrap: wrap;
+  }
+
+  .mono {
+    word-break: break-all;
+  }
+}
+
+@media (max-width: 576px) {
+  .order-detail-page {
+    padding: 15px 0 30px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .btn-back {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .proof-image {
+    max-height: 250px;
+  }
+
+  .total-price {
+    font-size: 18px;
+  }
+}
 </style>

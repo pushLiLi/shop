@@ -461,52 +461,79 @@ async function removeFavorite(productId) {
 }
 
 @media (max-width: 768px) {
+  .favorites-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
   .toolbar {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .search-input {
     max-width: none;
   }
-  
+
   .toolbar-actions {
     justify-content: space-between;
-  }
-  
-  .favorite-item {
     flex-wrap: wrap;
     gap: 10px;
   }
-  
+
+  .favorite-item {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px;
+  }
+
   .checkbox {
     order: 1;
   }
-  
+
+  .checkbox input {
+    width: 22px;
+    height: 22px;
+  }
+
   .item-image {
     order: 2;
+    width: 50px;
+    height: 50px;
   }
-  
+
   .item-name {
     order: 3;
-    width: calc(100% - 100px);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  
+
   .item-price {
     order: 4;
-    width: calc(100% - 100px);
-    text-align: left;
-    margin-left: 90px;
-    margin-top: -5px;
+    width: auto;
+    text-align: right;
+    margin-left: 0;
+    margin-top: 0;
   }
-  
+
   .cart-btn {
     order: 5;
-    margin-left: auto;
+    padding: 10px;
   }
-  
+
   .remove-btn {
     order: 6;
+    padding: 10px;
+  }
+
+  .batch-cart-btn {
+    padding: 10px 16px;
   }
 }
 </style>

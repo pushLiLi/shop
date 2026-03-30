@@ -684,4 +684,11 @@ onMounted(() => { fetchData() })
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+@media (max-width: 576px) {
+  .product-scroll-item {
+    flex: 0 0 calc(50% - 5px);
+    min-width: calc(50% - 5px);
+  }
+}
 </style>

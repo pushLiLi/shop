@@ -126,4 +126,13 @@ body {
   opacity: 0;
   transform: translateY(10px);
 }
+
+@media (max-width: 768px) {
+  .scroll-top-btn {
+    bottom: 80px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+  }
+}
 </style>

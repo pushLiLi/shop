@@ -707,4 +707,79 @@ function formatPrice(price) {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+  .checkout-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .order-items,
+  .shipping-info,
+  .payment-section,
+  .order-summary {
+    padding: 15px;
+  }
+
+  .order-item {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .item-quantity {
+    margin: 0 10px;
+  }
+
+  .radio {
+    width: 24px;
+    height: 24px;
+  }
+
+  .radio.checked::after {
+    width: 12px;
+    height: 12px;
+  }
+
+  .address-option {
+    padding: 12px;
+  }
+
+  .address-text {
+    flex-wrap: wrap;
+  }
+
+  .total-value {
+    font-size: 20px;
+  }
+
+  .payment-method-option {
+    padding: 10px 12px;
+  }
+
+  .qrcode-wrapper {
+    max-width: 180px;
+  }
+}
+
+@media (max-width: 576px) {
+  .checkout-page {
+    padding: 15px 0 30px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .upload-area {
+    padding: 20px 15px;
+  }
+
+  .proof-preview-img {
+    max-height: 200px;
+  }
+}
 </style>

@@ -1284,6 +1284,10 @@ async function changePassword() {
 }
 
 @media (max-width: 768px) {
+  .profile-page {
+    padding: 20px 10px;
+  }
+
   .profile-container {
     grid-template-columns: 1fr;
   }
@@ -1292,6 +1296,7 @@ async function changePassword() {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 20px 15px;
   }
 
   .profile-nav {
@@ -1299,16 +1304,34 @@ async function changePassword() {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 4px;
   }
 
   .nav-item {
     text-align: center;
+    padding: 10px 12px;
+    font-size: 13px;
   }
 
   .address-header-row {
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
+  }
+
+  .btn-set-default,
+  .btn-edit-addr,
+  .btn-delete-addr {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .captcha-row {
+    flex-wrap: wrap;
+  }
+
+  .address-form-overlay {
+    padding: 10px;
   }
 }
 </style>

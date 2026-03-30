@@ -77,9 +77,19 @@ h1, h2, h3, h4 {
   .row {
     flex-direction: column;
   }
-  
+
   .col-2, .col-3, .col-4, .col-6 {
     width: 100%;
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container {
+    padding: 0 10px;
   }
 }
 

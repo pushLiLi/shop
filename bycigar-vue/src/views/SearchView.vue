@@ -771,14 +771,41 @@ watch([totalCount, pageSize], () => {
   }
 
   .products-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
+  }
+
+  .search-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-title {
+    font-size: 24px;
   }
 }
 
 @media (max-width: 768px) {
   .products-grid {
+    grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .search-page {
+    padding: 15px 0 30px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+
+  .sort-options {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .sort-btn {
+    padding: 6px 10px;
+    font-size: 13px;
   }
 }
 </style>

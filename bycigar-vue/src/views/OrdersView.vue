@@ -426,4 +426,77 @@ onMounted(() => {
   font-size: 18px;
   font-weight: bold;
 }
+
+@media (max-width: 768px) {
+  .orders-page {
+    padding: 20px 0 40px;
+  }
+
+  .page-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .order-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 15px;
+  }
+
+  .order-items-list {
+    padding: 12px 15px;
+  }
+
+  .order-item-row {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tracking-text {
+    word-break: break-all;
+    font-size: 12px;
+  }
+
+  .order-footer {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 15px;
+  }
+
+  .order-total {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .orders-page {
+    padding: 15px 0 30px;
+  }
+
+  .page-title {
+    font-size: 20px;
+  }
+
+  .order-header {
+    padding: 10px 12px;
+  }
+
+  .order-items-list {
+    padding: 10px 12px;
+  }
+
+  .order-footer {
+    padding: 10px 12px;
+  }
+
+  .proof-status-bar {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reupload-area {
+    flex-wrap: wrap;
+  }
+}
 </style>
