@@ -3,7 +3,7 @@
 ## Tech Stack
 
 Frontend: Vue 3.5 + Vite 8 + Vue Router 4 + Pinia 3 + marked + vue-advanced-cropper (JavaScript only, no TypeScript, no axios — uses native `fetch`)
-Backend: Go 1.25 + Gin 1.9 + GORM 1.25 + JWT + Swagger (Dockerfile: golang:1.23-alpine)
+Backend: Go 1.25 + Gin 1.9 + GORM 1.25 + JWT + gorilla/websocket + Swagger (Dockerfile: golang:1.23-alpine)
 Database: MySQL 8.4 (Docker, utf8mb4) | Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server`
 
@@ -140,7 +140,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
 - Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
 - **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers.
-- **Chat**: Customer → Admin/Service real-time messaging. One open conversation per customer. Polling-based (3s panel open, 10s closed). Messages limited to 500 chars.
+- **Chat**: Customer → Admin/Service real-time via WebSocket (gorilla/websocket) with HTTP fallback. One open conversation per customer. Messages limited to 500 chars. Auto-cleanup: 30-day retention via `pkgutils.StartChatCleanup()`.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
 - **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors with proxy_cache.
 - **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer, ChatWidget always mounted.

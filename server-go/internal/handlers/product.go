@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
@@ -13,16 +14,18 @@ import (
 
 // GetProducts godoc
 // @Summary 获取产品列表
-// @Description 获取产品列表，支持分页、搜索、分类筛选和排序
+// @Description 获取产品列表，支持分页、搜索、分类筛选、价格区间和排序
 // @Tags products
 // @Accept json
 // @Produce json
 // @Param page query int false "页码" default(1)
 // @Param limit query int false "每页数量" default(12)
-// @Param search query string false "搜索关键词"
+// @Param search query string false "搜索关键词（空格分隔多词）"
 // @Param category query string false "分类 slug"
 // @Param categoryId query int false "分类 ID"
 // @Param featured query string false "是否精选"
+// @Param minPrice query number false "最低价格"
+// @Param maxPrice query number false "最高价格"
 // @Param sortBy query string false "排序字段" default(createdAt)
 // @Param sortOrder query string false "排序方向 (asc/desc)" default(desc)
 // @Success 200 {object} map[string]interface{}
@@ -34,6 +37,8 @@ func GetProducts(c *gin.Context) {
 	categorySlug := c.Query("category")
 	categoryIDStr := c.Query("categoryId")
 	featured := c.Query("featured")
+	minPriceStr := c.Query("minPrice")
+	maxPriceStr := c.Query("maxPrice")
 	sortBy := c.DefaultQuery("sortBy", c.DefaultQuery("sort", "createdAt"))
 	sortOrder := c.DefaultQuery("sortOrder", c.DefaultQuery("order", "desc"))
 
@@ -87,7 +92,22 @@ func GetProducts(c *gin.Context) {
 	}
 
 	if search != "" {
-		query = query.Where("name LIKE ? OR description LIKE ?", "%"+search+"%", "%"+search+"%")
+		keywords := strings.Fields(search)
+		for _, kw := range keywords {
+			query = query.Where("name LIKE ? OR description LIKE ?", "%"+kw+"%", "%"+kw+"%")
+		}
+	}
+
+	if minPriceStr != "" {
+		if minPrice, err := strconv.ParseFloat(minPriceStr, 64); err == nil {
+			query = query.Where("price >= ?", minPrice)
+		}
+	}
+
+	if maxPriceStr != "" {
+		if maxPrice, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+			query = query.Where("price <= ?", maxPrice)
+		}
 	}
 
 	var total int64

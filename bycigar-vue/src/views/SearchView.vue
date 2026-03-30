@@ -101,17 +101,17 @@ watch([totalCount, pageSize], () => {
             class="sort-btn" 
             :class="{ active: sortBy === 'createdAt' }"
             @click="changeSort('createdAt')"
-          >最新</button>
+          >最新<span v-if="sortBy === 'createdAt'" class="sort-arrow">{{ sortOrder === 'asc' ? ' ↑' : ' ↓' }}</span></button>
           <button 
             class="sort-btn" 
             :class="{ active: sortBy === 'price' }"
             @click="changeSort('price')"
-          >价格</button>
+          >价格<span v-if="sortBy === 'price'" class="sort-arrow">{{ sortOrder === 'asc' ? ' ↑' : ' ↓' }}</span></button>
           <button 
             class="sort-btn" 
             :class="{ active: sortBy === 'name' }"
             @click="changeSort('name')"
-          >名称</button>
+          >名称<span v-if="sortBy === 'name'" class="sort-arrow">{{ sortOrder === 'asc' ? ' ↑' : ' ↓' }}</span></button>
         </div>
       </div>
 
@@ -225,6 +225,11 @@ watch([totalCount, pageSize], () => {
   background: #d4a574;
   border-color: #d4a574;
   color: #1a1a1a;
+}
+
+.sort-arrow {
+  font-size: 12px;
+  margin-left: 2px;
 }
 
 .loading, .no-results, .empty-state {

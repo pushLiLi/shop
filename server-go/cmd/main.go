@@ -10,7 +10,7 @@ import (
 	"bycigar-server/internal/middleware"
 	"bycigar-server/internal/ws"
 	miniopkg "bycigar-server/pkg/minio"
-	"bycigar-server/pkg/utils"
+	pkgutils "bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -43,8 +43,9 @@ func main() {
 	database.Seed()
 	miniopkg.InitMinio()
 	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
-	utils.InitSnowflake(1)
+	pkgutils.InitSnowflake(1)
 	database.BackfillOrderNo()
+	pkgutils.StartChatCleanup(database.DB)
 
 	ws.DefaultHub = ws.NewHub()
 	go ws.DefaultHub.Run()
