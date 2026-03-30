@@ -7,6 +7,7 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	"bycigar-server/internal/ws"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -149,6 +150,12 @@ func UpdateProduct(c *gin.Context) {
 		}
 		if len(notifications) > 0 {
 			database.DB.Create(&notifications)
+			for _, n := range notifications {
+				ws.DefaultHub.SendToUser(n.UserID, gin.H{
+					"type":         "notification",
+					"notification": n,
+				})
+			}
 		}
 	}
 
@@ -168,6 +175,12 @@ func UpdateProduct(c *gin.Context) {
 		}
 		if len(notifications) > 0 {
 			database.DB.Create(&notifications)
+			for _, n := range notifications {
+				ws.DefaultHub.SendToUser(n.UserID, gin.H{
+					"type":         "notification",
+					"notification": n,
+				})
+			}
 		}
 	}
 

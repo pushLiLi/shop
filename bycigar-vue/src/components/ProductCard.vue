@@ -68,7 +68,7 @@ async function shareHandler(e) {
 </script>
 
 <template>
-  <div class="product-card" :class="{ horizontal: horizontal }">
+  <div class="product-card" :class="{ horizontal: horizontal }" @click="router.push('/products/' + product.id)">
     <router-link :to="'/products/' + product.id" class="product-image">
       <img :src="product.thumbnailUrl || product.imageUrl" :alt="product.name" loading="lazy">
       <button class="favorite-btn" @click="toggleFavorite" :class="{ active: isFavorite }">
@@ -104,6 +104,7 @@ async function shareHandler(e) {
   border-radius: 8px;
   overflow: hidden;
   transition: transform 0.3s, box-shadow 0.3s;
+  cursor: pointer;
 }
 
 .product-card:hover {

@@ -35,6 +35,7 @@ type WSResponse struct {
 	Count          int         `json:"count,omitempty"`
 	Stats          interface{} `json:"stats,omitempty"`
 	TotalUnread    int64       `json:"totalUnread,omitempty"`
+	ServiceOnline  bool        `json:"serviceOnline,omitempty"`
 }
 
 func HandleCustomerWS(c *gin.Context) {
@@ -125,6 +126,22 @@ func handleAdminMessage(client *ws.Client, raw []byte) {
 		handleAdminMarkRead(client, msg)
 	case "typing":
 		handleAdminTyping(client, msg)
+	case "service_online":
+		wasEmpty := ws.DefaultHub.SetServiceOnline(client.UserID)
+		if wasEmpty {
+			ws.DefaultHub.SendToAllCustomers(WSResponse{
+				Type:          "service_status",
+				ServiceOnline: true,
+			})
+		}
+	case "service_offline":
+		nowEmpty := ws.DefaultHub.SetServiceOffline(client.UserID)
+		if nowEmpty {
+			ws.DefaultHub.SendToAllCustomers(WSResponse{
+				Type:          "service_status",
+				ServiceOnline: false,
+			})
+		}
 	}
 }
 

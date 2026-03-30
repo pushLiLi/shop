@@ -22,6 +22,7 @@ type Hub struct {
 	mu            sync.RWMutex
 	CustomerConns map[uint]*Client
 	AdminConns    map[uint]*Client
+	ServiceOnline map[uint]struct{}
 	Register      chan *Client
 	Unregister    chan *Client
 }
@@ -32,6 +33,7 @@ func NewHub() *Hub {
 	return &Hub{
 		CustomerConns: make(map[uint]*Client),
 		AdminConns:    make(map[uint]*Client),
+		ServiceOnline: make(map[uint]struct{}),
 		Register:      make(chan *Client),
 		Unregister:    make(chan *Client),
 	}
@@ -54,6 +56,7 @@ func (h *Hub) Run() {
 						existing.closeSend.Do(func() { close(existing.Send) })
 					}
 					h.AdminConns[client.UserID] = client
+					delete(h.ServiceOnline, client.UserID)
 				} else {
 					if existing, ok := h.CustomerConns[client.UserID]; ok {
 						existing.closeSend.Do(func() { close(existing.Send) })
@@ -66,8 +69,9 @@ func (h *Hub) Run() {
 			case client := <-h.Unregister:
 				h.mu.Lock()
 				if client.Role == "admin" || client.Role == "service" {
-					if existing, ok := h.AdminConns[client.UserID]; ok && existing == client {
+				if existing, ok := h.AdminConns[client.UserID]; ok && existing == client {
 						delete(h.AdminConns, client.UserID)
+						delete(h.ServiceOnline, client.UserID)
 					}
 				} else {
 					if existing, ok := h.CustomerConns[client.UserID]; ok && existing == client {
@@ -112,10 +116,25 @@ func (h *Hub) SendToAdmins(msg interface{}) {
 	}
 }
 
-func (h *Hub) HasOnlineAdmins() bool {
+func (h *Hub) SetServiceOnline(userID uint) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	wasEmpty := len(h.ServiceOnline) == 0
+	h.ServiceOnline[userID] = struct{}{}
+	return wasEmpty
+}
+
+func (h *Hub) SetServiceOffline(userID uint) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.ServiceOnline, userID)
+	return len(h.ServiceOnline) == 0
+}
+
+func (h *Hub) IsServiceOnline() bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	return len(h.AdminConns) > 0
+	return len(h.ServiceOnline) > 0
 }
 
 func (h *Hub) SendToAllCustomers(msg interface{}) {

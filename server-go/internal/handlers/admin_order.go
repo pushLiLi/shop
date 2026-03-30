@@ -7,6 +7,7 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	"bycigar-server/internal/ws"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -262,6 +263,10 @@ func UpdateOrderStatus(c *gin.Context) {
 			notification.Content = "您的订单 " + order.OrderNo + " 状态已更新为「" + statusText + "」"
 		}
 		database.DB.Create(&notification)
+		ws.DefaultHub.SendToUser(notification.UserID, gin.H{
+			"type":         "notification",
+			"notification": notification,
+		})
 	}
 
 	c.JSON(http.StatusOK, order)

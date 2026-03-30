@@ -134,9 +134,9 @@ watch(showMobileSearch, (val) => {
 
 watch(() => authStore.isLoggedIn, (loggedIn) => {
   if (loggedIn) {
-    notificationsStore.startPolling()
+    notificationsStore.initWSListener()
   } else {
-    notificationsStore.stopPolling()
+    notificationsStore.cleanupWSListener()
   }
 })
 
@@ -144,14 +144,14 @@ onMounted(() => {
   if (authStore.isLoggedIn) {
     cartStore.fetchCart()
     favoritesStore.fetchFavorites()
-    notificationsStore.startPolling()
+    notificationsStore.initWSListener()
   }
   document.addEventListener('click', handleClickOutside)
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 const handleLogout = () => {
-  notificationsStore.stopPolling()
+  notificationsStore.cleanupWSListener()
   authStore.logout()
   showUserMenu.value = false
   router.push('/')
@@ -211,15 +211,13 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   clearTimeout(suggestTimer)
-  notificationsStore.stopPolling()
+  notificationsStore.cleanupWSListener()
 })
 
 const handleVisibilityChange = () => {
   if (!authStore.isLoggedIn) return
-  if (document.hidden) {
-    notificationsStore.stopPolling()
-  } else {
-    notificationsStore.startPolling()
+  if (!document.hidden) {
+    notificationsStore.fetchUnreadCount()
   }
 }
 </script>
