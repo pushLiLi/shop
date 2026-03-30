@@ -4,11 +4,13 @@ import { useChatStore } from '../stores/chat'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
 import { useImageCompress } from '../composables/useImageCompress'
+import { useNotificationSound } from '../composables/useNotificationSound'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
 const router = useRouter()
 const { compress } = useImageCompress()
+const { play: playNotification } = useNotificationSound()
 
 const messageInput = ref('')
 const messagesContainer = ref(null)
@@ -18,6 +20,8 @@ const previewImage = ref(null)
 const previewBlob = ref(null)
 const fullscreenImage = ref(null)
 const draftRestored = ref(false)
+const messagesLoaded = ref(false)
+const prevMsgCount = ref(0)
 
 const canSend = computed(() => messageInput.value.trim().length > 0 || previewImage.value)
 
@@ -163,6 +167,7 @@ const autoResize = () => {
 const onInput = () => {
   autoResize()
   localStorage.setItem('chat_draft', messageInput.value)
+  chatStore.sendTyping()
 }
 
 const openFullscreen = (url) => {
@@ -181,8 +186,18 @@ const keepConversation = () => {
   chatStore.resetAutoCloseTimer()
 }
 
-watch(() => chatStore.messages.length, () => {
+watch(() => chatStore.messages.length, (newLen) => {
+  if (messagesLoaded.value && newLen > prevMsgCount.value) {
+    const lastMsg = chatStore.messages[chatStore.messages.length - 1]
+    if (lastMsg && lastMsg.senderType === 'service' && chatStore.soundEnabled && (!chatStore.isOpen || !document.hasFocus())) {
+      playNotification()
+    }
+  }
+  prevMsgCount.value = newLen
   scrollToBottom()
+  nextTick(() => {
+    messagesLoaded.value = true
+  })
 })
 
 onMounted(() => {
@@ -213,12 +228,26 @@ watch(() => authStore.isLoggedIn, (val) => {
             <span class="status-dot"></span>
             <span class="header-title">在线客服</span>
           </div>
-          <button class="close-btn" @click="chatStore.closePanel()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <div class="header-right">
+            <button class="sound-btn" @click="chatStore.toggleSound()" :title="chatStore.soundEnabled ? '关闭提示音' : '开启提示音'">
+              <svg v-if="chatStore.soundEnabled" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+              </svg>
+            </button>
+            <button class="close-btn" @click="chatStore.closePanel()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div v-if="chatStore.autoCloseWarning" class="auto-close-warning">
@@ -226,42 +255,50 @@ watch(() => authStore.isLoggedIn, (val) => {
           <button class="keep-btn" @click="keepConversation">继续对话</button>
         </div>
 
-        <div class="messages-area" ref="messagesContainer">
+        <div class="messages-area" ref="messagesContainer" :class="{ 'animate-msgs': messagesLoaded }">
           <div v-if="chatStore.isLoading" class="loading-state">
             <div class="loading-dots">
               <span></span><span></span><span></span>
             </div>
           </div>
           <template v-else>
-            <template v-for="item in displayMessages" :key="item.id">
-              <div v-if="item.type === 'divider'" class="time-divider">
-                <span class="divider-text">{{ formatDividerTime(item.time) }}</span>
-              </div>
-              <div
-                v-else
-                class="message-wrapper"
-                :class="{
-                  'is-customer': item.msg.senderType === 'customer',
-                  'is-service': item.msg.senderType === 'service',
-                }"
-              >
-                <div class="message-bubble">
-                  <template v-if="item.msg.messageType === 'image'">
-                    <img
-                      :src="item.msg.thumbnailUrl || item.msg.content"
-                      class="chat-image"
-                      @click="openFullscreen(item.msg.content)"
-                      loading="lazy"
-                    />
-                  </template>
-                  <template v-else>
-                    <div class="message-text">{{ item.msg.content }}</div>
-                  </template>
-                  <div class="message-time">{{ formatTime(item.msg.createdAt) }}</div>
+            <TransitionGroup name="msg">
+              <template v-for="item in displayMessages" :key="item.id">
+                <div v-if="item.type === 'divider'" class="time-divider">
+                  <span class="divider-text">{{ formatDividerTime(item.time) }}</span>
                 </div>
+                <div
+                  v-else
+                  class="message-wrapper"
+                  :class="{
+                    'is-customer': item.msg.senderType === 'customer',
+                    'is-service': item.msg.senderType === 'service',
+                  }"
+                >
+                  <div class="message-bubble">
+                    <template v-if="item.msg.messageType === 'image'">
+                      <img
+                        :src="item.msg.thumbnailUrl || item.msg.content"
+                        class="chat-image"
+                        @click="openFullscreen(item.msg.content)"
+                        loading="lazy"
+                      />
+                    </template>
+                    <template v-else>
+                      <div class="message-text">{{ item.msg.content }}</div>
+                    </template>
+                    <div class="message-time">{{ formatTime(item.msg.createdAt) }}</div>
+                  </div>
+                </div>
+              </template>
+            </TransitionGroup>
+            <div v-if="chatStore.isServiceTyping" class="typing-indicator">
+              <div class="typing-dots">
+                <span></span><span></span><span></span>
               </div>
-            </template>
-            <div v-if="chatStore.messages.length === 0" class="empty-state">
+              <span class="typing-text">客服正在输入...</span>
+            </div>
+            <div v-if="chatStore.messages.length === 0 && !chatStore.isServiceTyping" class="empty-state">
               <p>您好，有什么可以帮助您的吗？</p>
             </div>
           </template>
@@ -453,6 +490,12 @@ watch(() => authStore.isLoggedIn, (val) => {
   gap: 8px;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -478,6 +521,20 @@ watch(() => authStore.isLoggedIn, (val) => {
 
 .close-btn:hover {
   color: #fff;
+}
+
+.sound-btn {
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  transition: color 0.2s;
+}
+
+.sound-btn:hover {
+  color: #d4a574;
 }
 
 .auto-close-warning {
@@ -528,6 +585,48 @@ watch(() => authStore.isLoggedIn, (val) => {
 .messages-area::-webkit-scrollbar-thumb {
   background: #444;
   border-radius: 2px;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #888;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-text {
+  color: #888;
+  font-size: 12px;
+}
+
+.messages-area.animate-msgs .msg-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.messages-area.animate-msgs .msg-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .time-divider {

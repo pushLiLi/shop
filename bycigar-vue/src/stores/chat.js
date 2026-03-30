@@ -25,7 +25,11 @@ export const useChatStore = defineStore('chat', {
     onMessage: null,
     autoCloseTimer: null,
     autoCloseWarning: false,
-    autoCloseCountdown: 0
+    autoCloseCountdown: 0,
+    isServiceTyping: false,
+    typingTimeout: null,
+    lastTypingSent: 0,
+    soundEnabled: localStorage.getItem('chat_sound_enabled') !== 'false'
   }),
 
   actions: {
@@ -121,6 +125,15 @@ export const useChatStore = defineStore('chat', {
             }
           }
           break
+        case 'typing':
+          if (this.currentConversation && data.conversationId === this.currentConversation.id) {
+            this.isServiceTyping = true
+            if (this.typingTimeout) clearTimeout(this.typingTimeout)
+            this.typingTimeout = setTimeout(() => {
+              this.isServiceTyping = false
+            }, 3000)
+          }
+          break
       }
       if (this.onMessage) {
         this.onMessage(data)
@@ -131,6 +144,19 @@ export const useChatStore = defineStore('chat', {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify(data))
       }
+    },
+
+    sendTyping() {
+      if (!this.currentConversation) return
+      const now = Date.now()
+      if (now - this.lastTypingSent < 2000) return
+      this.lastTypingSent = now
+      this.wsSend({ type: 'typing', conversationId: this.currentConversation.id })
+    },
+
+    toggleSound() {
+      this.soundEnabled = !this.soundEnabled
+      localStorage.setItem('chat_sound_enabled', String(this.soundEnabled))
     },
 
     async openPanel() {
@@ -339,12 +365,17 @@ export const useChatStore = defineStore('chat', {
     cleanup() {
       this.disconnectWebSocket()
       this.clearAutoCloseTimer()
+      if (this.typingTimeout) {
+        clearTimeout(this.typingTimeout)
+        this.typingTimeout = null
+      }
       this.isOpen = false
       this.currentConversation = null
       this.messages = []
       this.conversations = []
       this.unreadCount = 0
       this.onMessage = null
+      this.isServiceTyping = false
     }
   }
 })

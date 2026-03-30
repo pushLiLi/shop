@@ -16,6 +16,7 @@ import (
 	imagepkg "bycigar-server/pkg/image"
 	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
+	"bycigar-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -45,6 +46,20 @@ func CreateConversation(c *gin.Context) {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "创建对话失败")
 		return
 	}
+
+	greeting := models.Message{
+		ConversationID: conversation.ID,
+		SenderType:     "service",
+		SenderID:       0,
+		MessageType:    "text",
+		Content:        "您好！欢迎来到 BYCIGAR，有什么可以帮助您的吗？",
+	}
+	database.DB.Create(&greeting)
+
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(conversation.ID),
+	})
 
 	c.JSON(http.StatusOK, gin.H{"conversation": conversation})
 }
@@ -163,6 +178,26 @@ func SendMessage(c *gin.Context) {
 
 	now := time.Now()
 	database.DB.Model(&conversation).Update("last_message_at", now)
+
+	convID := uint(conversationID)
+	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": message})
 }

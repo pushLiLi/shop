@@ -8,6 +8,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 	"bycigar-server/pkg/utils"
+	"bycigar-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
 )
@@ -144,6 +145,27 @@ func AdminSendMessage(c *gin.Context) {
 
 	now := time.Now()
 	database.DB.Model(&conversation).Update("last_message_at", now)
+
+	convID := uint(conversationID)
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
+	sendUnreadCountToCustomer(conversation.UserID)
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "new_message",
+		Message:        message,
+		ConversationID: convID,
+	})
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:         "conversation_updated",
+		Conversation: buildConversationDetail(convID),
+	})
 
 	c.JSON(http.StatusOK, gin.H{"message": message})
 }

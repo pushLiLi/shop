@@ -2,10 +2,12 @@
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useToastStore } from '../../stores/toast'
 import { useImageCompress } from '../../composables/useImageCompress'
+import { useNotificationSound } from '../../composables/useNotificationSound'
 
 const API_BASE = '/api'
 const toast = useToastStore()
 const { compress } = useImageCompress()
+const { play: playNotification } = useNotificationSound()
 
 const conversations = ref([])
 const selectedConversation = ref(null)
@@ -24,6 +26,11 @@ const ws = ref(null)
 const wsReconnectTimer = ref(null)
 const wsReconnectDelay = ref(3000)
 const wsConnected = ref(false)
+const isCustomerTyping = ref(false)
+const typingTimeout = ref(null)
+const lastTypingSent = ref(0)
+const messagesLoaded = ref(false)
+const prevMsgCount = ref(0)
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -104,6 +111,9 @@ const handleWSMessage = (data) => {
         if (!exists) {
           messages.value.push(data.message)
           scrollToBottom()
+          if (data.message.senderType === 'customer') {
+            playNotification()
+          }
         }
         wsSend({ type: 'mark_read', conversationId: selectedConversation.value.id })
       }
@@ -121,6 +131,15 @@ const handleWSMessage = (data) => {
       }
       break
     case 'unread_stats':
+      break
+    case 'typing':
+      if (selectedConversation.value && data.conversationId === selectedConversation.value.id) {
+        isCustomerTyping.value = true
+        if (typingTimeout.value) clearTimeout(typingTimeout.value)
+        typingTimeout.value = setTimeout(() => {
+          isCustomerTyping.value = false
+        }, 3000)
+      }
       break
   }
 }
@@ -272,6 +291,13 @@ const autoResize = () => {
     textareaRef.value.style.height = 'auto'
     textareaRef.value.style.height = Math.min(textareaRef.value.scrollHeight, 72) + 'px'
   }
+  if (selectedConversation.value && replyContent.value.trim()) {
+    const now = Date.now()
+    if (now - lastTypingSent.value >= 2000) {
+      lastTypingSent.value = now
+      wsSend({ type: 'typing', conversationId: selectedConversation.value.id })
+    }
+  }
 }
 
 const scrollToBottom = async () => {
@@ -343,8 +369,15 @@ watch(filterStatus, () => {
   fetchConversations()
 })
 
-watch(() => messages.value.length, () => {
+watch(() => messages.value.length, (newLen) => {
   scrollToBottom()
+  if (messagesLoaded.value && newLen > prevMsgCount.value) {
+    nextTick(() => scrollToBottom())
+  }
+  prevMsgCount.value = newLen
+  nextTick(() => {
+    messagesLoaded.value = true
+  })
 })
 
 onMounted(() => {
@@ -354,6 +387,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   disconnectWebSocket()
+  if (typingTimeout.value) clearTimeout(typingTimeout.value)
 })
 </script>
 
@@ -419,32 +453,40 @@ onUnmounted(() => {
           >关闭对话</button>
         </div>
 
-        <div class="main-messages" ref="messagesContainer">
-          <div
-            v-for="msg in messages"
-            :key="msg.id"
-            class="message-wrapper"
-            :class="{
-              'is-customer': msg.senderType === 'customer',
-              'is-service': msg.senderType === 'service'
-            }"
-          >
-            <div class="message-bubble">
-              <template v-if="msg.messageType === 'image'">
-                <img
-                  :src="msg.thumbnailUrl || msg.content"
-                  class="chat-image"
-                  @click="openFullscreen(msg.content)"
-                  loading="lazy"
-                />
-              </template>
-              <template v-else>
-                <div class="message-text">{{ msg.content }}</div>
-              </template>
-              <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
+        <div class="main-messages" ref="messagesContainer" :class="{ 'animate-msgs': messagesLoaded }">
+          <TransitionGroup name="msg">
+            <div
+              v-for="msg in messages"
+              :key="msg.id"
+              class="message-wrapper"
+              :class="{
+                'is-customer': msg.senderType === 'customer',
+                'is-service': msg.senderType === 'service'
+              }"
+            >
+              <div class="message-bubble">
+                <template v-if="msg.messageType === 'image'">
+                  <img
+                    :src="msg.thumbnailUrl || msg.content"
+                    class="chat-image"
+                    @click="openFullscreen(msg.content)"
+                    loading="lazy"
+                  />
+                </template>
+                <template v-else>
+                  <div class="message-text">{{ msg.content }}</div>
+                </template>
+                <div class="message-time">{{ formatTime(msg.createdAt) }}</div>
+              </div>
             </div>
+          </TransitionGroup>
+          <div v-if="isCustomerTyping" class="typing-indicator">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="typing-text">客户正在输入...</span>
           </div>
-          <div v-if="messages.length === 0" class="empty-messages">暂无消息</div>
+          <div v-if="messages.length === 0 && !isCustomerTyping" class="empty-messages">暂无消息</div>
         </div>
 
         <div v-if="selectedConversation.status === 'open'" class="main-input">
@@ -726,6 +768,48 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 10px;
   background: #fafafa;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 3px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #999;
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-text {
+  color: #999;
+  font-size: 12px;
+}
+
+.main-messages.animate-msgs .msg-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.main-messages.animate-msgs .msg-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .message-wrapper {

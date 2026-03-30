@@ -105,6 +105,8 @@ func handleCustomerMessage(client *ws.Client, raw []byte) {
 		handleCustomerSendMessage(client, msg)
 	case "mark_read":
 		handleCustomerMarkRead(client, msg)
+	case "typing":
+		handleCustomerTyping(client, msg)
 	}
 }
 
@@ -119,6 +121,8 @@ func handleAdminMessage(client *ws.Client, raw []byte) {
 		handleAdminSendMessage(client, msg)
 	case "mark_read":
 		handleAdminMarkRead(client, msg)
+	case "typing":
+		handleAdminTyping(client, msg)
 	}
 }
 
@@ -253,6 +257,24 @@ func handleCustomerMarkRead(client *ws.Client, msg WSMessage) {
 	ws.DefaultHub.SendToAdmins(WSResponse{
 		Type:         "conversation_updated",
 		Conversation: buildConversationDetail(msg.ConversationID),
+	})
+}
+
+func handleCustomerTyping(client *ws.Client, msg WSMessage) {
+	ws.DefaultHub.SendToAdmins(WSResponse{
+		Type:           "typing",
+		ConversationID: msg.ConversationID,
+	})
+}
+
+func handleAdminTyping(client *ws.Client, msg WSMessage) {
+	var conversation models.Conversation
+	if err := database.DB.First(&conversation, msg.ConversationID).Error; err != nil {
+		return
+	}
+	ws.DefaultHub.SendToUser(conversation.UserID, WSResponse{
+		Type:           "typing",
+		ConversationID: msg.ConversationID,
 	})
 }
 

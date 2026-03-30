@@ -112,6 +112,27 @@ func (h *Hub) SendToAdmins(msg interface{}) {
 	}
 }
 
+func (h *Hub) HasOnlineAdmins() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.AdminConns) > 0
+}
+
+func (h *Hub) SendToAllCustomers(msg interface{}) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, client := range h.CustomerConns {
+		select {
+		case client.Send <- data:
+		default:
+		}
+	}
+}
+
 func (h *Hub) SendToAll(msg interface{}) {
 	data, err := json.Marshal(msg)
 	if err != nil {
