@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useToastStore } from '../stores/toast'
+import { useImageCompress } from '../composables/useImageCompress'
 
 const toast = useToastStore()
+const { compress } = useImageCompress()
 const orders = ref([])
 const loading = ref(false)
 const error = ref(null)
@@ -77,7 +79,8 @@ async function handleReupload(orderId) {
     const token = localStorage.getItem('token')
     const proof = paymentProofs.value[orderId]
     const formData = new FormData()
-    formData.append('file', reuploadFile.value)
+    const compressed = await compress(reuploadFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.8 })
+    formData.append('file', compressed, 'proof.jpg')
     formData.append('paymentMethodId', proof?.paymentMethodId || proof?.payment_method_id || '')
 
     const res = await fetch(`/api/orders/${orderId}/payment-proof`, {
@@ -175,6 +178,7 @@ onMounted(() => {
           </div>
 
           <div class="order-footer">
+            <router-link :to="`/orders/${order.id}`" class="btn-detail">查看详情</router-link>
             <span class="order-total">总计: {{ formatPrice(order.total) }}</span>
           </div>
         </div>
@@ -380,7 +384,21 @@ onMounted(() => {
   padding: 15px 20px;
   background: #2a2a2a;
   border-top: 1px solid #333;
-  text-align: right;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-detail {
+  color: #d4a574;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.btn-detail:hover {
+  color: #e5b584;
 }
 .order-total {
   color: #d4a574;

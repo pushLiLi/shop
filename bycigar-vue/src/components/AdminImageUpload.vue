@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
+import { useImageCompress } from '../composables/useImageCompress'
+
+const { compress } = useImageCompress()
 
 const props = defineProps({
   modelValue: {
@@ -11,6 +14,14 @@ const props = defineProps({
   aspectRatio: {
     type: Number,
     default: null
+  },
+  maxDimension: {
+    type: Number,
+    default: 1920
+  },
+  quality: {
+    type: Number,
+    default: 0.8
   }
 })
 
@@ -56,7 +67,7 @@ const handleFileSelect = (e) => {
   e.target.value = ''
 }
 
-const processFile = (file) => {
+const processFile = async (file) => {
   if (!file.type.startsWith('image/')) {
     error.value = '请选择图片文件'
     return
@@ -70,7 +81,16 @@ const processFile = (file) => {
   error.value = ''
 
   if (props.aspectRatio == null) {
-    uploadFile(file)
+    try {
+      const compressed = await compress(file, {
+        maxWidth: props.maxDimension,
+        maxHeight: props.maxDimension,
+        quality: props.quality
+      })
+      uploadFile(compressed)
+    } catch (e) {
+      error.value = '图片压缩失败'
+    }
     return
   }
 
@@ -82,13 +102,17 @@ const processFile = (file) => {
   reader.readAsDataURL(file)
 }
 
-const confirmCrop = () => {
+const confirmCrop = async () => {
   const { canvas } = cropperRef.value.getResult()
-  canvas.toBlob((blob) => {
-    showCropper.value = false
-    cropImageSrc.value = null
-    uploadFile(blob, 'cropped.jpg')
-  }, 'image/jpeg', 0.85)
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', props.quality))
+  showCropper.value = false
+  cropImageSrc.value = null
+  const compressed = await compress(blob, {
+    maxWidth: props.maxDimension,
+    maxHeight: props.maxDimension,
+    quality: props.quality
+  })
+  uploadFile(compressed, 'cropped.jpg')
 }
 
 const cancelCrop = () => {

@@ -1,9 +1,11 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useToastStore } from '../../stores/toast'
+import { useImageCompress } from '../../composables/useImageCompress'
 
 const API_BASE = '/api'
 const toast = useToastStore()
+const { compress } = useImageCompress()
 
 const conversations = ref([])
 const selectedConversation = ref(null)
@@ -302,43 +304,13 @@ const getPreviewText = (msg) => {
   return truncate(msg.content, 20)
 }
 
-const compressImage = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new window.Image()
-      img.onload = () => {
-        const maxDim = 800
-        let w = img.width
-        let h = img.height
-        if (w > maxDim || h > maxDim) {
-          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim }
-          else { w = Math.round(w * maxDim / h); h = maxDim }
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = w
-        canvas.height = h
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h)
-        canvas.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
-          'image/jpeg', 0.7
-        )
-      }
-      img.onerror = reject
-      img.src = e.target.result
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 const handleFileSelect = async (e) => {
   const file = e.target.files[0]
   if (!file) return
   if (file.size > 5 * 1024 * 1024) { toast.error('图片大小不能超过 5MB'); return }
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('只支持 JPG、PNG、WebP 格式'); return }
   try {
-    const blob = await compressImage(file)
+    const blob = await compress(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 })
     previewBlob.value = blob
     previewImage.value = URL.createObjectURL(blob)
   } catch (err) {

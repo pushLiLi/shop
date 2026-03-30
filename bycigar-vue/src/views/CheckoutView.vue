@@ -5,11 +5,13 @@ import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { getStateName } from '../utils/states'
+import { useImageCompress } from '../composables/useImageCompress'
 
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
 const toast = useToastStore()
+const { compress } = useImageCompress()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
@@ -138,7 +140,7 @@ async function createOrder() {
       return
     }
 
-    const orderId = orderResult.order?.id || orderResult.order?.ID || orderResult.id
+    const orderId = orderResult.orderId
     if (!orderId) {
       error.value = '订单创建异常，请查看订单列表'
       cartStore.clear()
@@ -147,12 +149,13 @@ async function createOrder() {
     }
 
     const formData = new FormData()
-    formData.append('file', proofFile.value)
+    const compressedProof = await compress(proofFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.8 })
+    formData.append('file', compressedProof, 'proof.jpg')
     formData.append('paymentMethodId', selectedPaymentMethodId.value)
 
     const proofRes = await fetch(`/api/orders/${orderId}/payment-proof`, {
       method: 'POST',
-      headers: authStore.getAuthHeaders(),
+      headers: { 'Authorization': `Bearer ${authStore.token}` },
       body: formData
     })
     if (!proofRes.ok) {

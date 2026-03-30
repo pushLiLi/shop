@@ -174,7 +174,7 @@ onMounted(fetchMethods)
           </div>
           <div class="form-group">
             <label>收款码/收款信息图片</label>
-            <AdminImageUpload v-model="form.qrCodeUrl" />
+            <AdminImageUpload v-model="form.qrCodeUrl" :aspect-ratio="1" />
           </div>
           <div class="form-group">
             <label>付款说明</label>
