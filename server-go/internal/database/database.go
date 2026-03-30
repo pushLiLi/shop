@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
@@ -40,7 +41,7 @@ func Connect() {
 	var sqlDB *sql.DB
 	sqlDB, err = DB.DB()
 	if err == nil {
-		sqlDB.SetConnMaxLifetime(0)
+		sqlDB.SetConnMaxLifetime(5 * time.Minute)
 		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetMaxOpenConns(100)
 	}

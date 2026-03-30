@@ -38,17 +38,18 @@ func GetAdminConversations(c *gin.Context) {
 			Where("conversation_id = ? AND sender_type = ? AND is_read = ?", conv.ID, "customer", false).
 			Count(&unreadCount)
 
-		var lastMessage models.Message
-		hasLast := database.DB.Where("conversation_id = ?", conv.ID).
+		var lastMessages []models.Message
+		database.DB.Where("conversation_id = ?", conv.ID).
 			Order("created_at desc").
-			First(&lastMessage).Error == nil
+			Limit(1).
+			Find(&lastMessages)
 
 		item := ConversationWithDetails{
 			Conversation: conv,
 			UnreadCount:  unreadCount,
 		}
-		if hasLast {
-			item.LastMessage = &lastMessage
+		if len(lastMessages) > 0 {
+			item.LastMessage = &lastMessages[0]
 		}
 		result = append(result, item)
 	}

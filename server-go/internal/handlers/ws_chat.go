@@ -67,19 +67,8 @@ func HandleCustomerWS(c *gin.Context) {
 }
 
 func HandleAdminWS(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-
-	uid := userID.(uint)
-	var user models.User
-	database.DB.First(&user, uid)
-	if user.Role != "admin" && user.Role != "service" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
-		return
-	}
+	userVal, _ := c.Get("user")
+	user := userVal.(models.User)
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -87,7 +76,7 @@ func HandleAdminWS(c *gin.Context) {
 	}
 
 	client := &ws.Client{
-		UserID: uid,
+		UserID: user.ID,
 		Role:   user.Role,
 		Conn:   conn,
 		Hub:    ws.DefaultHub,
@@ -296,17 +285,18 @@ func buildConversationDetail(convID uint) ConversationWithDetails {
 		Where("conversation_id = ? AND sender_type = ? AND is_read = ?", convID, "customer", false).
 		Count(&unreadCount)
 
-	var lastMessage models.Message
-	hasLast := database.DB.Where("conversation_id = ?", convID).
+	var lastMessages []models.Message
+	database.DB.Where("conversation_id = ?", convID).
 		Order("created_at desc").
-		First(&lastMessage).Error == nil
+		Limit(1).
+		Find(&lastMessages)
 
 	item := ConversationWithDetails{
 		Conversation: conv,
 		UnreadCount:  unreadCount,
 	}
-	if hasLast {
-		item.LastMessage = &lastMessage
+	if len(lastMessages) > 0 {
+		item.LastMessage = &lastMessages[0]
 	}
 	return item
 }

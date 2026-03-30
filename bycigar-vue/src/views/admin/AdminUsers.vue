@@ -14,6 +14,7 @@ const totalPages = ref(1)
 const limit = 20
 const search = ref('')
 const activeTab = ref('')
+let fetchController = null
 
 const showDetailModal = ref(false)
 const detailUser = ref(null)
@@ -39,18 +40,22 @@ const roleLabels = {
 }
 
 const fetchUsers = async () => {
+  if (fetchController) fetchController.abort()
+  fetchController = new AbortController()
   loading.value = true
   try {
     const params = new URLSearchParams({ page: currentPage.value, limit })
     if (search.value) params.append('search', search.value)
     if (activeTab.value) params.append('role', activeTab.value)
 
-    const res = await fetch(`${API_BASE}/admin/users?${params}`, { headers: authHeaders() })
+    const res = await fetch(`${API_BASE}/admin/users?${params}`, { headers: authHeaders(), signal: fetchController.signal })
     const data = await res.json()
     users.value = data.users || []
     totalPages.value = data.totalPages || 1
   } catch (e) {
-    console.error('Error fetching users:', e)
+    if (e.name !== 'AbortError') {
+      console.error('Error fetching users:', e)
+    }
   } finally {
     loading.value = false
   }
