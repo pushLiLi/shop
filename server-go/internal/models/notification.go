@@ -16,9 +16,9 @@ type Notification struct {
 	Type      string    `json:"type" gorm:"size:50;not null"`
 	Title     string    `json:"title" gorm:"size:255;not null"`
 	Content   string    `json:"content" gorm:"type:text"`
-	IsRead    bool      `json:"isRead" gorm:"default:false"`
+	IsRead    bool      `json:"isRead" gorm:"default:false;index:idx_read_created"`
 	Link      string    `json:"link" gorm:"size:500"`
 	ProductID *uint     `json:"productId"`
 	OrderID   *uint     `json:"orderId"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt time.Time `json:"createdAt" gorm:"index:idx_read_created"`
 }
