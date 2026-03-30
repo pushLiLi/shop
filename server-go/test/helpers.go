@@ -227,6 +227,7 @@ func SetupRouter() *gin.Engine {
 	r.PUT("/api/auth/change-password", middleware.RequireAuth(), handlers.ChangePassword)
 
 	r.GET("/api/products", handlers.GetProducts)
+	r.GET("/api/products/suggest", handlers.GetProductSuggestions)
 	r.GET("/api/products/:id", handlers.GetProduct)
 	r.GET("/api/categories", handlers.GetCategories)
 	r.GET("/api/config", handlers.GetConfig)

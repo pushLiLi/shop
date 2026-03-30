@@ -27,6 +27,7 @@ const sortOrder = ref('desc')
 
 const categorySlug = ref('')
 const categoryName = ref('')
+const localSearch = ref('')
 
 async function fetchProducts() {
   try {
@@ -44,6 +45,9 @@ async function fetchProducts() {
     
     if (categorySlug.value) {
       params.append('category', categorySlug.value)
+    }
+    if (localSearch.value.trim()) {
+      params.append('search', localSearch.value.trim())
     }
     
     const res = await fetch(`/api/products?${params}`)
@@ -64,9 +68,21 @@ async function fetchProducts() {
 watch(() => route.params.slug, (newSlug) => {
   categorySlug.value = newSlug || ''
   categoryName.value = '全部商品'
+  localSearch.value = ''
   currentPage.value = 1
   fetchProducts()
 }, { immediate: true })
+
+function applyLocalSearch() {
+  currentPage.value = 1
+  fetchProducts()
+}
+
+function clearLocalSearch() {
+  localSearch.value = ''
+  currentPage.value = 1
+  fetchProducts()
+}
 
 function changePage(page) {
   currentPage.value = page
@@ -98,8 +114,27 @@ watch([totalCount, pageSize], () => {
         <CategorySidebar :activeSlug="categorySlug" />
         <div class="category-main">
           <div class="category-header">
-            <h1 class="page-title">{{ categoryName }}</h1>
-            <p class="product-count" v-if="!loading">共 {{ totalCount }} 个产品</p>
+            <div class="category-header-row">
+              <div>
+                <h1 class="page-title">{{ categoryName }}</h1>
+                <p class="product-count" v-if="!loading">共 {{ totalCount }} 个产品</p>
+              </div>
+              <form class="local-search-form" @submit.prevent="applyLocalSearch">
+                <input
+                  v-model="localSearch"
+                  type="text"
+                  class="local-search-input"
+                  placeholder="在当前分类中搜索..."
+                >
+                <button v-if="localSearch" type="button" class="local-search-clear" @click="clearLocalSearch">&times;</button>
+                <button type="submit" class="local-search-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
           </div>
 
           <div class="category-controls" v-if="products.length > 0">
@@ -194,6 +229,70 @@ watch([totalCount, pageSize], () => {
   margin-bottom: 30px;
   border-bottom: 2px solid #d4a574;
   padding-bottom: 20px;
+}
+
+.category-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.local-search-form {
+  display: flex;
+  align-items: center;
+  background: #2d2d2d;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid #333;
+  transition: border-color 0.2s;
+}
+
+.local-search-form:focus-within {
+  border-color: #d4a574;
+}
+
+.local-search-input {
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 14px;
+  width: 200px;
+  outline: none;
+}
+
+.local-search-input::placeholder {
+  color: #888;
+}
+
+.local-search-clear {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 0 6px;
+  font-size: 18px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.local-search-clear:hover {
+  color: #d4a574;
+}
+
+.local-search-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 12px;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.local-search-btn:hover {
+  color: #d4a574;
 }
 
 .page-title {
@@ -306,6 +405,19 @@ watch([totalCount, pageSize], () => {
   .category-layout {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .category-header-row {
+    flex-direction: column;
+  }
+
+  .local-search-form {
+    width: 100%;
+  }
+
+  .local-search-input {
+    flex: 1;
+    width: auto;
   }
 }
 

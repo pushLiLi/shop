@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"bycigar-server/internal/models"
@@ -483,6 +484,124 @@ func (s *ProductTestSuite) TestAdminDeleteProduct() {
 func (s *ProductTestSuite) TestAdminDeleteProductNotFound() {
 	w := MakeRequest(s.router, "DELETE", "/api/admin/products/99999", nil, GetAdminAuthHeader())
 	s.Equal(http.StatusNotFound, w.Code)
+}
+
+func (s *ProductTestSuite) TestGetProductsMultiKeywordSearch() {
+	w := MakeRequest(s.router, "GET", "/api/products?search="+url.QueryEscape("高希霸 马杜罗"), nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	products := resp["products"].([]interface{})
+	s.True(len(products) > 0)
+	for _, p := range products {
+		product := p.(map[string]interface{})
+		name := product["name"].(string)
+		s.Contains(name, "马杜罗")
+	}
+}
+
+func (s *ProductTestSuite) TestGetProductsMultiKeywordSearchNoResult() {
+	w := MakeRequest(s.router, "GET", "/api/products?search="+url.QueryEscape("高希霸 不存在的词"), nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	products := resp["products"].([]interface{})
+	s.Equal(0, len(products))
+}
+
+func (s *ProductTestSuite) TestGetProductsPriceRangeFilter() {
+	w := MakeRequest(s.router, "GET", "/api/products?minPrice=100&maxPrice=200&limit=100", nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	products := resp["products"].([]interface{})
+	for _, p := range products {
+		product := p.(map[string]interface{})
+		price := product["price"].(float64)
+		s.True(price >= 100)
+		s.True(price <= 200)
+	}
+}
+
+func (s *ProductTestSuite) TestGetProductsMinPriceOnly() {
+	w := MakeRequest(s.router, "GET", "/api/products?minPrice=200&limit=100", nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	products := resp["products"].([]interface{})
+	for _, p := range products {
+		product := p.(map[string]interface{})
+		price := product["price"].(float64)
+		s.True(price >= 200)
+	}
+}
+
+func (s *ProductTestSuite) TestGetProductsPriceRangeWithSearch() {
+	w := MakeRequest(s.router, "GET", "/api/products?search="+url.QueryEscape("高希霸")+"&minPrice=200&limit=100", nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	products := resp["products"].([]interface{})
+	for _, p := range products {
+		product := p.(map[string]interface{})
+		price := product["price"].(float64)
+		s.True(price >= 200)
+	}
+}
+
+func (s *ProductTestSuite) TestGetProductSuggestions() {
+	w := MakeRequest(s.router, "GET", "/api/products/suggest?q="+url.QueryEscape("高希霸"), nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	suggestions := resp["suggestions"].([]interface{})
+	s.True(len(suggestions) > 0)
+	s.True(len(suggestions) <= 6)
+	for _, item := range suggestions {
+		sug := item.(map[string]interface{})
+		s.NotEmpty(sug["name"])
+		s.NotEmpty(sug["id"])
+	}
+}
+
+func (s *ProductTestSuite) TestGetProductSuggestionsEmpty() {
+	w := MakeRequest(s.router, "GET", "/api/products/suggest?q=", nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	suggestions := resp["suggestions"].([]interface{})
+	s.Equal(0, len(suggestions))
+}
+
+func (s *ProductTestSuite) TestGetProductSuggestionsNoMatch() {
+	w := MakeRequest(s.router, "GET", "/api/products/suggest?q="+url.QueryEscape("不存在的商品"), nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	suggestions := resp["suggestions"].([]interface{})
+	s.Equal(0, len(suggestions))
+}
+
+func (s *ProductTestSuite) TestGetProductSuggestionsOnlyActive() {
+	w := MakeRequest(s.router, "GET", "/api/products/suggest?q="+url.QueryEscape("短号"), nil, nil)
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	suggestions := resp["suggestions"].([]interface{})
+	for _, item := range suggestions {
+		sug := item.(map[string]interface{})
+		name := sug["name"].(string)
+		s.NotContains(name, "短号")
+	}
 }
 
 func findCategoryID(categories []models.Category, slug string) uint {

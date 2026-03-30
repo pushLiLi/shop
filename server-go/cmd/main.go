@@ -62,6 +62,7 @@ func main() {
 	r.POST("/api/auth/login", handlers.Login)
 
 	r.GET("/api/products", handlers.GetProducts)
+	r.GET("/api/products/suggest", handlers.GetProductSuggestions)
 	r.GET("/api/products/top-selling", handlers.GetTopSelling)
 	r.GET("/api/products/:id", handlers.GetProduct)
 	r.GET("/api/categories", handlers.GetCategories)

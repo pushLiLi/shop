@@ -21,6 +21,100 @@ const searchKeyword = ref('')
 const mobileSearchKeyword = ref('')
 const showUserMenu = ref(false)
 const isAdmin = computed(() => authStore.isAdmin)
+const showSearchDropdown = ref(false)
+const searchSuggestions = ref([])
+const suggestionsLoading = ref(false)
+let suggestTimer = null
+
+const HISTORY_KEY = 'search_history'
+const MAX_HISTORY = 8
+
+function getSearchHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function addToHistory(keyword) {
+  const history = getSearchHistory().filter(h => h !== keyword)
+  history.unshift(keyword)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)))
+}
+
+function removeHistoryItem(keyword) {
+  const history = getSearchHistory().filter(h => h !== keyword)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history))
+}
+
+function clearSearchHistory() {
+  localStorage.removeItem(HISTORY_KEY)
+}
+
+const searchHistory = ref(getSearchHistory())
+
+function onSearchInputFocus() {
+  if (!searchKeyword.value.trim()) {
+    searchHistory.value = getSearchHistory()
+  }
+  showSearchDropdown.value = true
+}
+
+async function fetchSuggestions(keyword) {
+  if (!keyword || keyword.length < 1) {
+    searchSuggestions.value = []
+    return
+  }
+  suggestionsLoading.value = true
+  try {
+    const res = await fetch(`/api/products/suggest?q=${encodeURIComponent(keyword)}&limit=6`)
+    const data = await res.json()
+    searchSuggestions.value = data.suggestions || []
+  } catch {
+    searchSuggestions.value = []
+  } finally {
+    suggestionsLoading.value = false
+  }
+}
+
+function onSearchInputChange() {
+  clearTimeout(suggestTimer)
+  if (!searchKeyword.value.trim()) {
+    searchSuggestions.value = []
+    searchHistory.value = getSearchHistory()
+    return
+  }
+  suggestTimer = setTimeout(() => {
+    fetchSuggestions(searchKeyword.value.trim())
+  }, 300)
+}
+
+function closeSearchDropdown() {
+  showSearchDropdown.value = false
+}
+
+function handleSuggestionClick(product) {
+  closeSearchDropdown()
+  router.push('/product/' + product.id)
+}
+
+function handleHistoryClick(keyword) {
+  searchKeyword.value = keyword
+  addToHistory(keyword)
+  closeSearchDropdown()
+  router.push('/search?q=' + encodeURIComponent(keyword))
+}
+
+function removeHistory(keyword) {
+  removeHistoryItem(keyword)
+  searchHistory.value = getSearchHistory()
+}
+
+function clearHistory() {
+  clearSearchHistory()
+  searchHistory.value = []
+}
 
 const menuItems = [
   { name: '首页', path: '/', children: [] },
@@ -73,12 +167,15 @@ const closeMenu = () => {
 
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
+    addToHistory(searchKeyword.value.trim())
+    closeSearchDropdown()
     router.push('/search?q=' + encodeURIComponent(searchKeyword.value.trim()))
   }
 }
 
 const handleMobileSearch = () => {
   if (mobileSearchKeyword.value.trim()) {
+    addToHistory(mobileSearchKeyword.value.trim())
     router.push('/search?q=' + encodeURIComponent(mobileSearchKeyword.value.trim()))
     showMobileSearch.value = false
     mobileSearchKeyword.value = ''
@@ -104,11 +201,16 @@ const handleClickOutside = (e) => {
   if (wrapper && !wrapper.contains(e.target)) {
     showUserMenu.value = false
   }
+  const searchWrapper = document.querySelector('.search-form-wrapper')
+  if (searchWrapper && !searchWrapper.contains(e.target)) {
+    closeSearchDropdown()
+  }
 }
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
+  clearTimeout(suggestTimer)
   notificationsStore.stopPolling()
 })
 
@@ -162,20 +264,66 @@ const handleVisibilityChange = () => {
           </div>
 
           <div class="header-center">
-            <form class="search-form" @submit.prevent="handleSearch">
-              <input 
-                v-model="searchKeyword" 
-                type="text" 
-                class="search-input" 
-                placeholder="搜索"
-              >
-              <button type="submit" class="search-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <path d="m21 21-4.35-4.35"></path>
-                </svg>
-              </button>
-            </form>
+            <div class="search-form-wrapper">
+              <form class="search-form" @submit.prevent="handleSearch">
+                <input 
+                  v-model="searchKeyword" 
+                  type="text" 
+                  class="search-input" 
+                  placeholder="搜索"
+                  autocomplete="off"
+                  @focus="onSearchInputFocus"
+                  @input="onSearchInputChange"
+                >
+                <button type="submit" class="search-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                  </svg>
+                </button>
+              </form>
+              <Transition name="dropdown">
+                <div v-if="showSearchDropdown" class="search-dropdown">
+                  <div v-if="suggestionsLoading" class="dropdown-loading">搜索中...</div>
+                  <div v-else-if="searchSuggestions.length > 0" class="dropdown-suggestions">
+                    <div 
+                      v-for="item in searchSuggestions" 
+                      :key="item.id" 
+                      class="suggestion-item"
+                      @mousedown.prevent="handleSuggestionClick(item)"
+                    >
+                      <img v-if="item.thumbnailUrl" :src="item.thumbnailUrl" class="suggestion-thumb" alt="">
+                      <div class="suggestion-thumb-placeholder" v-else></div>
+                      <div class="suggestion-info">
+                        <span class="suggestion-name">{{ item.name }}</span>
+                        <span class="suggestion-price">¥{{ item.price }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else-if="searchKeyword.trim() && !suggestionsLoading" class="dropdown-empty">
+                    无搜索建议
+                  </div>
+                  <div v-if="!searchKeyword.trim() && searchHistory.length > 0" class="dropdown-history">
+                    <div class="history-header">
+                      <span class="history-title">搜索历史</span>
+                      <button class="history-clear" @mousedown.prevent="clearHistory">清空</button>
+                    </div>
+                    <div class="history-list">
+                      <div 
+                        v-for="h in searchHistory" 
+                        :key="h" 
+                        class="history-item"
+                        @mousedown.prevent="handleHistoryClick(h)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                        <span class="history-text">{{ h }}</span>
+                        <button class="history-remove" @mousedown.prevent.stop="removeHistory(h)">&times;</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
           </div>
 
           <div class="header-right">
@@ -252,6 +400,20 @@ const handleVisibilityChange = () => {
               >
               <button type="submit" class="mobile-search-submit">搜索</button>
             </form>
+            <div v-if="!mobileSearchKeyword && searchHistory.length" class="mobile-search-history">
+              <div class="mobile-history-header">
+                <span>搜索历史</span>
+                <button @click="clearHistory">清空</button>
+              </div>
+              <div class="mobile-history-tags">
+                <button 
+                  v-for="h in searchHistory" 
+                  :key="h" 
+                  class="mobile-history-tag"
+                  @click="mobileSearchKeyword = h; handleMobileSearch()"
+                >{{ h }}</button>
+              </div>
+            </div>
           </div>
         </Transition>
       </div>
@@ -390,13 +552,17 @@ const handleVisibilityChange = () => {
   justify-content: center;
 }
 
+.search-form-wrapper {
+  position: relative;
+  width: 280px;
+}
+
 .search-form {
   display: flex;
   align-items: center;
   background: #2d2d2d;
   border-radius: 4px;
   overflow: hidden;
-  width: 280px;
 }
 
 .search-input {
@@ -423,6 +589,164 @@ const handleVisibilityChange = () => {
 }
 
 .search-btn:hover {
+  color: #d4a574;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #2d2d2d;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.search-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+
+.search-dropdown::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 2px;
+}
+
+.dropdown-loading,
+.dropdown-empty {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+  font-size: 13px;
+}
+
+.dropdown-suggestions {
+  padding: 4px 0;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.suggestion-item:hover {
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.suggestion-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.suggestion-thumb-placeholder {
+  width: 40px;
+  height: 40px;
+  background: #3a3a3a;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.suggestion-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.suggestion-name {
+  color: #ddd;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-price {
+  color: #d4a574;
+  font-size: 12px;
+}
+
+.dropdown-history {
+  padding: 8px 0;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+}
+
+.history-title {
+  color: #888;
+  font-size: 12px;
+}
+
+.history-clear {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.history-clear:hover {
+  color: #d4a574;
+}
+
+.history-list {
+  padding: 0;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: #ccc;
+}
+
+.history-item:hover {
+  background: rgba(212, 165, 116, 0.1);
+}
+
+.history-item svg {
+  color: #666;
+  flex-shrink: 0;
+}
+
+.history-text {
+  flex: 1;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-remove {
+  background: transparent;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.history-remove:hover {
   color: #d4a574;
 }
 
@@ -649,6 +973,56 @@ const handleVisibilityChange = () => {
     font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
+  }
+
+  .mobile-search-history {
+    margin-top: 10px;
+  }
+
+  .mobile-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .mobile-history-header span {
+    color: #888;
+    font-size: 12px;
+  }
+
+  .mobile-history-header button {
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .mobile-history-header button:hover {
+    color: #d4a574;
+  }
+
+  .mobile-history-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .mobile-history-tag {
+    background: #2d2d2d;
+    border: 1px solid #333;
+    color: #ccc;
+    padding: 5px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .mobile-history-tag:hover {
+    border-color: #d4a574;
+    color: #d4a574;
   }
 
   .user-name {

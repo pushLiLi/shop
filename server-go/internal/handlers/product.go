@@ -261,3 +261,50 @@ func GetTopSelling(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"products": topProducts})
 }
+
+// GetProductSuggestions godoc
+// @Summary 搜索建议
+// @Description 根据关键词返回匹配的商品名称建议列表
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param q query string true "搜索关键词"
+// @Param limit query int false "返回数量" default(6)
+// @Success 200 {object} map[string]interface{}
+// @Router /products/suggest [get]
+func GetProductSuggestions(c *gin.Context) {
+	q := c.Query("q")
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "6"))
+	if limit < 1 {
+		limit = 6
+	}
+	if limit > 10 {
+		limit = 10
+	}
+
+	if q == "" || len(q) < 1 {
+		c.JSON(http.StatusOK, gin.H{"suggestions": []interface{}{}})
+		return
+	}
+
+	type SuggestionItem struct {
+		ID           uint    `json:"id"`
+		Name         string  `json:"name"`
+		Price        float64 `json:"price"`
+		ThumbnailURL string  `json:"thumbnailUrl"`
+	}
+
+	var suggestions []SuggestionItem
+	database.DB.Model(&models.Product{}).
+		Select("id, name, price, thumbnail_image").
+		Where("is_active = ? AND name LIKE ?", true, "%"+q+"%").
+		Order("stock > 0 DESC, created_at DESC").
+		Limit(limit).
+		Scan(&suggestions)
+
+	if suggestions == nil {
+		suggestions = []SuggestionItem{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"suggestions": suggestions})
+}
