@@ -254,7 +254,7 @@ func BatchReviewPaymentProofs(c *gin.Context) {
 		database.DB.First(&order, p.OrderID)
 
 		if input.Action == "approve" {
-			database.DB.Model(&models.Order{}).Where("id = ?", p.OrderID).Update("status", models.OrderStatusPaid)
+			database.DB.Model(&models.Order{}).Where("id = ?", p.OrderID).Update("status", models.OrderStatusProcessing)
 			notification := models.Notification{
 				UserID:  order.UserID,
 				Type:    models.NotificationTypeOrderStatus,

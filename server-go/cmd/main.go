@@ -45,7 +45,6 @@ func main() {
 	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
 	pkgutils.InitSnowflake(1)
 	database.BackfillOrderNo()
-	database.BackfillPaidOrders()
 	pkgutils.StartChatCleanup(database.DB)
 	pkgutils.StartNotificationCleanup(database.DB)
 

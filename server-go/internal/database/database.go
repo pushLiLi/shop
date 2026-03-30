@@ -177,11 +177,3 @@ func BackfillOrderNo() {
 	}
 }
 
-func BackfillPaidOrders() {
-	result := DB.Model(&models.Order{}).
-		Where("status = ?", models.OrderStatusPaid).
-		Update("status", models.OrderStatusProcessing)
-	if result.RowsAffected > 0 {
-		log.Printf("Backfilled %d orders from 'paid' to 'processing'", result.RowsAffected)
-	}
-}

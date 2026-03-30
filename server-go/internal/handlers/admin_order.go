@@ -44,7 +44,10 @@ func GetAdminOrders(c *gin.Context) {
 		query = query.Where("order_no LIKE ?", "%"+search+"%")
 	}
 	if proofStatus != "" {
-		query = query.Where("id IN (SELECT order_id FROM payment_proofs WHERE status = ?)", proofStatus)
+		subQuery := database.DB.Model(&models.PaymentProof{}).
+			Select("order_id").
+			Where("status = ?", proofStatus)
+		query = query.Where("id IN ?", subQuery)
 	}
 
 	var total int64

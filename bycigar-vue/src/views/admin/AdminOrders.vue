@@ -55,6 +55,8 @@ const proofStatusLabels = {
   rejected: '已驳回'
 }
 
+const showProofColumn = computed(() => filterStatus.value !== 'shipped')
+
 const statusBadgeClass = (status) => {
   const map = {
     pending: 'badge-warning',
@@ -359,7 +361,7 @@ onMounted(() => fetchOrders())
             <th>用户</th>
             <th style="width: 100px">总金额</th>
             <th style="width: 100px">状态</th>
-            <th style="width: 100px">付款凭证</th>
+            <th v-if="showProofColumn" style="width: 100px">付款凭证</th>
             <th style="width: 160px">下单时间</th>
             <th style="width: 180px">操作</th>
           </tr>
@@ -381,7 +383,7 @@ onMounted(() => fetchOrders())
                 {{ statusLabels[order.status] || order.status }}
               </span>
             </td>
-            <td>
+            <td v-if="showProofColumn">
               <span v-if="!order.paymentProof" class="proof-badge proof-none">未提交</span>
               <span v-else class="proof-badge"
                     :class="{
