@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,6 +10,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 	"bycigar-server/internal/ws"
+	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -114,6 +117,7 @@ func UpdateProduct(c *gin.Context) {
 
 	oldStock := product.Stock
 	oldPrice := product.Price
+	oldImageURLs := collectProductImageURLs(&product)
 
 	product.Name = input.Name
 	if input.Slug != "" {
@@ -132,6 +136,25 @@ func UpdateProduct(c *gin.Context) {
 	if err := database.DB.Save(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新商品失败"})
 		return
+	}
+
+	newImageURLs := collectProductImageURLs(&product)
+	oldURLSet := make(map[string]bool)
+	for _, u := range oldImageURLs {
+		oldURLSet[u] = true
+	}
+	var orphanedURLs []string
+	for _, u := range oldImageURLs {
+		if !contains(newImageURLs, u) {
+			orphanedURLs = append(orphanedURLs, u)
+		}
+	}
+	_ = oldURLSet
+	if len(orphanedURLs) > 0 {
+		deleted := miniopkg.DeleteObjects(orphanedURLs)
+		if deleted > 0 {
+			log.Printf("UpdateProduct: deleted %d orphaned MinIO objects for product %d", deleted, id)
+		}
 	}
 
 	if oldStock <= 0 && input.Stock > 0 {
@@ -206,15 +229,23 @@ func DeleteProduct(c *gin.Context) {
 		return
 	}
 
+	var product models.Product
+	if err := database.DB.First(&product, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "商品不存在")
+		return
+	}
+
+	imageURLs := collectProductImageURLs(&product)
+
 	result := database.DB.Delete(&models.Product{}, id)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除商品失败"})
 		return
 	}
 
-	if result.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "商品不存在"})
-		return
+	deleted := miniopkg.DeleteObjects(imageURLs)
+	if deleted > 0 {
+		log.Printf("DeleteProduct: deleted %d MinIO objects for product %d", deleted, id)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "商品已删除"})
@@ -242,12 +273,29 @@ func GetAdminProducts(c *gin.Context) {
 	categoryIDStr := c.Query("categoryId")
 	featured := c.Query("featured")
 	active := c.Query("active")
+	sortBy := c.DefaultQuery("sortBy", "id")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
 
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 {
 		limit = 20
+	}
+
+	productSortColumnMap := map[string]string{
+		"id":        "id",
+		"name":      "name",
+		"price":     "price",
+		"stock":     "stock",
+		"createdAt": "created_at",
+	}
+	sortColumn, ok := productSortColumnMap[sortBy]
+	if !ok {
+		sortColumn = "id"
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
 	}
 
 	query := database.DB.Model(&models.Product{})
@@ -285,7 +333,7 @@ func GetAdminProducts(c *gin.Context) {
 
 	var products []models.Product
 	offset := (page - 1) * limit
-	query.Preload("Category").Order("id DESC").Offset(offset).Limit(limit).Find(&products)
+	query.Preload("Category").Order(sortColumn + " " + sortOrder).Offset(offset).Limit(limit).Find(&products)
 
 	totalPages := int(total) / limit
 	if int(total)%limit != 0 {
@@ -343,11 +391,57 @@ func BatchDeleteProducts(c *gin.Context) {
 		return
 	}
 
+	var products []models.Product
+	database.DB.Where("id IN ?", input.IDs).Find(&products)
+
+	var allImageURLs []string
+	for i := range products {
+		allImageURLs = append(allImageURLs, collectProductImageURLs(&products[i])...)
+	}
+
 	result := database.DB.Where("id IN ?", input.IDs).Delete(&models.Product{})
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "批量删除失败"})
 		return
 	}
 
+	deleted := miniopkg.DeleteObjects(allImageURLs)
+	if deleted > 0 {
+		log.Printf("BatchDeleteProducts: deleted %d MinIO objects for %d products", deleted, len(input.IDs))
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "批量删除成功", "deleted": result.RowsAffected})
+}
+
+func collectProductImageURLs(product *models.Product) []string {
+	var urls []string
+	if product.Image != "" {
+		urls = append(urls, product.Image)
+	}
+	if product.ThumbnailImage != "" {
+		urls = append(urls, product.ThumbnailImage)
+	}
+	if product.Images != "" {
+		var imageList []string
+		if err := json.Unmarshal([]byte(product.Images), &imageList); err == nil {
+			urls = append(urls, imageList...)
+		} else {
+			for _, part := range strings.Split(product.Images, ",") {
+				part = strings.TrimSpace(part)
+				if part != "" {
+					urls = append(urls, part)
+				}
+			}
+		}
+	}
+	return urls
+}
+
+func contains(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
 }

@@ -12,6 +12,8 @@ const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const limit = 20
+const sortBy = ref('createdAt')
+const sortOrder = ref('desc')
 const search = ref('')
 const activeTab = ref('')
 let fetchController = null
@@ -47,6 +49,8 @@ const fetchUsers = async () => {
     const params = new URLSearchParams({ page: currentPage.value, limit })
     if (search.value) params.append('search', search.value)
     if (activeTab.value) params.append('role', activeTab.value)
+    if (sortBy.value) params.append('sortBy', sortBy.value)
+    if (sortOrder.value) params.append('sortOrder', sortOrder.value)
 
     const res = await fetch(`${API_BASE}/admin/users?${params}`, { headers: authHeaders(), signal: fetchController.signal })
     const data = await res.json()
@@ -59,6 +63,27 @@ const fetchUsers = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSort = (field) => {
+  if (sortBy.value === field) {
+    if (sortOrder.value === 'desc') {
+      sortOrder.value = 'asc'
+    } else {
+      sortBy.value = ''
+      sortOrder.value = 'desc'
+    }
+  } else {
+    sortBy.value = field
+    sortOrder.value = 'desc'
+  }
+  currentPage.value = 1
+  fetchUsers()
+}
+
+const sortIcon = (field) => {
+  if (sortBy.value !== field) return ''
+  return sortOrder.value === 'desc' ? ' ↓' : ' ↑'
 }
 
 const handleSearch = () => {
@@ -199,13 +224,13 @@ onMounted(() => fetchUsers())
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width: 60px">ID</th>
-            <th>邮箱</th>
-            <th>姓名</th>
-            <th style="width: 100px">角色</th>
+            <th style="width: 60px" class="sortable-th" @click="handleSort('id')">ID{{ sortIcon('id') }}</th>
+            <th class="sortable-th" @click="handleSort('email')">邮箱{{ sortIcon('email') }}</th>
+            <th class="sortable-th" @click="handleSort('name')">姓名{{ sortIcon('name') }}</th>
+            <th style="width: 100px" class="sortable-th" @click="handleSort('role')">角色{{ sortIcon('role') }}</th>
             <th style="width: 100px">订单数</th>
             <th style="width: 120px">消费金额</th>
-            <th style="width: 170px">注册时间</th>
+            <th style="width: 170px" class="sortable-th" @click="handleSort('createdAt')">注册时间{{ sortIcon('createdAt') }}</th>
             <th style="width: 140px">操作</th>
           </tr>
         </thead>
@@ -465,6 +490,16 @@ onMounted(() => fetchUsers())
   font-weight: 600;
   color: #333;
   white-space: nowrap;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.sortable-th:hover {
+  background: #f0f0f0;
 }
 
 .data-table td {

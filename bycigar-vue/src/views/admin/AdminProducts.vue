@@ -19,6 +19,8 @@ const filterFeatured = ref('')
 const currentPage = ref(1)
 const totalPages = ref(1)
 const limit = 20
+const sortBy = ref('id')
+const sortOrder = ref('desc')
 
 const form = ref({
   id: null,
@@ -63,6 +65,8 @@ const fetchProducts = async () => {
     if (search.value) params.append('search', search.value)
     if (filterCategory.value) params.append('categoryId', filterCategory.value)
     if (filterFeatured.value) params.append('featured', filterFeatured.value)
+    if (sortBy.value) params.append('sortBy', sortBy.value)
+    if (sortOrder.value) params.append('sortOrder', sortOrder.value)
 
     const res = await fetch(`${API_BASE}/admin/products?${params}`, {
       headers: authHeaders()
@@ -75,6 +79,27 @@ const fetchProducts = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSort = (field) => {
+  if (sortBy.value === field) {
+    if (sortOrder.value === 'desc') {
+      sortOrder.value = 'asc'
+    } else {
+      sortBy.value = ''
+      sortOrder.value = 'desc'
+    }
+  } else {
+    sortBy.value = field
+    sortOrder.value = 'desc'
+  }
+  currentPage.value = 1
+  fetchProducts()
+}
+
+const sortIcon = (field) => {
+  if (sortBy.value !== field) return ''
+  return sortOrder.value === 'desc' ? ' ↓' : ' ↑'
 }
 
 const handleSearch = () => {
@@ -401,12 +426,12 @@ onMounted(() => {
         <thead>
           <tr>
             <th style="width: 40px"><input type="checkbox" v-model="selectAll" @change="toggleSelectAll"></th>
-            <th style="width: 60px">ID</th>
+            <th style="width: 60px" class="sortable-th" @click="handleSort('id')">ID{{ sortIcon('id') }}</th>
             <th style="width: 80px">图片</th>
-            <th>商品名称</th>
+            <th class="sortable-th" @click="handleSort('name')">商品名称{{ sortIcon('name') }}</th>
             <th style="width: 120px">分类</th>
-            <th style="width: 100px">价格</th>
-            <th style="width: 80px">库存</th>
+            <th style="width: 100px" class="sortable-th" @click="handleSort('price')">价格{{ sortIcon('price') }}</th>
+            <th style="width: 80px" class="sortable-th" @click="handleSort('stock')">库存{{ sortIcon('stock') }}</th>
             <th style="width: 80px">推荐</th>
             <th style="width: 80px">状态</th>
             <th style="width: 140px">操作</th>
@@ -702,6 +727,16 @@ select {
   font-weight: 600;
   color: #333;
   white-space: nowrap;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.sortable-th:hover {
+  background: #f0f0f0;
 }
 
 .data-table td {

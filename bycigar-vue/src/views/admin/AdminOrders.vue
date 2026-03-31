@@ -10,6 +10,8 @@ const loading = ref(false)
 const currentPage = ref(1)
 const totalPages = ref(1)
 const limit = 20
+const sortBy = ref('createdAt')
+const sortOrder = ref('desc')
 
 const filterStatus = ref('')
 const filterProofStatus = ref('')
@@ -123,6 +125,8 @@ const fetchOrders = async () => {
       if (filterStatus.value) params.append('status', filterStatus.value)
       if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
     }
+    if (sortBy.value) params.append('sortBy', sortBy.value)
+    if (sortOrder.value) params.append('sortOrder', sortOrder.value)
 
     const res = await fetch(`${API_BASE}/admin/orders?${params}`, { headers: authHeaders() })
     const data = await res.json()
@@ -135,6 +139,27 @@ const fetchOrders = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const handleSort = (field) => {
+  if (sortBy.value === field) {
+    if (sortOrder.value === 'desc') {
+      sortOrder.value = 'asc'
+    } else {
+      sortBy.value = ''
+      sortOrder.value = 'desc'
+    }
+  } else {
+    sortBy.value = field
+    sortOrder.value = 'desc'
+  }
+  currentPage.value = 1
+  fetchOrders()
+}
+
+const sortIcon = (field) => {
+  if (sortBy.value !== field) return ''
+  return sortOrder.value === 'desc' ? ' ↓' : ' ↑'
 }
 
 const handleSearch = () => {
@@ -440,13 +465,13 @@ onMounted(() => fetchOrders())
             <th style="width: 40px">
               <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" title="全选待审核" />
             </th>
-            <th style="width: 60px">ID</th>
-            <th style="width: 170px">订单号</th>
+            <th style="width: 60px" class="sortable-th" @click="handleSort('id')">ID{{ sortIcon('id') }}</th>
+            <th style="width: 170px" class="sortable-th" @click="handleSort('orderNo')">订单号{{ sortIcon('orderNo') }}</th>
             <th>用户</th>
-            <th style="width: 100px">总金额</th>
-            <th style="width: 100px">状态</th>
+            <th style="width: 100px" class="sortable-th" @click="handleSort('total')">总金额{{ sortIcon('total') }}</th>
+            <th style="width: 100px" class="sortable-th" @click="handleSort('status')">状态{{ sortIcon('status') }}</th>
             <th v-if="showProofColumn" style="width: 100px">付款凭证</th>
-            <th style="width: 160px">下单时间</th>
+            <th style="width: 160px" class="sortable-th" @click="handleSort('createdAt')">下单时间{{ sortIcon('createdAt') }}</th>
             <th style="width: 180px">操作</th>
           </tr>
         </thead>
@@ -957,6 +982,16 @@ select {
   font-weight: 600;
   color: #333;
   white-space: nowrap;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.sortable-th:hover {
+  background: #f0f0f0;
 }
 
 .data-table td {

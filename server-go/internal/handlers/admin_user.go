@@ -18,12 +18,29 @@ func GetAdminUsers(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
 	search := c.Query("search")
 	role := c.Query("role")
+	sortBy := c.DefaultQuery("sortBy", "createdAt")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
 
 	if page < 1 {
 		page = 1
 	}
 	if limit < 1 || limit > 100 {
 		limit = 20
+	}
+
+	userSortColumnMap := map[string]string{
+		"id":        "id",
+		"email":     "email",
+		"name":      "name",
+		"role":      "role",
+		"createdAt": "created_at",
+	}
+	sortColumn, ok := userSortColumnMap[sortBy]
+	if !ok {
+		sortColumn = "created_at"
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
 	}
 
 	query := database.DB.Model(&models.User{})
@@ -41,7 +58,7 @@ func GetAdminUsers(c *gin.Context) {
 
 	var users []models.User
 	offset := (page - 1) * limit
-	query.Order("created_at desc").Offset(offset).Limit(limit).Find(&users)
+	query.Order(sortColumn + " " + sortOrder).Offset(offset).Limit(limit).Find(&users)
 
 	type UserWithStats struct {
 		models.User

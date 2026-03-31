@@ -26,12 +26,29 @@ type PaymentProofSummary struct {
 	CreatedAt     string `json:"createdAt"`
 }
 
-func buildOrderQuery(c *gin.Context) *gorm.DB {
+func buildOrderQuery(c *gin.Context) (*gorm.DB, string) {
 	query := database.DB.Model(&models.Order{})
 	quickFilter := c.Query("quick_filter")
 	status := c.Query("status")
 	search := c.Query("search")
 	proofStatus := c.Query("proof_status")
+	sortBy := c.DefaultQuery("sortBy", "createdAt")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
+
+	orderSortColumnMap := map[string]string{
+		"id":        "id",
+		"orderNo":   "order_no",
+		"total":     "total",
+		"status":    "status",
+		"createdAt": "created_at",
+	}
+	sortColumn, ok := orderSortColumnMap[sortBy]
+	if !ok {
+		sortColumn = "created_at"
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
 
 	if search != "" {
 		query = query.Where("order_no LIKE ?", "%"+search+"%")
@@ -77,7 +94,7 @@ func buildOrderQuery(c *gin.Context) *gorm.DB {
 			}
 		}
 	}
-	return query
+	return query, sortColumn + " " + sortOrder
 }
 
 func GetAdminOrders(c *gin.Context) {
@@ -91,7 +108,7 @@ func GetAdminOrders(c *gin.Context) {
 		limit = 20
 	}
 
-	query := buildOrderQuery(c)
+	query, orderClause := buildOrderQuery(c)
 
 	var total int64
 	query.Count(&total)
@@ -99,7 +116,7 @@ func GetAdminOrders(c *gin.Context) {
 	var orders []models.Order
 	offset := (page - 1) * limit
 	query.Preload("Items.Product").Preload("Address").Preload("Items").
-		Order("created_at desc").
+		Order(orderClause).
 		Offset(offset).Limit(limit).
 		Find(&orders)
 
@@ -315,11 +332,11 @@ func UpdateOrderStatus(c *gin.Context) {
 }
 
 func ExportAdminOrders(c *gin.Context) {
-	query := buildOrderQuery(c)
+	query, orderClause := buildOrderQuery(c)
 
 	var orders []models.Order
 	query.Preload("Items.Product").Preload("Address").
-		Order("created_at desc").
+		Order(orderClause).
 		Find(&orders)
 
 	var userIDs []uint

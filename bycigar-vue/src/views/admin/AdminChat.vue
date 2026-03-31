@@ -14,6 +14,8 @@ const selectedConversation = ref(null)
 const messages = ref([])
 const filterStatus = ref('')
 const filterAssignedTo = ref('')
+const sortBy = ref('lastMessageAt')
+const sortOrder = ref('desc')
 const loading = ref(false)
 const messagesLoading = ref(false)
 const replyContent = ref('')
@@ -184,6 +186,8 @@ const fetchConversations = async () => {
     const params = new URLSearchParams()
     if (filterStatus.value) params.append('status', filterStatus.value)
     if (filterAssignedTo.value) params.append('assignedTo', filterAssignedTo.value)
+    if (sortBy.value) params.append('sortBy', sortBy.value)
+    if (sortOrder.value) params.append('sortOrder', sortOrder.value)
     const res = await fetch(`${API_BASE}/admin/chat/conversations?${params}`, { headers: authHeaders() })
     const data = await res.json()
     conversations.value = data.conversations || []
@@ -520,6 +524,21 @@ onUnmounted(() => {
             {{ serviceOnline ? '下线' : '上线' }}
           </button>
         </div>
+        <div class="sort-bar">
+          <button
+            v-for="opt in [
+              { key: 'lastMessageAt', label: '最近消息' },
+              { key: 'createdAt', label: '创建时间' },
+              { key: 'status', label: '状态' }
+            ]"
+            :key="opt.key"
+            class="sort-btn"
+            :class="{ active: sortBy === opt.key }"
+            @click="sortBy === opt.key ? (sortOrder = sortOrder === 'desc' ? 'asc' : 'desc') : (sortBy = opt.key); sortOrder = 'desc'; fetchConversations()"
+          >
+            {{ opt.label }}{{ sortBy === opt.key ? (sortOrder === 'desc' ? ' ↓' : ' ↑') : '' }}
+          </button>
+        </div>
         <div class="filter-tabs">
           <button
             :class="{ active: filterStatus === '' && filterAssignedTo === '' }"
@@ -821,6 +840,33 @@ onUnmounted(() => {
 
 .filter-tabs button:hover:not(.active) {
   background: #f5f5f5;
+}
+
+.sort-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.sort-btn {
+  padding: 4px 10px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-btn.active {
+  background: #f0f0f0;
+  color: #333;
+  border-color: #ccc;
+}
+
+.sort-btn:hover:not(.active) {
+  background: #f9f9f9;
 }
 
 .conversation-list {

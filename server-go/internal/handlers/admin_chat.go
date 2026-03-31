@@ -22,6 +22,21 @@ type ConversationWithDetails struct {
 func GetAdminConversations(c *gin.Context) {
 	status := c.Query("status")
 	assignedTo := c.Query("assignedTo")
+	sortBy := c.DefaultQuery("sortBy", "lastMessageAt")
+	sortOrder := c.DefaultQuery("sortOrder", "desc")
+
+	chatSortColumnMap := map[string]string{
+		"lastMessageAt": "last_message_at",
+		"status":        "status",
+		"createdAt":     "created_at",
+	}
+	sortColumn, ok := chatSortColumnMap[sortBy]
+	if !ok {
+		sortColumn = "last_message_at"
+	}
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
 
 	query := database.DB.Model(&models.Conversation{})
 	if status != "" {
@@ -36,7 +51,7 @@ func GetAdminConversations(c *gin.Context) {
 
 	var conversations []models.Conversation
 	query.Preload("User").Preload("AssignedUser").
-		Order("last_message_at desc").
+		Order(sortColumn + " " + sortOrder).
 		Find(&conversations)
 
 	result := make([]ConversationWithDetails, 0, len(conversations))
