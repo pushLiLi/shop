@@ -18,6 +18,12 @@ const banners = ref({
   home_banner_1: ''
 })
 
+const siteIdentity = ref({
+  site_title: '',
+  site_meta_description: '',
+  favicon_url: ''
+})
+
 const bannerLabels = {
   home_banner_1: '横幅图 1（特别推荐下方）'
 }
@@ -43,6 +49,14 @@ const fetchSettings = async () => {
 
     const configData = await configRes.json()
     banners.value.home_banner_1 = configData.home_banner_1 || ''
+
+    const identityRes = await fetch(`${API_BASE}/site-identity`)
+    if (identityRes.ok) {
+      const identityData = await identityRes.json()
+      siteIdentity.value.site_title = identityData.title || ''
+      siteIdentity.value.site_meta_description = identityData.metaDescription || ''
+      siteIdentity.value.favicon_url = identityData.faviconUrl || ''
+    }
   } catch (e) {
     toast.error('获取设置失败')
   } finally {
@@ -68,6 +82,21 @@ const saveSettings = async () => {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ value: banners.value.home_banner_1 })
+      }),
+      fetch(`${API_BASE}/admin/config/site_title`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: siteIdentity.value.site_title })
+      }),
+      fetch(`${API_BASE}/admin/config/site_meta_description`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: siteIdentity.value.site_meta_description })
+      }),
+      fetch(`${API_BASE}/admin/config/favicon_url`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: siteIdentity.value.favicon_url })
       })
     ]
 
@@ -92,6 +121,48 @@ onMounted(fetchSettings)
     <div v-if="loading" class="loading">加载中...</div>
 
     <form v-else class="settings-form" @submit.prevent="saveSettings">
+      <div class="form-section">
+        <h3>网站基本信息</h3>
+
+        <div class="content-tips">
+          <div class="tip-item">
+            <strong>网站标题：</strong>显示在浏览器标签页和搜索引擎结果中的标题
+          </div>
+          <div class="tip-item">
+            <strong>META 描述：</strong>显示在搜索引擎结果中的网站简介，建议 50-160 字
+          </div>
+          <div class="tip-item">
+            <strong>Favicon：</strong>显示在浏览器标签页的小图标，推荐 512×512 PNG 格式
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>网站标题</label>
+          <input
+            v-model="siteIdentity.site_title"
+            type="text"
+            placeholder="例如：BYCIGAR | 权威正品雪茄在线购买商城"
+          />
+          <span class="hint">显示在浏览器标签页，建议包含品牌名和简短描述</span>
+        </div>
+
+        <div class="form-group">
+          <label>META 描述</label>
+          <textarea
+            v-model="siteIdentity.site_meta_description"
+            rows="3"
+            placeholder="输入网站 meta 描述..."
+          ></textarea>
+          <span class="hint">显示在搜索引擎结果中，建议包含关键词和品牌简介</span>
+        </div>
+
+        <div class="form-group">
+          <label>Favicon 图标</label>
+          <AdminImageUpload v-model="siteIdentity.favicon_url" :aspect-ratio="1" />
+          <span class="hint">建议使用正方形图片，最佳尺寸 512×512 像素</span>
+        </div>
+      </div>
+
       <div class="form-section">
         <h3>首页横幅图</h3>
 

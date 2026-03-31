@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	"bycigar-server/internal/config"
@@ -86,7 +87,7 @@ func Seed() {
 	SeedPages()
 	SeedSettings()
 	SeedSiteConfig()
-	SeedTestData()
+	SeedBulkOrders()
 }
 
 func SeedAdminUser() {
@@ -159,6 +160,9 @@ func SeedSiteConfig() {
 		{ConfigKey: "home_featured_title", ConfigValue: "特别推荐"},
 		{ConfigKey: "home_new_title", ConfigValue: "新品上架"},
 		{ConfigKey: "home_topselling_title", ConfigValue: "热销排行"},
+		{ConfigKey: "site_title", ConfigValue: "BYCIGAR | 权威正品雪茄在线购买商城"},
+		{ConfigKey: "site_meta_description", ConfigValue: "BYCIGAR是中国领先的雪茄文化与在线购物平台。我们提供最新、最专业的雪茄测评、品牌新闻与养护知识，并为您甄选全球优质雪茄及配件，支持便捷在线购买。加入我们的雪茄社区，探索醇香世界。"},
+		{ConfigKey: "favicon_url", ConfigValue: "/favicon.png"},
 	}
 
 	for _, cfg := range defaultConfigs {
@@ -180,3 +184,116 @@ func BackfillOrderNo() {
 	}
 }
 
+func SeedBulkOrders() {
+	var products []models.Product
+	DB.Where("is_active = ?", true).Find(&products)
+	if len(products) == 0 {
+		log.Println("SeedBulkOrders: 没有活跃商品，跳过订单生成")
+		return
+	}
+
+	var users []models.User
+	DB.Where("role = ?", "customer").Find(&users)
+	for len(users) < 2 {
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("test1234"), bcrypt.DefaultCost)
+		newUser := models.User{
+			Email:    fmt.Sprintf("testuser%d@test.com", len(users)+1),
+			Password: string(hashedPassword),
+			Name:     fmt.Sprintf("测试用户%d", len(users)+1),
+			Role:     "customer",
+		}
+		DB.Create(&newUser)
+		users = append(users, newUser)
+	}
+
+	var addresses []models.Address
+	DB.Find(&addresses)
+	for _, user := range users {
+		hasAddress := false
+		for _, a := range addresses {
+			if a.UserID == user.ID {
+				hasAddress = true
+				break
+			}
+		}
+		if !hasAddress {
+			addr := models.Address{
+				UserID:       user.ID,
+				FullName:     user.Name,
+				AddressLine1: fmt.Sprintf("测试地址 %d", user.ID),
+				City:         "北京",
+				State:        "北京",
+				ZipCode:      "100000",
+				Phone:        "13800138000",
+				IsDefault:    true,
+			}
+			DB.Create(&addr)
+			addresses = append(addresses, addr)
+		}
+	}
+
+	var count int64
+	DB.Model(&models.Order{}).Count(&count)
+	const targetCount = 3000
+	if count >= targetCount {
+		return
+	}
+
+	statuses := []string{"pending", "processing", "shipped", "completed", "cancelled"}
+	now := time.Now()
+	r := rand.New(rand.NewSource(now.UnixNano()))
+
+	needToCreate := targetCount - int(count)
+	for i := 0; i < needToCreate; i++ {
+		status := statuses[r.Intn(len(statuses))]
+		user := users[r.Intn(len(users))]
+
+		var userAddresses []models.Address
+		for _, a := range addresses {
+			if a.UserID == user.ID {
+				userAddresses = append(userAddresses, a)
+			}
+		}
+		if len(userAddresses) == 0 {
+			userAddresses = addresses
+		}
+		address := userAddresses[r.Intn(len(userAddresses))]
+
+		itemCount := r.Intn(5) + 1
+		var total float64
+		items := make([]models.OrderItem, itemCount)
+
+		for j := 0; j < itemCount; j++ {
+			product := products[r.Intn(len(products))]
+			quantity := r.Intn(10) + 1
+			price := product.Price
+			total += price * float64(quantity)
+			items[j] = models.OrderItem{
+				ProductID: product.ID,
+				Quantity:  quantity,
+				Price:     price,
+			}
+		}
+
+		daysAgo := r.Intn(90)
+		createdAt := now.AddDate(0, 0, -daysAgo).Add(time.Duration(r.Intn(86400)) * time.Second)
+
+		order := models.Order{
+			OrderNo:   utils.GenerateOrderNo(),
+			UserID:    user.ID,
+			AddressID: address.ID,
+			Total:     total,
+			Status:    status,
+			Remark:    fmt.Sprintf("测试订单 %d", count+int64(i)+1),
+			Items:     items,
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+		}
+		DB.Create(&order)
+
+		if (i+1)%500 == 0 {
+			log.Printf("已生成 %d / %d 订单", i+1, needToCreate)
+		}
+	}
+	log.Printf("测试订单数据生成完成，共 %d 笔", targetCount)
+}

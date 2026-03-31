@@ -12,7 +12,7 @@ Module: `bycigar-server`
 ```bash
 # Frontend (run from bycigar-vue/)
 npm run dev                     # Dev server at :5173 (proxies /api -> :3000, /media -> :9000)
-npm run build                   # Production build (use this to verify frontend changes)
+npm run build                   # Production build (verifies frontend changes)
 
 # Backend (run from server-go/)
 go run ./cmd/main.go            # Dev server at :3000
@@ -31,126 +31,99 @@ No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify 
 
 ```bash
 # Frontend unit tests (run from bycigar-vue/) — Vitest 4 + @vue/test-utils + happy-dom
-npm test                        # Run all tests once (vitest run)
-npm run test:watch              # Run tests in watch mode
-npx vitest run src/stores/cart.spec.js          # Run a single test file
+npm test                        # Run all tests once
+npx vitest run src/stores/cart.spec.js          # Run single test file
 npx vitest run --reporter=verbose               # Verbose output
 
 # Backend tests (run from server-go/) — Go testing + testify/suite
 # Requires MySQL + MinIO running (docker-compose up -d mysql minio)
-# Uses database: bycigar_test (separate from dev db: bycigar)
-go test ./... -v -count=1                       # Run all backend tests
-go test ./test/... -v -count=1                  # Run only integration tests
-go test ./test/... -v -count=1 -run TestProductSuite  # Run a single test suite
+go test ./test/... -v -count=1                  # All integration tests
+go test ./test/... -v -count=1 -run TestProductSuite  # Single test suite
 go test ./test/... -v -count=1 -run "TestProductSuite/TestGetProductsDefaultPagination"  # Single test
 
 # E2E tests (run from bycigar-vue/) — Playwright
-npx playwright test                    # Run all e2e tests
-npx playwright test --project=chromium # Run with specific browser
+npx playwright test                    # All e2e tests
+npx playwright test --project=chromium # Specific browser
 ```
-Vitest config has `globals: true` — no need to import `describe`/`it`/`expect`.
-Frontend unit tests are isolated (no backend needed). Backend tests are integration tests hitting real MySQL + MinIO.
+Vitest config has `globals: true` — no need to import `describe`/`it`/`expect`. Frontend tests are isolated; backend tests hit real MySQL + MinIO.
 
 ## Roles & Authorization
 
-Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Priority: admin > service > customer.
+Three roles: `"admin"` (超级管理员), `"service"` (管理员), `"customer"` (客户). Priority: admin > service > customer.
 
-### Middleware
-- **`AdminOnly`**: admin + service — products, categories, orders, dashboard, users, upload, chat admin
-- **`SuperAdminOnly`**: admin only — banners, pages, config, settings, user role changes
-- **`RequireAuth`**: any logged-in user — cart, favorites, addresses, orders, notifications, chat
+| Middleware | Access |
+|---|---|
+| `AdminOnly` | admin + service — products, categories, orders, dashboard, users, upload, chat admin |
+| `SuperAdminOnly` | admin only — banners, pages, config, settings, user role changes |
+| `RequireAuth` | any logged-in user — cart, favorites, addresses, orders, notifications, chat |
 
-### Frontend Auth (`useAuthStore`)
-- `isAdmin`: `role === 'admin' || role === 'service'`
-- `isSuperAdmin`: `role === 'admin'`
-- `isService`: `role === 'service'`
+Frontend auth: `isAdmin` = `role === 'admin' || role === 'service'`; `isSuperAdmin` = `role === 'admin'`; `isService` = `role === 'service'`.
 
-### Route Guards
-- `meta.requiresAuth`: logged-in user (cart, checkout, orders, favorites, profile, notifications)
-- `meta.requiresAdmin`: admin + service (parent `/admin` route)
-- `meta.requiresSuperAdmin`: admin only (banners, pages, settings child routes)
+## Code Style
 
-### Permission Matrix
-| Module | admin | service | customer |
-|---|---|---|---|
-| Dashboard | ✅ | ✅ (no revenue) | ❌ |
-| Products / Categories / Orders / Users CRUD | ✅ | ✅ | ❌ |
-| Chat (admin reply) | ✅ | ✅ | ❌ |
-| Reset user password | ✅ | ✅ (not admin) | ❌ |
-| Change user role / Banners / Pages / Config / Settings | ✅ | ❌ | ❌ |
+### Go
 
-## Vue Code Style
+**Imports** (strict order, blank lines between groups):
+```
+stdlib
+(blank line)
+external (github.com, etc.)
+(blank line)
+internal (bycigar-server/...)
+```
+**Formatting**: Early return for all error handling. Handlers PascalCase, helpers camelCase. Admin handlers in `admin_*.go` files. SuperAdmin handlers in domain files alongside public handlers.
+**Comments**: Swagger `godoc` on all handlers only. No other comments.
+**Errors**: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`.
+**Models**: Define base fields inline (no shared Model struct). Use `uint` for IDs. JSON tags camelCase, GORM tags snake_case. Always include `CreatedAt`/`UpdatedAt` (except Notification, Message which have only `CreatedAt`). Use `DeletedAt` for soft-delete. Input structs in model files (exception: `ProductInput` in `admin_product.go`).
+**Notifications**: Create `models.Notification` records via `database.DB.Create(&notifications)` when admin actions affect users.
 
-- `<script setup>` Composition API only. No TypeScript. No import alias (`@/`) — use relative paths.
-- Declaration order: imports -> `defineEmits` -> `defineProps` -> stores -> refs/computed -> functions
-- Use `useToastStore` for notifications, **never** `alert()`. Icons are inline SVG, no icon library.
-- CSS: `<style scoped>` with kebab-case classes. Storefront dark theme (#0f0f0f bg, #d4a574 accent). Admin light theme (#fff).
-- No code comments. Inline event handlers use named `async function` declarations, not arrow functions.
-- **Match Go model JSON tags exactly** (e.g. `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`)
-- **All API calls use relative paths** (`'/api/...'`), never hardcoded localhost URLs.
-- **Auth guard**: Before cart/favorites actions, check `authStore.isLoggedIn`. If false, `router.push('/login')`.
-- **Images**: List views use `product.thumbnailUrl || product.imageUrl` with `loading="lazy"`. Detail pages use full `imageUrl`.
+### Vue
 
-## Go Code Style
+**Imports**: Relative paths only (no `@/` alias). Declaration order: imports -> `defineEmits` -> `defineProps` -> stores -> refs/computed -> functions.
+**API calls**: Use relative `/api/...` paths, never hardcoded URLs. Match Go model JSON tags exactly (e.g., `"imageUrl"` not `"image"`, `"isFeatured"` not `"featured"`).
+**Auth guard**: Before cart/favorites actions, check `authStore.isLoggedIn`. If false, `router.push('/login')`.
+**Errors**: Use `useToastStore`, never `alert()`.
+**Images**: List views: `product.thumbnailUrl || product.imageUrl` with `loading="lazy"`. Detail pages use full `imageUrl`.
+**Inline handlers**: Use named `async function` declarations, not arrow functions.
+**CSS**: `<style scoped>` with kebab-case classes. Storefront dark theme (#0f0f0f bg, #d4a574 accent). Admin light theme (#fff). Icons: inline SVG only.
 
-- Import order: stdlib -> blank line -> external -> blank line -> internal (`bycigar-server/...`). Test files use grouped imports with blank-line-separated groups.
-- Early return for all error handling. Handlers: PascalCase. Helpers: camelCase.
-- Admin handlers in `admin_*.go` files. SuperAdmin handlers live in their domain files alongside public handlers.
-- Swagger `godoc` comments on all handlers. No other code comments.
-- Error responses: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`.
-- Input structs in model files; exception: `ProductInput` in `admin_product.go`.
-- **Notification creation**: When admin actions affect users, create `models.Notification` records via batch `database.DB.Create(&notifications)`.
-
-## Pinia Stores
+### Pinia Stores
 
 - **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
 - **Options API** (`cart.js`, `favorites.js`, `notifications.js`, `chat.js`, `useSettingsStore.js`, `contactMethods.js`): `defineStore('name', { state, getters, actions })`
 - Store IDs: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`, `'notifications'`, `'chat'`, `'contactMethods'`.
-- Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
-- Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
+- Options API stores define `getAuthHeaders()` at module level.
 - Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
-
-## GORM Models
-
-- Each model defines base fields inline (no shared `Model` struct). `uint` for all IDs.
-- JSON tags: camelCase. GORM tags: snake_case. Always include `CreatedAt`/`UpdatedAt`. Exception: `Notification`, `Message` have only `CreatedAt`.
-- Use `DeletedAt` for soft-delete (products, categories). Response and input structs live alongside their models.
-- Notification model uses `*uint` (pointer) for optional foreign keys (`ProductID`, `OrderID`).
-- Preload: `database.DB.Preload("Category").Find(&products)`
 
 ## Test Patterns
 
 ### Frontend (Vitest)
-- Test files colocated: `Component.spec.js` next to `Component.vue` or alongside stores
+- Test files colocated: `Component.spec.js` next to `Component.vue`
 - Setup: `setActivePinia(createPinia())` + `localStorage.clear()` in `beforeEach`
-- API calls mocked with `global.fetch = vi.fn().mockResolvedValue(...)`
-- Component tests use `@vue/test-utils` `mount` with stubbed `vue-router` (`createMemoryHistory`)
+- Mock API: `global.fetch = vi.fn().mockResolvedValue(...)`
+- Components: `@vue/test-utils` `mount` with stubbed `vue-router` (`createMemoryHistory`)
 
 ### Backend (testify/suite)
-- All tests in `server-go/test/` package, using `github.com/stretchr/testify/suite`
-- Each domain has `XxxTestSuite` struct with `SetupSuite` (calls `SetupTestConfig` -> `SetupTestDB` -> `SetupRouter`)
+- Tests in `server-go/test/` package using `github.com/stretchr/testify/suite`
+- Each domain has `XxxTestSuite` with `SetupSuite` (calls `SetupTestConfig` -> `SetupTestDB` -> `SetupRouter`)
 - `MakeRequest(router, method, path, body, headers)` returns `*httptest.ResponseRecorder`
-- `MakeFormRequest(router, method, path, formData, fileFields, headers)` for multipart uploads
-- `ParseResponse(w)` unmarshals response body to `map[string]interface{}`
-- `CreateTestImageFile(ext)` / `CreateLargeTestImageFile(ext)` create temp files for upload tests
-- Auth via dev bypass: `GetAdminAuthHeader()` / `GetCustomerAuthHeader()` / `GetCustomer2AuthHeader()` returns `{"Authorization": "user-{id}"}`
-- Uses separate `bycigar_test` database; `CleanDB()` truncates all tables between suite runs
+- `MakeFormRequest(...)` for multipart uploads; `ParseResponse(w)` unmarshals to `map[string]interface{}`
+- Auth bypass: `GetAdminAuthHeader()` / `GetCustomerAuthHeader()` returns `{"Authorization": "user-{id}"}`
+- Uses `bycigar_test` database; `CleanDB()` truncates all tables between runs
 - Test users: admin@test.com (admin), user1@test.com (customer), user2@test.com (customer)
 
 ## Key Architecture
 
-- Admin endpoints return ALL records; public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
-- Product listings sort `stock > 0` first via SQL CASE expression. Batch operations: `PUT /api/admin/products/batch/status`, `DELETE /api/admin/products/batch`.
-- Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
-- Order status flow: `pending -> {processing, cancelled}` -> `{shipped, cancelled}` -> `shipped -> completed`. Valid transitions enforced by `ValidOrderStatusTransitions` map in `models/order.go`.
-- **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers.
-- **Chat**: Customer → Admin/Service real-time via WebSocket (gorilla/websocket) with HTTP fallback. One open conversation per customer. Messages limited to 500 chars. Auto-cleanup: 30-day retention via `pkgutils.StartChatCleanup()`.
-- Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
-- **Vite proxy**: `/api` -> `localhost:3000`, `/media` -> `localhost:9000` (strips `/media` prefix). Nginx mirrors with proxy_cache.
-- **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer, ChatWidget always mounted.
-- **Captcha**: Register always requires captcha. Login uses progressive captcha (3 failures -> required). Password change requires captcha.
-- **Admin route groups**: `cmd/main.go` has two groups — `admin` (AdminOnly) for shared routes, `superAdmin` (SuperAdminOnly) for restricted routes.
-- **E2E tests**: Playwright tests in `bycigar-vue/e2e/` cover full shopping flow, admin flow, and auth flows using page objects in `helpers.js`.
+- Admin endpoints return ALL records; public endpoints filter `WHERE is_active = true`.
+- Product listings sort `stock > 0` first via SQL CASE expression. Batch ops: `PUT /api/admin/products/batch/status`, `DELETE /api/admin/products/batch`.
+- Orders: snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
+- Order flow: `pending -> {processing, cancelled}` -> `{shipped, cancelled}` -> `shipped -> completed`. Transitions enforced by `ValidOrderStatusTransitions` map in `models/order.go`.
+- Notifications: system-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`.
+- Chat: WebSocket (gorilla/websocket) with HTTP fallback. One conversation per customer. 500 char limit. 30-day auto-cleanup via `pkgutils.StartChatCleanup()`.
+- Upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
+- Captcha: Register always requires captcha. Login progressive (3 failures -> required). Password change requires captcha.
+- New models: add to `database.Migrate()` in `database/database.go`.
+- New routes: add to both `cmd/main.go` and `test/helpers.go` `SetupRouter()`.
 
 ## Naming Conventions
 
@@ -172,14 +145,9 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 
 - **Language**: Communicate in Chinese
 - **No comments**: Do not add code comments in source files
-- **No linter**: Use `go build` and `npm run build` to verify compilation
 - **Run tests after changes**: `npm test` (frontend) and `go test ./... -v -count=1` (backend)
-- **Simplicity**: Avoid over-engineering
 - **Error handling**: Frontend uses toast, backend uses `utils.ErrorResponse()`
 - **Database**: Always `utf8mb4`, `parseTime=True&loc=Local` in DSN
-- **API paths**: Frontend always uses relative `/api/...` paths, never hardcoded localhost URLs
-- **New models**: Must be added to `database.Migrate()` in `database/database.go`
-- **New routes**: Must be added to both `cmd/main.go` and `test/helpers.go` `SetupRouter()`
 
 ## Git Commits
 

@@ -58,6 +58,35 @@ func GetConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, getConfigCached())
 }
 
+type SiteIdentity struct {
+	Title           string `json:"title"`
+	MetaDescription string `json:"metaDescription"`
+	FaviconUrl      string `json:"faviconUrl"`
+}
+
+// GetSiteIdentity godoc
+// @Summary 获取网站标识
+// @Description 获取网站标题、META描述和图标URL
+// @Tags site
+// @Produce json
+// @Success 200 {object} SiteIdentity
+// @Router /site-identity [get]
+func GetSiteIdentity(c *gin.Context) {
+	config := getConfigCached()
+	identity := SiteIdentity{
+		Title:           config["site_title"],
+		MetaDescription: config["site_meta_description"],
+		FaviconUrl:      config["favicon_url"],
+	}
+	if identity.Title == "" {
+		identity.Title = "BYCIGAR"
+	}
+	if identity.FaviconUrl == "" {
+		identity.FaviconUrl = "/favicon.png"
+	}
+	c.JSON(http.StatusOK, identity)
+}
+
 // UpdateConfig godoc
 // @Summary 更新网站配置
 // @Description 更新指定的网站配置项

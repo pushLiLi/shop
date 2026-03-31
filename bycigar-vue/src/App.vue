@@ -7,8 +7,10 @@ import Toast from './components/Toast.vue'
 import CartDrawer from './components/CartDrawer.vue'
 import ChatWidget from './components/ChatWidget.vue'
 import ContactWidget from './components/ContactWidget.vue'
+import { useSiteIdentityStore } from './stores/useSiteIdentityStore'
 
 const route = useRoute()
+const siteIdentityStore = useSiteIdentityStore()
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
 const showScrollTop = ref(false)
 
@@ -20,7 +22,10 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-onMounted(() => window.addEventListener('scroll', handleScroll))
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  siteIdentityStore.fetchSiteIdentity()
+})
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 </script>
 

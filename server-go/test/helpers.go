@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"mime/multipart"
 	"net/http/httptest"
 	"os"
@@ -214,6 +215,61 @@ func SeedTestData() {
 		},
 	}
 	db.Create(&Data.Orders)
+
+	SeedBulkOrders(3000)
+}
+
+func SeedBulkOrders(count int) {
+	db := database.DB
+
+	statuses := []string{"pending", "processing", "shipped", "completed", "cancelled"}
+	userIDs := []uint{CustomerUser.ID, Customer2User.ID}
+	addressIDs := []uint{Data.Addresses[0].ID, Data.Addresses[1].ID}
+
+	now := time.Now()
+	r := rand.New(rand.NewSource(now.UnixNano()))
+
+	for i := 0; i < count; i++ {
+		status := statuses[r.Intn(len(statuses))]
+		userID := userIDs[r.Intn(len(userIDs))]
+		addressID := addressIDs[r.Intn(len(addressIDs))]
+
+		itemCount := r.Intn(5) + 1
+		var total float64
+		items := make([]models.OrderItem, itemCount)
+
+		for j := 0; j < itemCount; j++ {
+			product := Data.Products[r.Intn(len(Data.Products))]
+			quantity := r.Intn(10) + 1
+			price := product.Price
+			total += price * float64(quantity)
+			items[j] = models.OrderItem{
+				ProductID: product.ID,
+				Quantity:  quantity,
+				Price:     price,
+			}
+		}
+
+		daysAgo := r.Intn(90)
+		createdAt := now.AddDate(0, 0, -daysAgo).Add(time.Duration(r.Intn(86400)) * time.Second)
+
+		order := models.Order{
+			OrderNo:   utils.GenerateOrderNo(),
+			UserID:    userID,
+			AddressID: addressID,
+			Total:     total,
+			Status:    status,
+			Remark:    fmt.Sprintf("测试订单 %d", i+1),
+			Items:     items,
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+		}
+		db.Create(&order)
+	}
+
+	var totalOrders int64
+	db.Model(&models.Order{}).Count(&totalOrders)
+	fmt.Printf("已生成 %d 笔测试订单（当前总计: %d）\n", count, totalOrders)
 }
 
 func SetupRouter() *gin.Engine {
@@ -234,6 +290,7 @@ func SetupRouter() *gin.Engine {
 	r.GET("/api/products/:id", handlers.GetProduct)
 	r.GET("/api/categories", handlers.GetCategories)
 	r.GET("/api/config", handlers.GetConfig)
+	r.GET("/api/site-identity", handlers.GetSiteIdentity)
 	r.GET("/api/banners", handlers.GetBanners)
 	r.GET("/api/pages/:slug", handlers.GetPage)
 	r.GET("/api/settings", handlers.GetSettings)

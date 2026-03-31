@@ -62,8 +62,8 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **Admin middleware** (`internal/middleware/admin.go`):
   - `AdminOnly` — allows `admin` and `service` roles. Sets `c.Set("user", user)`.
   - `SuperAdminOnly` — allows `admin` role only. Used for banners, pages, config, settings, user roles, payment methods.
-- **WebSocket Hub** (`internal/ws/hub.go`): Maintains `CustomerConns` and `AdminConns` maps. Provides `SendToUser`, `SendToAdmins`, `SendToAll`. Uses gorilla/websocket with ping/pong heartbeat (54s interval).
-- **Chat handlers**: `chat.go` (customer API), `admin_chat.go` (admin API), `ws_chat.go` (WebSocket endpoints). Customer and admin each have their own WS endpoint.
+- **WebSocket Hub** (`internal/ws/hub.go`): Maintains `CustomerConns` and `AdminConns` maps. Provides `SendToUser`, `SendToAdmins`, `SendToAll`. Uses gorilla/websocket with ping/pong heartbeat (54s interval). `ServiceOnline` map tracks explicitly online admins — online status is controlled manually via `service_online`/`service_offline` WS messages, not by connection state.
+- **Chat handlers**: `chat.go` (customer API), `admin_chat.go` (admin API), `ws_chat.go` (WebSocket endpoints). Customer and admin each have their own WS endpoint. Conversation assignment: `assigned_to` field with `AssignedUser` preload.
 - **MinIO** (`pkg/minio/minio.go`): Upload handler stores images in MinIO bucket. Admin upload at `POST /api/admin/upload`.
 - **Background jobs**: `StartChatCleanup` and `StartNotificationCleanup` run on startup for auto-cleanup of old data.
 - **Response helpers** (`pkg/utils/response.go`): `SuccessResponse`, `CreatedResponse`, `ErrorResponse`, `Success`.
@@ -89,6 +89,11 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 ### Default Credentials
 - Admin: `admin@admin.com` / `123456` (seeded on first run)
 - MinIO: `minioadmin` / `minioadmin123`
+
+## Important Notes
+
+- **DEVELOPMENT_PLAN.md is outdated**: It describes a planned Node.js/Express backend that was never built. The actual backend is Go/Gin.
+- **Service online persistence**: Admin online status is stored in `localStorage` (`chat_service_online`) and restored on WebSocket reconnect. Online state is controlled via explicit `service_online`/`service_offline` WS messages, not by connection lifecycle.
 
 ## Key Conventions
 
@@ -116,7 +121,8 @@ Core models with relationships:
 - **Address** — belongs to User, has IsDefault
 - **Banner** — Go field `Image` has JSON tag `"imageUrl"`. Frontend must send `image` in request body but reads `imageUrl` from response.
 - **Page** / **Setting** / **Config** — site content management
-- **Conversation** → **Message** — Chat system. Conversation belongs to User, has status (open/closed). Message has SenderType (customer/service).
+- **Conversation** → **Message** — Chat system. Conversation belongs to User, has status (open/closed) and `assigned_to` (nullable, FK to User). Message has SenderType (customer/service/system).
+- **QuickReply** — 客服快捷回复，关联创建者 User，支持 sort_order 排序。
 - **Notification** — belongs to User, has type (order_status/back_in_stock/price_drop), is_read, composite index (is_read, created_at) for cleanup queries.
 - **PaymentMethod** — name, QR code URL, instructions, is_active, sort_order
 - **PaymentProof** — belongs to Order and User and PaymentMethod, has status (pending/approved/rejected), reviewer info
