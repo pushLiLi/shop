@@ -50,6 +50,10 @@ func main() {
 	database.BackfillOrderNo()
 	pkgutils.StartChatCleanup(database.DB)
 	pkgutils.StartNotificationCleanup(database.DB)
+	pkgutils.StartImageCleanup(database.DB)
+	pkgutils.StartSoftDeleteCleanup(database.DB)
+	pkgutils.StartOrderCleanup(database.DB)
+	pkgutils.StartCartAndFavoriteCleanup(database.DB)
 
 	ws.DefaultHub = ws.NewHub()
 	go ws.DefaultHub.Run()
@@ -202,6 +206,8 @@ func main() {
 		superAdmin.POST("/contact-methods", handlers.CreateContactMethod)
 		superAdmin.PUT("/contact-methods/:id", handlers.UpdateContactMethod)
 		superAdmin.DELETE("/contact-methods/:id", handlers.DeleteContactMethod)
+
+		superAdmin.POST("/email/test", handlers.TestEmail)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

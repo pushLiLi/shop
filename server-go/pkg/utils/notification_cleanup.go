@@ -4,14 +4,10 @@ import (
 	"log"
 	"time"
 
+	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
 
 	"gorm.io/gorm"
-)
-
-const (
-	readNotificationRetentionDays   = 60
-	unreadNotificationRetentionDays = 120
 )
 
 func StartNotificationCleanup(db *gorm.DB) {
@@ -28,10 +24,19 @@ func StartNotificationCleanup(db *gorm.DB) {
 }
 
 func cleanupNotifications(db *gorm.DB) {
-	readCutoff := time.Now().AddDate(0, 0, -readNotificationRetentionDays)
+	readDays := config.AppConfig.CleanupNotifReadDays
+	if readDays <= 0 {
+		readDays = 60
+	}
+	unreadDays := config.AppConfig.CleanupNotifUnreadDays
+	if unreadDays <= 0 {
+		unreadDays = 120
+	}
+
+	readCutoff := time.Now().AddDate(0, 0, -readDays)
 	batchDeleteNotifications(db, "is_read = ? AND created_at < ?", []interface{}{true, readCutoff}, "read", readCutoff)
 
-	unreadCutoff := time.Now().AddDate(0, 0, -unreadNotificationRetentionDays)
+	unreadCutoff := time.Now().AddDate(0, 0, -unreadDays)
 	batchDeleteNotifications(db, "is_read = ? AND created_at < ?", []interface{}{false, unreadCutoff}, "unread", unreadCutoff)
 }
 
