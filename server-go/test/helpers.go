@@ -32,6 +32,7 @@ var Customer2Token string
 var AdminUser models.User
 var CustomerUser models.User
 var Customer2User models.User
+var ServiceUser models.User
 
 type SeedData struct {
 	Categories []models.Category
@@ -90,6 +91,11 @@ func CleanDB() {
 	db.Exec("TRUNCATE TABLE site_configs")
 	db.Exec("TRUNCATE TABLE users")
 	db.Exec("TRUNCATE TABLE notifications")
+	db.Exec("TRUNCATE TABLE messages")
+	db.Exec("TRUNCATE TABLE conversations")
+	db.Exec("TRUNCATE TABLE quick_replies")
+	db.Exec("TRUNCATE TABLE ratings")
+	db.Exec("TRUNCATE TABLE contact_methods")
 	db.Exec("SET FOREIGN_KEY_CHECKS = 1")
 }
 
@@ -126,6 +132,13 @@ func SeedTestData() {
 		Name: "TestUser2", Role: "customer",
 	}
 	db.Create(&Customer2User)
+
+	hashedPassword, _ = bcrypt.GenerateFromPassword([]byte("service123"), bcrypt.DefaultCost)
+	ServiceUser = models.User{
+		Email: "service@test.com", Password: string(hashedPassword),
+		Name: "TestService", Role: "service",
+	}
+	db.Create(&ServiceUser)
 
 	topCategories := []models.Category{
 		{Name: "古巴雪茄", Slug: "cohiba"},
@@ -326,32 +339,94 @@ func SetupRouter() *gin.Engine {
 	r.POST("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.UploadPaymentProof)
 	r.GET("/api/orders/:id/payment-proof", middleware.RequireAuth(), handlers.GetOrderPaymentProof)
 
+	r.POST("/api/chat/conversations", middleware.RequireAuth(), handlers.CreateConversation)
+	r.GET("/api/chat/conversations", middleware.RequireAuth(), handlers.GetConversations)
+	r.GET("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.GetMessages)
+	r.POST("/api/chat/conversations/:id/messages", middleware.RequireAuth(), handlers.SendMessage)
+	r.PUT("/api/chat/conversations/:id/close", middleware.RequireAuth(), handlers.CustomerCloseConversation)
+	r.POST("/api/chat/conversations/:id/rate", middleware.RequireAuth(), handlers.RateConversation)
+	r.GET("/api/chat/unread-count", middleware.RequireAuth(), handlers.GetChatUnreadCount)
+	r.POST("/api/chat/upload-image", middleware.RequireAuth(), handlers.UploadChatImage)
+	r.GET("/api/chat/service-status", handlers.GetServiceStatus)
+
 	admin := r.Group("/api/admin")
 	admin.Use(middleware.AdminOnly)
 	{
 		admin.POST("/upload", handlers.UploadImage)
+
 		admin.GET("/products", handlers.GetAdminProducts)
 		admin.POST("/products", handlers.CreateProduct)
 		admin.PUT("/products/:id", handlers.UpdateProduct)
 		admin.DELETE("/products/:id", handlers.DeleteProduct)
+		admin.PUT("/products/batch/status", handlers.BatchUpdateProductStatus)
+		admin.DELETE("/products/batch", handlers.BatchDeleteProducts)
+
 		admin.GET("/categories", handlers.GetAdminCategories)
 		admin.POST("/categories", handlers.CreateCategory)
 		admin.PUT("/categories/:id", handlers.UpdateCategory)
 		admin.DELETE("/categories/:id", handlers.DeleteCategory)
-		admin.GET("/banners", handlers.GetAdminBanners)
-		admin.POST("/banners", handlers.CreateBanner)
-		admin.PUT("/banners/:id", handlers.UpdateBanner)
-		admin.DELETE("/banners/:id", handlers.DeleteBanner)
-		admin.GET("/pages", handlers.GetAdminPages)
-		admin.PUT("/pages/:slug", handlers.UpdatePage)
-		admin.PUT("/config/:key", handlers.UpdateConfig)
-		admin.PUT("/settings/:key", handlers.UpdateSetting)
-		admin.PUT("/users/:id/role", handlers.UpdateUserRole)
-		admin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
-		admin.POST("/payment-methods", handlers.CreatePaymentMethod)
-		admin.PUT("/payment-methods/:id", handlers.UpdatePaymentMethod)
-		admin.DELETE("/payment-methods/:id", handlers.DeletePaymentMethod)
+
+		admin.GET("/orders", handlers.GetAdminOrders)
+		admin.GET("/orders/export", handlers.ExportAdminOrders)
+		admin.GET("/orders/:id", handlers.GetAdminOrder)
+		admin.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
+
+		admin.GET("/dashboard/stats", handlers.GetDashboardStats)
+		admin.GET("/dashboard/recent-orders", handlers.GetDashboardRecentOrders)
+		admin.GET("/dashboard/low-stock", handlers.GetDashboardLowStock)
+		admin.GET("/dashboard/top-products", handlers.GetDashboardTopProducts)
+		admin.GET("/stats/revenue", handlers.GetRevenueByDate)
+
+		admin.GET("/users", handlers.GetAdminUsers)
+		admin.GET("/users/:id", handlers.GetAdminUser)
+		admin.POST("/users/:id/reset-password", handlers.ResetUserPassword)
+
+		admin.GET("/chat/conversations", handlers.GetAdminConversations)
+		admin.GET("/chat/conversations/:id/messages", handlers.GetAdminMessages)
+		admin.POST("/chat/conversations/:id/messages", handlers.AdminSendMessage)
+		admin.PUT("/chat/conversations/:id/close", handlers.CloseConversation)
+		admin.PUT("/chat/conversations/:id/assign", handlers.AssignConversation)
+		admin.POST("/chat/conversations/:id/messages/:msgId/recall", handlers.RecallMessage)
+		admin.GET("/chat/unread-stats", handlers.GetAdminUnreadStats)
+		admin.POST("/chat/service-status", handlers.SetServiceStatus)
+		admin.GET("/quick-replies", handlers.GetQuickReplies)
+		admin.POST("/quick-replies", handlers.CreateQuickReply)
+		admin.PUT("/quick-replies/:id", handlers.UpdateQuickReply)
+		admin.DELETE("/quick-replies/:id", handlers.DeleteQuickReply)
+		admin.GET("/stats/satisfaction", handlers.GetSatisfactionStats)
+		admin.GET("/chat/agent-stats", handlers.GetAgentStats)
+
+		admin.PUT("/payment-proofs/batch-review", handlers.BatchReviewPaymentProofs)
 		admin.PUT("/payment-proofs/:id/review", handlers.ReviewPaymentProof)
+	}
+
+	superAdmin := r.Group("/api/admin")
+	superAdmin.Use(middleware.SuperAdminOnly)
+	{
+		superAdmin.GET("/banners", handlers.GetAdminBanners)
+		superAdmin.POST("/banners", handlers.CreateBanner)
+		superAdmin.PUT("/banners/:id", handlers.UpdateBanner)
+		superAdmin.DELETE("/banners/:id", handlers.DeleteBanner)
+
+		superAdmin.GET("/pages", handlers.GetAdminPages)
+		superAdmin.PUT("/pages/:slug", handlers.UpdatePage)
+
+		superAdmin.PUT("/config/:key", handlers.UpdateConfig)
+		superAdmin.PUT("/settings/:key", handlers.UpdateSetting)
+
+		superAdmin.PUT("/users/:id/role", handlers.UpdateUserRole)
+
+		superAdmin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
+		superAdmin.POST("/payment-methods", handlers.CreatePaymentMethod)
+		superAdmin.PUT("/payment-methods/:id", handlers.UpdatePaymentMethod)
+		superAdmin.DELETE("/payment-methods/:id", handlers.DeletePaymentMethod)
+
+		superAdmin.GET("/contact-methods", handlers.GetAdminContactMethods)
+		superAdmin.POST("/contact-methods", handlers.CreateContactMethod)
+		superAdmin.PUT("/contact-methods/:id", handlers.UpdateContactMethod)
+		superAdmin.DELETE("/contact-methods/:id", handlers.DeleteContactMethod)
+
+		superAdmin.POST("/email/test", handlers.TestEmail)
 	}
 
 	return r
@@ -421,6 +496,12 @@ func GetCustomerAuthHeader() map[string]string {
 func GetCustomer2AuthHeader() map[string]string {
 	return map[string]string{
 		"Authorization": fmt.Sprintf("user-%d", Customer2User.ID),
+	}
+}
+
+func GetServiceAuthHeader() map[string]string {
+	return map[string]string{
+		"Authorization": fmt.Sprintf("user-%d", ServiceUser.ID),
 	}
 }
 
