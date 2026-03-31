@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/csv"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
@@ -11,6 +14,7 @@ import (
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type PaymentProofSummary struct {
@@ -22,21 +26,11 @@ type PaymentProofSummary struct {
 	CreatedAt       string `json:"createdAt"`
 }
 
-func GetAdminOrders(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+func buildOrderQuery(c *gin.Context) *gorm.DB {
+	query := database.DB.Model(&models.Order{})
 	status := c.Query("status")
 	search := c.Query("search")
 	proofStatus := c.Query("proof_status")
-
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 || limit > 100 {
-		limit = 20
-	}
-
-	query := database.DB.Model(&models.Order{})
 
 	if status != "" {
 		query = query.Where("status = ?", status)
@@ -50,6 +44,21 @@ func GetAdminOrders(c *gin.Context) {
 			Where("status = ?", proofStatus)
 		query = query.Where("id IN ?", subQuery)
 	}
+	return query
+}
+
+func GetAdminOrders(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	query := buildOrderQuery(c)
 
 	var total int64
 	query.Count(&total)
@@ -270,4 +279,128 @@ func UpdateOrderStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, order)
+}
+
+func ExportAdminOrders(c *gin.Context) {
+	query := buildOrderQuery(c)
+
+	var orders []models.Order
+	query.Preload("Items.Product").Preload("Address").
+		Order("created_at desc").
+		Find(&orders)
+
+	var userIDs []uint
+	for _, o := range orders {
+		userIDs = append(userIDs, o.UserID)
+	}
+	var users []models.User
+	if len(userIDs) > 0 {
+		database.DB.Where("id IN ?", userIDs).Find(&users)
+	}
+	userMap := make(map[uint]models.User)
+	for _, u := range users {
+		userMap[u.ID] = u
+	}
+
+	proofMap := make(map[uint]models.PaymentProof)
+	if len(orders) > 0 {
+		orderIDs := make([]uint, len(orders))
+		for i, o := range orders {
+			orderIDs[i] = o.ID
+		}
+		var proofs []models.PaymentProof
+		database.DB.Where("order_id IN ?", orderIDs).
+			Preload("PaymentMethod").
+			Order("created_at desc").
+			Find(&proofs)
+		for _, p := range proofs {
+			if _, exists := proofMap[p.OrderID]; !exists {
+				proofMap[p.OrderID] = p
+			}
+		}
+	}
+
+	filename := fmt.Sprintf("orders_%s.csv", time.Now().Format("20060102_150405"))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+
+	c.Writer.Write([]byte{0xEF, 0xBB, 0xBF})
+
+	writer := csv.NewWriter(c.Writer)
+	defer writer.Flush()
+
+	headers := []string{"订单号", "用户姓名", "用户邮箱", "商品明细", "总金额", "订单状态", "备注", "收件人", "电话", "收货地址", "物流平台", "快递单号", "付款凭证状态", "付款方式", "下单时间"}
+	writer.Write(headers)
+
+	statusLabels := map[string]string{
+		"pending":    "待处理",
+		"processing": "处理中",
+		"shipped":    "已发货",
+		"completed":  "已完成",
+		"cancelled":  "已取消",
+	}
+	proofStatusLabels := map[string]string{
+		"pending":   "待审核",
+		"approved":  "已通过",
+		"rejected":  "已驳回",
+	}
+
+	for _, order := range orders {
+		var items []string
+		for _, item := range order.Items {
+			items = append(items, fmt.Sprintf("%s x%d", item.Product.Name, item.Quantity))
+		}
+		itemStr := strings.Join(items, "; ")
+
+		statusText := statusLabels[order.Status]
+		if statusText == "" {
+			statusText = order.Status
+		}
+
+		var userName, userEmail string
+		if u, ok := userMap[order.UserID]; ok {
+			userName = u.Name
+			userEmail = u.Email
+		}
+
+		addr := order.Address
+		addrParts := []string{addr.AddressLine1}
+		if addr.AddressLine2 != "" {
+			addrParts = append(addrParts, addr.AddressLine2)
+		}
+		addrParts = append(addrParts, addr.City, addr.State, addr.ZipCode)
+		fullAddr := strings.Join(addrParts, " ")
+
+		proofStatusText := "未提交"
+		var paymentMethod string
+		if p, exists := proofMap[order.ID]; exists {
+			proofStatusText = proofStatusLabels[p.Status]
+			if proofStatusText == "" {
+				proofStatusText = p.Status
+			}
+			paymentMethod = p.PaymentMethod.Name
+		}
+		if paymentMethod == "" {
+			paymentMethod = "-"
+		}
+
+		row := []string{
+			order.OrderNo,
+			userName,
+			userEmail,
+			itemStr,
+			fmt.Sprintf("%.2f", order.Total),
+			statusText,
+			order.Remark,
+			addr.FullName,
+			addr.Phone,
+			fullAddr,
+			order.TrackingCompany,
+			order.TrackingNumber,
+			proofStatusText,
+			paymentMethod,
+			order.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+		writer.Write(row)
+	}
 }

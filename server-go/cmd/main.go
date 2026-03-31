@@ -142,6 +142,7 @@ func main() {
 		admin.DELETE("/categories/:id", handlers.DeleteCategory)
 
 		admin.GET("/orders", handlers.GetAdminOrders)
+		admin.GET("/orders/export", handlers.ExportAdminOrders)
 		admin.GET("/orders/:id", handlers.GetAdminOrder)
 		admin.PUT("/orders/:id/status", handlers.UpdateOrderStatus)
 

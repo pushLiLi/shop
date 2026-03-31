@@ -12,8 +12,10 @@ const totalPages = ref(1)
 const limit = 20
 
 const filterStatus = ref('')
+const filterProofStatus = ref('')
 const search = ref('')
 const pendingProofTotal = ref(0)
+const exporting = ref(false)
 
 const showDetailModal = ref(false)
 const detailOrder = ref(null)
@@ -94,6 +96,7 @@ const fetchOrders = async () => {
     const params = new URLSearchParams({ page: currentPage.value, limit })
     if (search.value) params.append('search', search.value)
     if (filterStatus.value) params.append('status', filterStatus.value)
+    if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
 
     const res = await fetch(`${API_BASE}/admin/orders?${params}`, { headers: authHeaders() })
     const data = await res.json()
@@ -116,6 +119,7 @@ const handleSearch = () => {
 const resetFilters = () => {
   search.value = ''
   filterStatus.value = ''
+  filterProofStatus.value = ''
   currentPage.value = 1
   fetchOrders()
 }
@@ -297,6 +301,41 @@ const nextPage = () => {
   }
 }
 
+const exportOrders = async () => {
+  exporting.value = true
+  try {
+    const params = new URLSearchParams()
+    if (search.value) params.append('search', search.value)
+    if (filterStatus.value) params.append('status', filterStatus.value)
+    if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
+
+    const res = await fetch(`${API_BASE}/admin/orders/export?${params}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+    })
+    if (!res.ok) throw new Error('导出失败')
+
+    const blob = await res.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+
+    const disposition = res.headers.get('Content-Disposition')
+    const match = disposition?.match(/filename=(.+)/)
+    a.download = match ? match[1] : 'orders.csv'
+
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    toast.success('导出成功')
+  } catch (e) {
+    toast.error(e.message || '导出失败')
+  } finally {
+    exporting.value = false
+  }
+}
+
 onMounted(() => fetchOrders())
 </script>
 
@@ -315,7 +354,16 @@ onMounted(() => fetchOrders())
           <option value="">全部状态</option>
           <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}{{ key === 'pending' && pendingProofTotal ? ` (${pendingProofTotal})` : '' }}</option>
         </select>
+        <select v-model="filterProofStatus" @change="handleSearch">
+          <option value="">全部凭证</option>
+          <option value="pending">待审核</option>
+          <option value="approved">已通过</option>
+          <option value="rejected">已驳回</option>
+        </select>
         <button class="btn-reset" @click="resetFilters">重置</button>
+        <button class="btn-export" @click="exportOrders" :disabled="exporting">
+          {{ exporting ? '导出中...' : '导出 CSV' }}
+        </button>
       </div>
     </div>
 
@@ -665,6 +713,27 @@ select {
 
 .btn-reset:hover {
   background: #e0e0e0;
+}
+
+.btn-export {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background: #d4a574;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-export:hover {
+  background: #c49464;
+}
+
+.btn-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .batch-bar {
