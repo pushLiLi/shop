@@ -25,6 +25,8 @@ cd bycigar-vue
 npm run dev      # Dev server at localhost:5173, proxies /api -> localhost:3000
 npm run build    # Production build to dist/
 npm run preview  # Preview production build
+npm run test     # Run tests with vitest
+npm run test:watch  # Run tests in watch mode
 ```
 
 ### Backend (`server-go/`)
@@ -75,12 +77,14 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **Layout**: `App.vue` — shows TheHeader/TheFooter on all routes except admin. Global Toast + CartDrawer + ChatWidget always present. Dark theme (#0f0f0f background).
 - **Router**: `router/index.js`. Navigation guard checks `localStorage` for JWT token and user role.
   - Public: `/`, `/products`, `/category/:slug`, `/products/:id`, `/search`, `/:slug(about|services|privacy-policy|statement)`
-  - Auth required: `/checkout`, `/orders`, `/favorites`, `/profile`
+  - Auth required: `/checkout`, `/orders`, `/favorites`, `/profile`, `/cart`
   - Admin (`/admin/*`): requires `role === 'admin'` or `role === 'service'`
-- **Stores** (Pinia): `auth.js`, `cart.js`, `favorites.js`, `useSettingsStore.js`, `toast.js`, `chat.js`, `notifications.js`. Each store defines its own `getAuthHeaders()` reading `localStorage.getItem('token')`. New stores use `/api` base path (not hardcoded localhost).
+- **Stores** (Pinia): `auth.js`, `cart.js`, `favorites.js`, `useSettingsStore.js`, `toast.js`, `chat.js`, `notifications.js`, `contactMethods.js`. Each store defines its own `getAuthHeaders()` reading `localStorage.getItem('token')`. New stores use `/api` base path (not hardcoded localhost).
 - **Composables**: `composables/useCarousel.js` — reusable carousel logic (autoplay, touch/swipe, navigation). Pattern for shared component logic.
 - **Global CSS**: `style.css` — dark theme, grid system (.col-2/3/4/6/12), utility classes, 768px responsive breakpoint.
 - **Markdown**: `marked` library renders CMS page content.
+- **Charts**: `chart.js` + `vue-chartjs` for admin dashboard analytics.
+- **Image cropping**: `vue-advanced-cropper` for product image editing.
 
 ### Default Credentials
 - Admin: `admin@admin.com` / `123456` (seeded on first run)
@@ -91,7 +95,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **Language**: Communicate with the user in Chinese
 - **No code comments** in source files
 - **Keep responses concise** (max 4 lines when possible)
-- **No tests or linter** configured
+- **No tests or linter** configured — vitest is set up but only a few store spec files exist; no comprehensive test suite
 - **Image storage**: New uploads use MinIO. Legacy images stored as relative paths in `static/`.
 - **API base**: Older stores hardcode `http://localhost:3000/api/*`. Newer stores use `/api` relative path. Production uses nginx to proxy `/api` to backend (see `bycigar-vue/nginx.conf`).
 - **Stock sorting**: Product listings always sort `stock > 0` items first (done in SQL via CASE expression).

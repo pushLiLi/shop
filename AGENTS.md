@@ -2,8 +2,8 @@
 
 ## Tech Stack
 
-Frontend: Vue 3.5 + Vite 8 + Vue Router 4 + Pinia 3 + marked + vue-advanced-cropper (JavaScript only, no TypeScript, no axios — uses native `fetch`)
-Backend: Go 1.25 + Gin 1.9 + GORM 1.25 + JWT + gorilla/websocket + Swagger (Dockerfile: golang:1.23-alpine)
+Frontend: Vue 3.5 + Vite 8 + Vue Router 4 + Pinia 3 + marked + vue-advanced-cropper + vue-chartjs + chart.js (JavaScript only, no TypeScript, no axios — uses native `fetch`)
+Backend: Go 1.23 + Gin 1.9 + GORM 1.25 + JWT + gorilla/websocket + Swagger (Dockerfile: golang:1.23-alpine)
 Database: MySQL 8.4 (Docker, utf8mb4) | Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server`
 
@@ -30,7 +30,7 @@ No ESLint, Prettier, or Go linter. Use `go build` and `npm run build` to verify 
 ## Test Commands
 
 ```bash
-# Frontend tests (run from bycigar-vue/) — Vitest 4 + @vue/test-utils + happy-dom
+# Frontend unit tests (run from bycigar-vue/) — Vitest 4 + @vue/test-utils + happy-dom
 npm test                        # Run all tests once (vitest run)
 npm run test:watch              # Run tests in watch mode
 npx vitest run src/stores/cart.spec.js          # Run a single test file
@@ -43,9 +43,13 @@ go test ./... -v -count=1                       # Run all backend tests
 go test ./test/... -v -count=1                  # Run only integration tests
 go test ./test/... -v -count=1 -run TestProductSuite  # Run a single test suite
 go test ./test/... -v -count=1 -run "TestProductSuite/TestGetProductsDefaultPagination"  # Single test
+
+# E2E tests (run from bycigar-vue/) — Playwright
+npx playwright test                    # Run all e2e tests
+npx playwright test --project=chromium # Run with specific browser
 ```
 Vitest config has `globals: true` — no need to import `describe`/`it`/`expect`.
-Frontend tests are unit tests (no backend needed). Backend tests are integration tests hitting real MySQL + MinIO.
+Frontend unit tests are isolated (no backend needed). Backend tests are integration tests hitting real MySQL + MinIO.
 
 ## Roles & Authorization
 
@@ -89,7 +93,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 
 ## Go Code Style
 
-- Import order: stdlib -> blank line -> external -> blank line -> internal
+- Import order: stdlib -> blank line -> external -> blank line -> internal (`bycigar-server/...`). Test files use grouped imports with blank-line-separated groups.
 - Early return for all error handling. Handlers: PascalCase. Helpers: camelCase.
 - Admin handlers in `admin_*.go` files. SuperAdmin handlers live in their domain files alongside public handlers.
 - Swagger `godoc` comments on all handlers. No other code comments.
@@ -100,8 +104,8 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 ## Pinia Stores
 
 - **Composition API** (`auth.js`, `toast.js`): `defineStore('name', () => { ... })`
-- **Options API** (`cart.js`, `favorites.js`, `notifications.js`, `chat.js`, `useSettingsStore.js`): `defineStore('name', { state, getters, actions })`
-- Store IDs: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`, `'notifications'`, `'chat'`.
+- **Options API** (`cart.js`, `favorites.js`, `notifications.js`, `chat.js`, `useSettingsStore.js`, `contactMethods.js`): `defineStore('name', { state, getters, actions })`
+- Store IDs: `'auth'`, `'cart'`, `'favorites'`, `'toast'`, `'settings'`, `'notifications'`, `'chat'`, `'contactMethods'`.
 - Options API stores define `getAuthHeaders()` at module level reading `localStorage.getItem('token')`.
 - Auth store exposes `getAuthHeaders` as a returned method using the reactive `token` ref.
 - Cart store uses 300ms debounce for quantity updates via `pendingUpdates` Map.
@@ -138,7 +142,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 - Admin endpoints return ALL records; public endpoints filter `WHERE is_active = true`. Never reuse public handlers on admin routes.
 - Product listings sort `stock > 0` first via SQL CASE expression. Batch operations: `PUT /api/admin/products/batch/status`, `DELETE /api/admin/products/batch`.
 - Orders use snowflake `OrderNo` (user-facing) + auto-increment `ID` (internal). `GetOrder` accepts both.
-- Order status flow: `pending -> processing -> shipped -> completed`, with `cancelled` from pending/processing.
+- Order status flow: `pending -> {processing, cancelled}` -> `{shipped, cancelled}` -> `shipped -> completed`. Valid transitions enforced by `ValidOrderStatusTransitions` map in `models/order.go`.
 - **Notifications**: System-generated, read-only. Types: `order_status`, `back_in_stock`, `price_drop`. Triggered in admin handlers.
 - **Chat**: Customer → Admin/Service real-time via WebSocket (gorilla/websocket) with HTTP fallback. One open conversation per customer. Messages limited to 500 chars. Auto-cleanup: 30-day retention via `pkgutils.StartChatCleanup()`.
 - Image upload: `POST /api/admin/upload` multipart `file` -> `{"success": true, "url": "/media/...", "thumbnailUrl": "/media/..."}`. Max 10MB, jpg/png/gif/webp.
@@ -146,6 +150,7 @@ Three user roles: `"admin"` (超级管理员), `"service"` (管理员), `"custom
 - **App.vue layout**: TheHeader + TheFooter on all routes except `/admin/*`. Toast, CartDrawer, ChatWidget always mounted.
 - **Captcha**: Register always requires captcha. Login uses progressive captcha (3 failures -> required). Password change requires captcha.
 - **Admin route groups**: `cmd/main.go` has two groups — `admin` (AdminOnly) for shared routes, `superAdmin` (SuperAdminOnly) for restricted routes.
+- **E2E tests**: Playwright tests in `bycigar-vue/e2e/` cover full shopping flow, admin flow, and auth flows using page objects in `helpers.js`.
 
 ## Naming Conventions
 

@@ -135,13 +135,22 @@ export const useChatStore = defineStore('chat', {
             }, 3000)
           }
           break
-        case 'conversation_closed':
-          if (this.currentConversation && data.conversationId === this.currentConversation.id) {
-            if (this.currentConversation) {
-              this.currentConversation = { ...this.currentConversation, status: 'closed' }
+        case 'conversation_closed': {
+          const convId = data.conversationId
+          if (this.currentConversation && convId === this.currentConversation.id) {
+            this.currentConversation = { ...this.currentConversation, status: 'closed' }
+          } else {
+            const conv = this.conversations.find(c => c.id === convId)
+            if (conv) {
+              conv.status = 'closed'
+              this.currentConversation = conv
+              this.fetchMessages()
             }
           }
+          this.isOpen = true
+          this.clearAutoCloseTimer()
           break
+        }
         case 'service_status':
           this.serviceOnline = data.serviceOnline || false
           break

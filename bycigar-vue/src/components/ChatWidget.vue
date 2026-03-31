@@ -2,12 +2,14 @@
 import { ref, nextTick, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useChatStore } from '../stores/chat'
 import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
 import { useRouter } from 'vue-router'
 import { useImageCompress } from '../composables/useImageCompress'
 import { useNotificationSound } from '../composables/useNotificationSound'
 
 const chatStore = useChatStore()
 const authStore = useAuthStore()
+const toast = useToastStore()
 const router = useRouter()
 const { compress } = useImageCompress()
 const { play: playNotification } = useNotificationSound()
@@ -258,6 +260,9 @@ onMounted(() => {
   chatStore.onMessage = (data) => {
     if (data.type === 'rating_request') {
       openRating(data.conversationId)
+    }
+    if (data.type === 'conversation_closed') {
+      toast.success('客服已结束对话')
     }
   }
 })
