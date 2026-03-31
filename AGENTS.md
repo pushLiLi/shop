@@ -3,7 +3,7 @@
 ## Tech Stack
 
 Frontend: Vue 3.5 + Vite 8 + Vue Router 4 + Pinia 3 + marked + vue-advanced-cropper + vue-chartjs + chart.js (JavaScript only, no TypeScript, no axios — uses native `fetch`)
-Backend: Go 1.23 + Gin 1.9 + GORM 1.25 + JWT + gorilla/websocket + Swagger (Dockerfile: golang:1.23-alpine)
+Backend: Go 1.25 + Gin 1.9 + GORM 1.25 + JWT + gorilla/websocket + Swagger (Dockerfile: golang:1.23-alpine)
 Database: MySQL 8.4 (Docker, utf8mb4) | Object Storage: MinIO (Docker, API:9000, Console:9001)
 Module: `bycigar-server`
 
@@ -73,9 +73,12 @@ internal (bycigar-server/...)
 ```
 **Formatting**: Early return for all error handling. Handlers PascalCase, helpers camelCase. Admin handlers in `admin_*.go` files. SuperAdmin handlers in domain files alongside public handlers.
 **Comments**: Swagger `godoc` on all handlers only. No other comments.
-**Errors**: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`.
+**Errors**: `utils.ErrorResponse(c, statusCode, "msg")` or `c.JSON(status, gin.H{"error": "..."})`. Both produce identical `{"error": "msg"}` output.
 **Models**: Define base fields inline (no shared Model struct). Use `uint` for IDs. JSON tags camelCase, GORM tags snake_case. Always include `CreatedAt`/`UpdatedAt` (except Notification, Message which have only `CreatedAt`). Use `DeletedAt` for soft-delete. Input structs in model files (exception: `ProductInput` in `admin_product.go`).
+**Sorting**: Admin list handlers accept `sortBy` and `sortOrder` (asc/desc) query params. Use a whitelist `map[string]string` to map camelCase param names to snake_case DB columns. Validate `sortOrder` is `asc` or `desc`, fallback to default. Example: `sortColumnMap := map[string]string{"createdAt": "created_at", "price": "price"}`.
 **Notifications**: Create `models.Notification` records via `database.DB.Create(&notifications)` when admin actions affect users.
+**Caching**: All caches use package-level `sync.RWMutex` + timestamp + 5-minute TTL with double-checked locking. When adding admin mutations that affect cached data, you MUST call the corresponding invalidation function (e.g., `InvalidateCategoriesCache()`). Init slices as `make([]T, 0)` to avoid returning `null` JSON.
+**MinIO image cleanup**: When deleting/updating entities with images (Product, Banner, PaymentProof), call `miniopkg.DeleteObjects(urls)` to remove orphaned files. Use `collectProductImageURLs()` for products.
 
 ### Vue
 
@@ -86,6 +89,7 @@ internal (bycigar-server/...)
 **Images**: List views: `product.thumbnailUrl || product.imageUrl` with `loading="lazy"`. Detail pages use full `imageUrl`.
 **Inline handlers**: Use named `async function` declarations, not arrow functions.
 **CSS**: `<style scoped>` with kebab-case classes. Storefront dark theme (#0f0f0f bg, #d4a574 accent). Admin light theme (#fff). Icons: inline SVG only.
+**Sortable tables**: Admin list pages support column-header click sorting. Add `sortBy`/`sortOrder` refs, pass as query params. Three-state toggle: desc → asc → default. Use `.sortable-th` CSS class for hover cursor.
 
 ### Pinia Stores
 
@@ -124,6 +128,8 @@ internal (bycigar-server/...)
 - Captcha: Register always requires captcha. Login progressive (3 failures -> required). Password change requires captcha.
 - New models: add to `database.Migrate()` in `database/database.go`.
 - New routes: add to both `cmd/main.go` and `test/helpers.go` `SetupRouter()`.
+- Background cleanup (all daily, started in `cmd/main.go`): chat messages, notifications (read 60d, unread 120d), orphaned MinIO images, soft-deleted records (30d), order archival (365d), stale cart items (90d). Configurable via `CLEANUP_*_DAYS` env vars.
+- DB connection pool: `MaxOpenConns=25`, `MaxIdleConns=10`, `ConnMaxLifetime=5min`. DSN uses `PrepareStmt=true`.
 
 ## Naming Conventions
 
@@ -148,6 +154,9 @@ internal (bycigar-server/...)
 - **Run tests after changes**: `npm test` (frontend) and `go test ./... -v -count=1` (backend)
 - **Error handling**: Frontend uses toast, backend uses `utils.ErrorResponse()`
 - **Database**: Always `utf8mb4`, `parseTime=True&loc=Local` in DSN
+- **Cache invalidation**: When admin handlers mutate data served by cached public APIs, call the invalidation function immediately after DB write
+- **JSON null safety**: Initialize result slices with `make([]T, 0)` not `var result []T` to return `[]` not `null`
+- **Image cleanup**: Always delete MinIO objects when removing/updating images on entities
 
 ## Git Commits
 
