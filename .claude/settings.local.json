@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(go build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(xxd \"C:/code/js/shop/bycigar-vue/src/views/admin/AdminChat.vue\")"
+    ]
+  }
+}
