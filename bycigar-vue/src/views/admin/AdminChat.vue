@@ -484,6 +484,10 @@ const claimConversation = async (conv) => {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   if (!user?.id) return
   await assignConversation(conv, user.id)
+  if (filterAssignedTo.value === 'unassigned') {
+    filterAssignedTo.value = 'me'
+  }
+  fetchConversations()
 }
 onMounted(() => {
   fetchConversations()
@@ -525,6 +529,10 @@ onUnmounted(() => {
             :class="{ active: filterStatus === 'open' && filterAssignedTo === 'me' }"
             @click="filterStatus = 'open'; filterAssignedTo = 'me'"
           >我的会话</button>
+          <button
+            :class="{ active: filterStatus === 'open' && filterAssignedTo === 'unassigned' }"
+            @click="filterStatus = 'open'; filterAssignedTo = 'unassigned'"
+          >未认领</button>
           <button
             :class="{ active: filterStatus === 'open' && filterAssignedTo === '' }"
             @click="filterStatus = 'open'; filterAssignedTo = ''"
@@ -573,7 +581,7 @@ onUnmounted(() => {
           <div class="header-user">
             <span class="user-name">{{ selectedConversation.user?.name || selectedConversation.user?.email }}</span>
             <span class="user-status" :class="selectedConversation.status">
-              {{ selectedConversation.status === 'open' ? '进行中' : '已关闭' }}
+              {{ selectedConversation.status === 'closed' ? '已关闭' : '进行中' }}
             </span>
             <span v-if="selectedConversation.assignedUser" class="assigned-tag header-assigned">{{ selectedConversation.assignedUser.name || selectedConversation.assignedUser.email }}</span>
             <button v-else-if="selectedConversation.status === 'open'" class="claim-btn header-claim" @click="claimConversation(selectedConversation)">认领</button>

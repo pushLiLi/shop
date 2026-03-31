@@ -80,6 +80,8 @@ func Migrate() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 	log.Println("Database migrated successfully")
+
+	DB.Model(&models.Conversation{}).Where("status = ?", "active").Update("status", "open")
 }
 
 func Seed() {

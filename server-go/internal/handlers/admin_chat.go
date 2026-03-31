@@ -7,8 +7,8 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
-	"bycigar-server/pkg/utils"
 	"bycigar-server/internal/ws"
+	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -353,9 +353,6 @@ func AssignConversation(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{"assigned_to": input.AssignedTo}
-	if conversation.Status == "open" && input.AssignedTo != nil {
-		updates["status"] = "active"
-	}
 	database.DB.Model(&conversation).Updates(updates)
 
 	ws.DefaultHub.SendToAdmins(WSResponse{
@@ -466,20 +463,20 @@ func GetSatisfactionStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"total":              len(ratings),
-		"averageScore":       avgScore,
-		"scoreDistribution":  scoreDistribution,
-		"ratings":            ratings,
+		"total":             len(ratings),
+		"averageScore":      avgScore,
+		"scoreDistribution": scoreDistribution,
+		"ratings":           ratings,
 	})
 }
 
 func GetAgentStats(c *gin.Context) {
 	type AgentStat struct {
-		UserID       uint   `json:"userId"`
-		UserName     string `json:"userName"`
-		TotalMsgs    int64  `json:"totalMessages"`
-		AvgRating    float64
-		RatingCount  int64 `json:"ratingCount"`
+		UserID      uint   `json:"userId"`
+		UserName    string `json:"userName"`
+		TotalMsgs   int64  `json:"totalMessages"`
+		AvgRating   float64
+		RatingCount int64 `json:"ratingCount"`
 	}
 
 	var agents []models.User
