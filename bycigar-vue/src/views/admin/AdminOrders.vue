@@ -16,6 +16,8 @@ const filterProofStatus = ref('')
 const search = ref('')
 const pendingProofTotal = ref(0)
 const exporting = ref(false)
+const activeQuickFilter = ref('')
+const showAdvancedFilter = ref(false)
 
 const showDetailModal = ref(false)
 const detailOrder = ref(null)
@@ -58,6 +60,28 @@ const proofStatusLabels = {
   rejected: '已驳回'
 }
 
+const quickFilters = [
+  { key: '', label: '全部' },
+  { key: 'pending_proof', label: '待审核凭证' },
+  { key: 'to_ship', label: '待发货' },
+  { key: 'shipped', label: '已发货' },
+  { key: 'completed', label: '已完成' }
+]
+
+const setQuickFilter = (key) => {
+  activeQuickFilter.value = key
+  filterStatus.value = ''
+  filterProofStatus.value = ''
+  currentPage.value = 1
+  fetchOrders()
+}
+
+const handleAdvancedFilter = () => {
+  activeQuickFilter.value = ''
+  currentPage.value = 1
+  fetchOrders()
+}
+
 const showProofColumn = computed(() => filterStatus.value !== 'shipped')
 
 const statusBadgeClass = (status) => {
@@ -95,8 +119,13 @@ const fetchOrders = async () => {
   try {
     const params = new URLSearchParams({ page: currentPage.value, limit })
     if (search.value) params.append('search', search.value)
-    if (filterStatus.value) params.append('status', filterStatus.value)
-    if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
+
+    if (activeQuickFilter.value) {
+      params.append('quick_filter', activeQuickFilter.value)
+    } else {
+      if (filterStatus.value) params.append('status', filterStatus.value)
+      if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
+    }
 
     const res = await fetch(`${API_BASE}/admin/orders?${params}`, { headers: authHeaders() })
     const data = await res.json()
@@ -120,6 +149,7 @@ const resetFilters = () => {
   search.value = ''
   filterStatus.value = ''
   filterProofStatus.value = ''
+  activeQuickFilter.value = ''
   currentPage.value = 1
   fetchOrders()
 }
@@ -306,8 +336,13 @@ const exportOrders = async () => {
   try {
     const params = new URLSearchParams()
     if (search.value) params.append('search', search.value)
-    if (filterStatus.value) params.append('status', filterStatus.value)
-    if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
+
+    if (activeQuickFilter.value) {
+      params.append('quick_filter', activeQuickFilter.value)
+    } else {
+      if (filterStatus.value) params.append('status', filterStatus.value)
+      if (filterProofStatus.value) params.append('proof_status', filterProofStatus.value)
+    }
 
     const res = await fetch(`${API_BASE}/admin/orders/export?${params}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -342,28 +377,52 @@ onMounted(() => fetchOrders())
 <template>
   <div class="admin-orders">
     <div class="toolbar">
-      <div class="toolbar-left">
-        <button class="btn-refresh" :class="{ spinning: loading }" @click="fetchOrders" title="刷新订单列表">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-        </button>
-        <div class="search-box">
-          <input v-model="search" type="text" placeholder="搜索订单号..." @keyup.enter="handleSearch">
-          <button class="btn-search" @click="handleSearch">搜索</button>
+      <div class="toolbar-row">
+        <div class="toolbar-left">
+          <button class="btn-refresh" :class="{ spinning: loading }" @click="fetchOrders" title="刷新订单列表">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          </button>
+          <div class="search-box">
+            <input v-model="search" type="text" placeholder="搜索订单号..." @keyup.enter="handleSearch">
+            <button class="btn-search" @click="handleSearch">搜索</button>
+          </div>
         </div>
-        <select v-model="filterStatus" @change="handleSearch">
-          <option value="">全部状态</option>
-          <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}{{ key === 'pending' && pendingProofTotal ? ` (${pendingProofTotal})` : '' }}</option>
-        </select>
-        <select v-model="filterProofStatus" @change="handleSearch">
-          <option value="">全部凭证</option>
-          <option value="pending">待审核</option>
-          <option value="approved">已通过</option>
-          <option value="rejected">已驳回</option>
-        </select>
-        <button class="btn-reset" @click="resetFilters">重置</button>
-        <button class="btn-export" @click="exportOrders" :disabled="exporting">
-          {{ exporting ? '导出中...' : '导出 CSV' }}
+        <div class="toolbar-right">
+          <button class="btn-export" @click="exportOrders" :disabled="exporting">
+            {{ exporting ? '导出中...' : '导出 CSV' }}
+          </button>
+        </div>
+      </div>
+      <div class="quick-filters">
+        <button
+          v-for="f in quickFilters"
+          :key="f.key"
+          class="quick-filter-btn"
+          :class="{ active: activeQuickFilter === f.key }"
+          @click="setQuickFilter(f.key)"
+        >
+          {{ f.label }}
+          <span v-if="f.key === 'pending_proof' && pendingProofTotal > 0" class="quick-filter-badge">{{ pendingProofTotal }}</span>
         </button>
+      </div>
+      <div class="advanced-filter">
+        <div class="advanced-filter-toggle" @click="showAdvancedFilter = !showAdvancedFilter">
+          <span>高级筛选</span>
+          <svg :class="{ rotated: showAdvancedFilter }" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </div>
+        <div v-if="showAdvancedFilter" class="advanced-filter-content">
+          <select v-model="filterStatus" @change="handleAdvancedFilter">
+            <option value="">全部状态</option>
+            <option v-for="(label, key) in statusLabels" :key="key" :value="key">{{ label }}</option>
+          </select>
+          <select v-model="filterProofStatus" @change="handleAdvancedFilter">
+            <option value="">全部凭证</option>
+            <option value="pending">待审核</option>
+            <option value="approved">已通过</option>
+            <option value="rejected">已驳回</option>
+          </select>
+          <button class="btn-reset" @click="resetFilters">重置</button>
+        </div>
       </div>
     </div>
 
@@ -624,12 +683,16 @@ onMounted(() => fetchOrders())
 
 .toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
-  flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+}
+
+.toolbar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .toolbar-left {
@@ -637,6 +700,92 @@ onMounted(() => fetchOrders())
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quick-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-filter-btn {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  background: #fff;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-filter-btn:hover {
+  border-color: #d4a574;
+  color: #d4a574;
+}
+
+.quick-filter-btn.active {
+  background: #d4a574;
+  border-color: #d4a574;
+  color: #fff;
+}
+
+.quick-filter-badge {
+  background: #ff5722;
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.quick-filter-btn.active .quick-filter-badge {
+  background: rgba(255,255,255,0.3);
+}
+
+.advanced-filter {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+.advanced-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.advanced-filter-toggle:hover {
+  color: #d4a574;
+}
+
+.advanced-filter-toggle svg {
+  transition: transform 0.2s;
+}
+
+.advanced-filter-toggle svg.rotated {
+  transform: rotate(180deg);
+}
+
+.advanced-filter-content {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .btn-refresh {

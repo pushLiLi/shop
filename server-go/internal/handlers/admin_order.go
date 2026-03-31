@@ -28,21 +28,40 @@ type PaymentProofSummary struct {
 
 func buildOrderQuery(c *gin.Context) *gorm.DB {
 	query := database.DB.Model(&models.Order{})
+	quickFilter := c.Query("quick_filter")
 	status := c.Query("status")
 	search := c.Query("search")
 	proofStatus := c.Query("proof_status")
 
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
 	if search != "" {
 		query = query.Where("order_no LIKE ?", "%"+search+"%")
 	}
-	if proofStatus != "" {
-		subQuery := database.DB.Model(&models.PaymentProof{}).
-			Select("order_id").
-			Where("status = ?", proofStatus)
-		query = query.Where("id IN ?", subQuery)
+
+	if quickFilter != "" {
+		switch quickFilter {
+		case "pending_proof":
+			subQuery := database.DB.Model(&models.PaymentProof{}).
+				Select("order_id").Where("status = ?", "pending")
+			query = query.Where("id IN ?", subQuery)
+		case "to_ship":
+			subQuery := database.DB.Model(&models.PaymentProof{}).
+				Select("order_id").Where("status = ?", "approved")
+			query = query.Where("id IN ? AND status = ?", subQuery, models.OrderStatusProcessing)
+		case "shipped":
+			query = query.Where("status = ?", models.OrderStatusShipped)
+		case "completed":
+			query = query.Where("status = ?", models.OrderStatusCompleted)
+		}
+	} else {
+		if status != "" {
+			query = query.Where("status = ?", status)
+		}
+		if proofStatus != "" {
+			subQuery := database.DB.Model(&models.PaymentProof{}).
+				Select("order_id").
+				Where("status = ?", proofStatus)
+			query = query.Where("id IN ?", subQuery)
+		}
 	}
 	return query
 }
