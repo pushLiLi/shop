@@ -282,7 +282,7 @@ watch(() => authStore.isLoggedIn, (val) => {
 </script>
 
 <template>
-  <div class="chat-widget" v-if="authStore.isLoggedIn">
+  <div class="chat-widget" v-if="authStore.isLoggedIn && !authStore.isAdmin">
     <Transition name="chat-slide">
       <div v-if="chatStore.isOpen" class="chat-panel">
         <div class="chat-header">

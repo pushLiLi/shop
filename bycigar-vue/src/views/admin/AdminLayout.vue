@@ -26,8 +26,7 @@ const allMenuGroups = [
   {
     title: '交易',
     items: [
-      { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' },
-      { path: '/admin/payment-methods', name: '付款方式', icon: 'credit-card' }
+      { path: '/admin/orders', name: '订单管理', icon: 'shopping-bag' }
     ]
   },
   {
@@ -44,7 +43,8 @@ const allMenuGroups = [
       { path: '/admin/banners', name: '轮播图管理', icon: 'image' },
       { path: '/admin/pages', name: '页面管理', icon: 'file-text' },
       { path: '/admin/settings', name: '站点设置', icon: 'settings' },
-      { path: '/admin/contact-methods', name: '联系方式', icon: 'phone' }
+      { path: '/admin/contact-methods', name: '联系方式', icon: 'phone' },
+      { path: '/admin/payment-methods', name: '付款方式', icon: 'credit-card' }
     ]
   }
 ]
