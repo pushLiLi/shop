@@ -142,7 +142,7 @@ func SeedSettings() {
 
 	for _, setting := range defaultSettings {
 		var existing models.Setting
-		if err := DB.Where("key = ?", setting.Key).First(&existing).Error; err != nil {
+		if err := DB.Where(&models.Setting{Key: setting.Key}).First(&existing).Error; err != nil {
 			DB.Create(&setting)
 		}
 	}
@@ -232,20 +232,39 @@ func SeedBulkOrders() {
 		}
 	}
 
-	var count int64
-	DB.Model(&models.Order{}).Count(&count)
-	const targetCount = 3000
-	if count >= targetCount {
-		return
+	var paymentMethod models.PaymentMethod
+	DB.Where("is_active = ?", true).First(&paymentMethod)
+	if paymentMethod.ID == 0 {
+		paymentMethod = models.PaymentMethod{
+			Name:     "银行转账",
+			IsActive: true,
+		}
+		DB.Create(&paymentMethod)
 	}
 
-	statuses := []string{"pending", "processing", "shipped", "completed", "cancelled"}
+	testUserIDs := make([]uint, len(users))
+	for i, u := range users {
+		testUserIDs[i] = u.ID
+	}
+
+	var oldCount int64
+	DB.Model(&models.Order{}).Where("user_id IN ?", testUserIDs).Count(&oldCount)
+	if oldCount > 0 {
+		var oldOrderIDs []uint
+		DB.Model(&models.Order{}).Where("user_id IN ?", testUserIDs).Pluck("id", &oldOrderIDs)
+		if len(oldOrderIDs) > 0 {
+			DB.Where("order_id IN ?", oldOrderIDs).Delete(&models.PaymentProof{})
+			DB.Where("order_id IN ?", oldOrderIDs).Delete(&models.OrderItem{})
+			DB.Where("id IN ?", oldOrderIDs).Delete(&models.Order{})
+			log.Printf("SeedBulkOrders: 已清理 %d 条旧测试订单", oldCount)
+		}
+	}
+
+	const targetCount = 3000
 	now := time.Now()
 	r := rand.New(rand.NewSource(now.UnixNano()))
 
-	needToCreate := targetCount - int(count)
-	for i := 0; i < needToCreate; i++ {
-		status := statuses[r.Intn(len(statuses))]
+	for i := 0; i < targetCount; i++ {
 		user := users[r.Intn(len(users))]
 
 		var userAddresses []models.Address
@@ -262,21 +281,40 @@ func SeedBulkOrders() {
 		itemCount := r.Intn(5) + 1
 		var total float64
 		items := make([]models.OrderItem, itemCount)
-
 		for j := 0; j < itemCount; j++ {
 			product := products[r.Intn(len(products))]
 			quantity := r.Intn(10) + 1
-			price := product.Price
-			total += price * float64(quantity)
+			total += product.Price * float64(quantity)
 			items[j] = models.OrderItem{
 				ProductID: product.ID,
 				Quantity:  quantity,
-				Price:     price,
+				Price:     product.Price,
 			}
 		}
 
 		daysAgo := r.Intn(90)
 		createdAt := now.AddDate(0, 0, -daysAgo).Add(time.Duration(r.Intn(86400)) * time.Second)
+
+		roll := r.Intn(100)
+		var status string
+		var proofStatus string
+
+		switch {
+		case roll < 35:
+			status = []string{"pending", "processing", "shipped", "completed", "cancelled"}[r.Intn(5)]
+		case roll < 50:
+			status = "pending"
+			proofStatus = models.PaymentProofStatusPending
+		case roll < 70:
+			status = "processing"
+			proofStatus = models.PaymentProofStatusApproved
+		case roll < 85:
+			status = "pending"
+			proofStatus = models.PaymentProofStatusRejected
+		case roll < 100:
+			status = "shipped"
+			proofStatus = models.PaymentProofStatusApproved
+		}
 
 		order := models.Order{
 			OrderNo:   utils.GenerateOrderNo(),
@@ -284,16 +322,35 @@ func SeedBulkOrders() {
 			AddressID: address.ID,
 			Total:     total,
 			Status:    status,
-			Remark:    fmt.Sprintf("测试订单 %d", count+int64(i)+1),
+			Remark:    fmt.Sprintf("测试订单 %d", i+1),
 			Items:     items,
 			CreatedAt: createdAt,
 			UpdatedAt: createdAt,
 		}
 		DB.Create(&order)
 
+		if proofStatus != "" {
+			proof := models.PaymentProof{
+				OrderID:         order.ID,
+				UserID:          user.ID,
+				PaymentMethodID: paymentMethod.ID,
+				ImageUrl:        "/media/bycigar/banner-1.png",
+				Status:          proofStatus,
+				CreatedAt:       createdAt,
+				UpdatedAt:       createdAt,
+			}
+			if proofStatus == models.PaymentProofStatusApproved || proofStatus == models.PaymentProofStatusRejected {
+				reviewerID := uint(1)
+				proof.ReviewerID = &reviewerID
+				reviewedAt := createdAt.Add(10 * time.Minute)
+				proof.ReviewedAt = &reviewedAt
+			}
+			DB.Create(&proof)
+		}
+
 		if (i+1)%500 == 0 {
-			log.Printf("已生成 %d / %d 订单", i+1, needToCreate)
+			log.Printf("已生成 %d / %d 订单", i+1, targetCount)
 		}
 	}
-	log.Printf("测试订单数据生成完成，共 %d 笔", targetCount)
+	log.Printf("测试订单数据生成完成，共 %d 笔（含凭证）", targetCount)
 }

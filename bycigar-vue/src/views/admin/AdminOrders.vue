@@ -38,7 +38,6 @@ const shipTrackingNumber = ref('')
 
 const statusLabels = {
   pending: '待处理',
-  paid: '已支付',
   processing: '处理中',
   shipped: '已发货',
   completed: '已完成',
@@ -46,8 +45,7 @@ const statusLabels = {
 }
 
 const statusTransitions = {
-  pending: ['cancelled'],
-  paid: [],
+  pending: ['processing', 'cancelled'],
   processing: ['shipped', 'cancelled'],
   shipped: ['completed'],
   completed: [],
@@ -87,7 +85,6 @@ const showProofColumn = computed(() => filterStatus.value !== 'shipped')
 const statusBadgeClass = (status) => {
   const map = {
     pending: 'badge-warning',
-    paid: 'badge-paid',
     processing: 'badge-info',
     shipped: 'badge-primary',
     completed: 'badge-success',
@@ -993,7 +990,6 @@ select {
 .badge-warning { background: #fff8e1; color: #f57c00; }
 .badge-info { background: #e3f2fd; color: #1565c0; }
 .badge-primary { background: #e8eaf6; color: #283593; }
-.badge-paid { background: #e8f5e9; color: #388e3c; }
 .badge-default { background: #f5f5f5; color: #999; }
 
 .proof-badge {

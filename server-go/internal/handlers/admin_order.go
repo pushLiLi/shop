@@ -18,12 +18,12 @@ import (
 )
 
 type PaymentProofSummary struct {
-	ID              uint   `json:"id"`
-	Status          string `json:"status"`
-	ImageUrl        string `json:"imageUrl"`
-	PaymentMethod   string `json:"paymentMethod"`
-	RejectReason    string `json:"rejectReason,omitempty"`
-	CreatedAt       string `json:"createdAt"`
+	ID            uint   `json:"id"`
+	Status        string `json:"status"`
+	ImageUrl      string `json:"imageUrl"`
+	PaymentMethod string `json:"paymentMethod"`
+	RejectReason  string `json:"rejectReason,omitempty"`
+	CreatedAt     string `json:"createdAt"`
 }
 
 func buildOrderQuery(c *gin.Context) *gorm.DB {
@@ -40,13 +40,23 @@ func buildOrderQuery(c *gin.Context) *gorm.DB {
 	if quickFilter != "" {
 		switch quickFilter {
 		case "pending_proof":
-			subQuery := database.DB.Model(&models.PaymentProof{}).
-				Select("order_id").Where("status = ?", "pending")
-			query = query.Where("id IN ?", subQuery)
+			var orderIDs []uint
+			database.DB.Model(&models.PaymentProof{}).
+				Where("status = ?", "pending").Pluck("order_id", &orderIDs)
+			if len(orderIDs) > 0 {
+				query = query.Where("id IN ?", orderIDs)
+			} else {
+				query = query.Where("1 = 0")
+			}
 		case "to_ship":
-			subQuery := database.DB.Model(&models.PaymentProof{}).
-				Select("order_id").Where("status = ?", "approved")
-			query = query.Where("id IN ? AND status = ?", subQuery, models.OrderStatusProcessing)
+			var orderIDs []uint
+			database.DB.Model(&models.PaymentProof{}).
+				Where("status = ?", "approved").Pluck("order_id", &orderIDs)
+			if len(orderIDs) > 0 {
+				query = query.Where("id IN ? AND status = ?", orderIDs, models.OrderStatusProcessing)
+			} else {
+				query = query.Where("1 = 0")
+			}
 		case "shipped":
 			query = query.Where("status = ?", models.OrderStatusShipped)
 		case "completed":
@@ -57,10 +67,14 @@ func buildOrderQuery(c *gin.Context) *gorm.DB {
 			query = query.Where("status = ?", status)
 		}
 		if proofStatus != "" {
-			subQuery := database.DB.Model(&models.PaymentProof{}).
-				Select("order_id").
-				Where("status = ?", proofStatus)
-			query = query.Where("id IN ?", subQuery)
+			var orderIDs []uint
+			database.DB.Model(&models.PaymentProof{}).
+				Where("status = ?", proofStatus).Pluck("order_id", &orderIDs)
+			if len(orderIDs) > 0 {
+				query = query.Where("id IN ?", orderIDs)
+			} else {
+				query = query.Where("1 = 0")
+			}
 		}
 	}
 	return query
@@ -122,8 +136,8 @@ func GetAdminOrders(c *gin.Context) {
 
 	type OrderWithUser struct {
 		models.Order
-		User         interface{}           `json:"user"`
-		PaymentProof *PaymentProofSummary  `json:"paymentProof"`
+		User         interface{}          `json:"user"`
+		PaymentProof *PaymentProofSummary `json:"paymentProof"`
 	}
 	var result []OrderWithUser
 	for _, o := range orders {
@@ -359,9 +373,9 @@ func ExportAdminOrders(c *gin.Context) {
 		"cancelled":  "已取消",
 	}
 	proofStatusLabels := map[string]string{
-		"pending":   "待审核",
-		"approved":  "已通过",
-		"rejected":  "已驳回",
+		"pending":  "待审核",
+		"approved": "已通过",
+		"rejected": "已驳回",
 	}
 
 	for _, order := range orders {
