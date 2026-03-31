@@ -13,10 +13,10 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	"bycigar-server/internal/ws"
 	imagepkg "bycigar-server/pkg/image"
 	miniopkg "bycigar-server/pkg/minio"
 	"bycigar-server/pkg/utils"
-	"bycigar-server/internal/ws"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -52,7 +52,7 @@ func CreateConversation(c *gin.Context) {
 		SenderType:     "service",
 		SenderID:       0,
 		MessageType:    "text",
-		Content:        "您好！欢迎来到 BYCIGAR，有什么可以帮助您的吗？",
+		Content:        "您好！欢迎来到 HUAUHE，有什么可以帮助您的吗？",
 	}
 	database.DB.Create(&greeting)
 

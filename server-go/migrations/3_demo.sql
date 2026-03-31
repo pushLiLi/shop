@@ -101,7 +101,7 @@ INSERT INTO `addresses` (`user_id`, `full_name`, `address_line1`, `city`, `state
 -- 快捷回复
 -- ----------------------------
 INSERT INTO `quick_replies` (`title`, `content`, `created_by`, `sort_order`, `created_at`, `updated_at`) VALUES
-('欢迎语', '您好！欢迎来到 BYCIGAR，有什么可以帮助您的吗？', 2, 1, NOW(), NOW()),
+('欢迎语', '您好！欢迎来到 HUAUHE，有什么可以帮助您的吗？', 2, 1, NOW(), NOW()),
 ('产品咨询', '感谢您的咨询，我们的产品均为正品，如有任何问题随时联系客服。', 2, 2, NOW(), NOW()),
 ('发货说明', '您的订单已发货，快递正在配送中，请注意查收。', 2, 3, NOW(), NOW()),
 ('感谢语', '感谢您的支持，祝您生活愉快！', 2, 4, NOW(), NOW()),

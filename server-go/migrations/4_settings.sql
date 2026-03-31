@@ -9,7 +9,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------
 INSERT INTO `settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
 ('site_name', 'BYCIGAR 雪茄旗舰店', NOW(), NOW()),
-('chat_greeting', '您好！欢迎来到 BYCIGAR，有什么可以帮助您的吗？', NOW(), NOW()),
+('chat_greeting', '您好！欢迎来到 HUAUHE，有什么可以帮助您的吗？', NOW(), NOW()),
 ('contact_phone', '400-888-9999', NOW(), NOW()),
 ('contact_email', 'support@bycigar.com', NOW(), NOW()),
 ('footer_content', '© 2024 BYCIGAR 版权所有', NOW(), NOW()),

@@ -189,7 +189,7 @@ INSERT INTO payment_methods (id, name, qr_code_url, payment_url, instructions, i
 -- =============================================
 INSERT INTO settings (id, `key`, value, created_at, updated_at) VALUES
 (1, 'site_name', 'BYCIGAR 雪茄旗舰店', NOW(), NOW()),
-(2, 'chat_greeting', '您好！欢迎来到 BYCIGAR，有什么可以帮助您的吗？', NOW(), NOW()),
+(2, 'chat_greeting', '您好！欢迎来到 HUAUHE，有什么可以帮助您的吗？', NOW(), NOW()),
 (3, 'contact_phone', '400-888-9999', NOW(), NOW()),
 (4, 'contact_email', 'support@bycigar.com', NOW(), NOW()),
 (5, 'footer_content', '© 2024 BYCIGAR 版权所有', NOW(), NOW()),
