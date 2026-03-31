@@ -21,14 +21,21 @@ type ConversationWithDetails struct {
 
 func GetAdminConversations(c *gin.Context) {
 	status := c.Query("status")
+	assignedTo := c.Query("assignedTo")
 
 	query := database.DB.Model(&models.Conversation{})
 	if status != "" {
 		query = query.Where("status = ?", status)
 	}
+	if assignedTo == "me" {
+		userID, _ := c.Get("userID")
+		query = query.Where("assigned_to = ?", userID)
+	} else if assignedTo == "unassigned" {
+		query = query.Where("assigned_to IS NULL")
+	}
 
 	var conversations []models.Conversation
-	query.Preload("User").
+	query.Preload("User").Preload("AssignedUser").
 		Order("last_message_at desc").
 		Find(&conversations)
 

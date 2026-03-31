@@ -56,7 +56,6 @@ func (h *Hub) Run() {
 						existing.closeSend.Do(func() { close(existing.Send) })
 					}
 					h.AdminConns[client.UserID] = client
-					delete(h.ServiceOnline, client.UserID)
 				} else {
 					if existing, ok := h.CustomerConns[client.UserID]; ok {
 						existing.closeSend.Do(func() { close(existing.Send) })
@@ -71,7 +70,6 @@ func (h *Hub) Run() {
 				if client.Role == "admin" || client.Role == "service" {
 				if existing, ok := h.AdminConns[client.UserID]; ok && existing == client {
 						delete(h.AdminConns, client.UserID)
-						delete(h.ServiceOnline, client.UserID)
 					}
 				} else {
 					if existing, ok := h.CustomerConns[client.UserID]; ok && existing == client {

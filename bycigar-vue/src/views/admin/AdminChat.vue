@@ -13,6 +13,7 @@ const conversations = ref([])
 const selectedConversation = ref(null)
 const messages = ref([])
 const filterStatus = ref('')
+const filterAssignedTo = ref('')
 const loading = ref(false)
 const messagesLoading = ref(false)
 const replyContent = ref('')
@@ -60,6 +61,10 @@ const connectWebSocket = () => {
     ws.value.onopen = () => {
       wsConnected.value = true
       wsReconnectDelay.value = 3000
+      const saved = localStorage.getItem('chat_service_online')
+      if (saved === 'true') {
+        wsSend({ type: 'service_online' })
+      }
     }
 
     ws.value.onmessage = (event) => {
@@ -178,6 +183,7 @@ const fetchConversations = async () => {
   try {
     const params = new URLSearchParams()
     if (filterStatus.value) params.append('status', filterStatus.value)
+    if (filterAssignedTo.value) params.append('assignedTo', filterAssignedTo.value)
     const res = await fetch(`${API_BASE}/admin/chat/conversations?${params}`, { headers: authHeaders() })
     const data = await res.json()
     conversations.value = data.conversations || []
@@ -395,7 +401,7 @@ const closeFullscreen = () => {
 
 const canSend = computed(() => replyContent.value.trim().length > 0 || previewBlob.value)
 
-watch(filterStatus, () => {
+watch([filterStatus, filterAssignedTo], () => {
   fetchConversations()
 })
 
@@ -424,6 +430,7 @@ const toggleServiceStatus = () => {
   const newStatus = !serviceOnline.value
   wsSend({ type: newStatus ? 'service_online' : 'service_offline' })
   serviceOnline.value = newStatus
+  localStorage.setItem('chat_service_online', String(newStatus))
 }
 
 const fetchQuickReplies = async () => {
@@ -473,10 +480,20 @@ const getAssignedName = (conv) => {
   return conv.assignedUser.name || conv.assignedUser.email
 }
 
+const claimConversation = async (conv) => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  if (!user?.id) return
+  await assignConversation(conv, user.id)
+}
 onMounted(() => {
   fetchConversations()
   connectWebSocket()
-  fetchServiceStatus()
+  const saved = localStorage.getItem('chat_service_online')
+  if (saved === 'true') {
+    serviceOnline.value = true
+  } else {
+    fetchServiceStatus()
+  }
   fetchQuickReplies()
 })
 
@@ -501,16 +518,20 @@ onUnmounted(() => {
         </div>
         <div class="filter-tabs">
           <button
-            :class="{ active: filterStatus === '' }"
-            @click="filterStatus = ''"
+            :class="{ active: filterStatus === '' && filterAssignedTo === '' }"
+            @click="filterStatus = ''; filterAssignedTo = ''"
           >全部</button>
           <button
-            :class="{ active: filterStatus === 'open' }"
-            @click="filterStatus = 'open'"
+            :class="{ active: filterStatus === 'open' && filterAssignedTo === 'me' }"
+            @click="filterStatus = 'open'; filterAssignedTo = 'me'"
+          >我的会话</button>
+          <button
+            :class="{ active: filterStatus === 'open' && filterAssignedTo === '' }"
+            @click="filterStatus = 'open'; filterAssignedTo = ''"
           >进行中</button>
           <button
             :class="{ active: filterStatus === 'closed' }"
-            @click="filterStatus = 'closed'"
+            @click="filterStatus = 'closed'; filterAssignedTo = ''"
           >已关闭</button>
         </div>
       </div>
@@ -534,7 +555,11 @@ onUnmounted(() => {
             </div>
             <div class="conv-bottom">
               <span class="conv-preview">{{ getPreviewText(conv.lastMessage) }}</span>
-              <span v-if="conv.unreadCount > 0" class="conv-badge">{{ conv.unreadCount }}</span>
+              <div class="conv-bottom-actions">
+                <span v-if="conv.assignedUser" class="conv-assigned-tag">{{ conv.assignedUser.name || conv.assignedUser.email }}</span>
+                <span v-else-if="conv.status === 'open'" class="conv-claim-btn" @click.stop="claimConversation(conv)">认领</span>
+                <span v-if="conv.unreadCount > 0" class="conv-badge">{{ conv.unreadCount }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -550,6 +575,8 @@ onUnmounted(() => {
             <span class="user-status" :class="selectedConversation.status">
               {{ selectedConversation.status === 'open' ? '进行中' : '已关闭' }}
             </span>
+            <span v-if="selectedConversation.assignedUser" class="assigned-tag header-assigned">{{ selectedConversation.assignedUser.name || selectedConversation.assignedUser.email }}</span>
+            <button v-else-if="selectedConversation.status === 'open'" class="claim-btn header-claim" @click="claimConversation(selectedConversation)">认领</button>
           </div>
           <button
             v-if="selectedConversation.status === 'open'"
@@ -889,6 +916,60 @@ onUnmounted(() => {
   padding: 0 5px;
   margin-left: 8px;
   flex-shrink: 0;
+}
+
+.conv-assigned-tag {
+  font-size: 11px;
+  color: #888;
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.conv-claim-btn {
+  font-size: 11px;
+  color: #d4a574;
+  background: #faf5f0;
+  border: 1px solid #d4a574;
+  padding: 1px 8px;
+  border-radius: 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.conv-claim-btn:hover {
+  background: #d4a574;
+  color: #fff;
+}
+
+.claim-btn.header-claim {
+  font-size: 12px;
+  padding: 2px 10px;
+  border: 1px solid #d4a574;
+  background: #faf5f0;
+  color: #d4a574;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: all 0.2s;
+}
+
+.claim-btn.header-claim:hover {
+  background: #d4a574;
+  color: #fff;
+}
+
+.assigned-tag.header-assigned {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: #f0ebe4;
+  color: #8b7355;
+  border-radius: 4px;
+  margin-left: 8px;
 }
 
 .empty-list {
