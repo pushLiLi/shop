@@ -491,7 +491,8 @@ watch(() => authStore.isLoggedIn, (val) => {
       class="chat-fab"
       :class="{
         'has-unread': chatStore.unreadCount > 0 && !chatStore.isOpen,
-        'is-offline': !chatStore.serviceOnline
+        'is-offline': !chatStore.serviceOnline,
+        'is-open': chatStore.isOpen
       }"
       @click="handleOpen"
     >
@@ -1266,12 +1267,17 @@ watch(() => authStore.isLoggedIn, (val) => {
     bottom: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     border-radius: 0;
   }
 
   .chat-fab {
     right: 16px;
     bottom: 16px;
+  }
+
+  .chat-fab.is-open {
+    display: none;
   }
 }
 </style>
