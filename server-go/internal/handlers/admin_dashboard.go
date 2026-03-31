@@ -18,8 +18,17 @@ func GetDashboardStats(c *gin.Context) {
 		Select("COALESCE(SUM(total), 0)").
 		Scan(&totalRevenue)
 
+	var summaryRevenue float64
+	database.DB.Model(&models.OrderSummary{}).
+		Select("COALESCE(SUM(total_revenue), 0)").
+		Scan(&summaryRevenue)
+	totalRevenue += summaryRevenue
+
 	var totalOrders int64
 	database.DB.Model(&models.Order{}).Count(&totalOrders)
+	var summaryOrders int64
+	database.DB.Model(&models.OrderSummary{}).Select("COALESCE(SUM(total_orders), 0)").Scan(&summaryOrders)
+	totalOrders += summaryOrders
 
 	var totalUsers int64
 	database.DB.Model(&models.User{}).Count(&totalUsers)
@@ -116,15 +125,23 @@ func GetRevenueByDate(c *gin.Context) {
 	startDate := time.Now().AddDate(0, 0, -days+1).Truncate(24 * time.Hour)
 
 	type DailyRevenue struct {
-		Date     string  `json:"date"`
-		Revenue  float64 `json:"revenue"`
-		Orders   int     `json:"orders"`
+		Date    string  `json:"date"`
+		Revenue float64 `json:"revenue"`
+		Orders  int     `json:"orders"`
 	}
 
 	var results []DailyRevenue
+	summaryMap := make(map[string]models.OrderSummary)
+	var summaries []models.OrderSummary
+	database.DB.Where("date >= ?", startDate.Format("2006-01-02")).Find(&summaries)
+	for _, s := range summaries {
+		summaryMap[s.Date] = s
+	}
+
 	for i := 0; i < days; i++ {
 		day := startDate.AddDate(0, 0, i)
 		nextDay := day.AddDate(0, 0, 1)
+		dateStr := day.Format("2006-01-02")
 
 		var revenue float64
 		var orders int64
@@ -136,8 +153,13 @@ func GetRevenueByDate(c *gin.Context) {
 			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
 			Count(&orders)
 
+		if summary, ok := summaryMap[dateStr]; ok {
+			revenue += summary.TotalRevenue
+			orders += int64(summary.CompletedOrders)
+		}
+
 		results = append(results, DailyRevenue{
-			Date:    day.Format("2006-01-02"),
+			Date:    dateStr,
 			Revenue: revenue,
 			Orders:  int(orders),
 		})
