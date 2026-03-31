@@ -208,7 +208,7 @@ func GetCategories(c *gin.Context) {
 	var categories []models.Category
 	database.DB.Where("parent_id IS NULL").Preload("Children").Find(&categories)
 
-	var result []CategoryWithCount
+	result := make([]CategoryWithCount, 0)
 	for _, cat := range categories {
 		ids := []uint{cat.ID}
 		for _, child := range cat.Children {
@@ -227,6 +227,13 @@ func GetCategories(c *gin.Context) {
 	categoriesCacheTime = time.Now()
 
 	c.Data(http.StatusOK, "application/json; charset=utf-8", data)
+}
+
+func InvalidateCategoriesCache() {
+	categoriesCacheMu.Lock()
+	defer categoriesCacheMu.Unlock()
+	categoriesCache = nil
+	categoriesCacheTime = time.Time{}
 }
 
 // GetTopSelling godoc

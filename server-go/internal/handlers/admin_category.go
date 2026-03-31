@@ -51,6 +51,7 @@ func CreateCategory(c *gin.Context) {
 		return
 	}
 
+	InvalidateCategoriesCache()
 	c.JSON(http.StatusCreated, category)
 }
 
@@ -97,6 +98,7 @@ func UpdateCategory(c *gin.Context) {
 		return
 	}
 
+	InvalidateCategoriesCache()
 	c.JSON(http.StatusOK, category)
 }
 
@@ -144,6 +146,7 @@ func DeleteCategory(c *gin.Context) {
 		return
 	}
 
+	InvalidateCategoriesCache()
 	c.JSON(http.StatusOK, gin.H{"message": "分类已删除"})
 }
 
