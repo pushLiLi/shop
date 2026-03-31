@@ -2,11 +2,13 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	"bycigar-server/pkg/email"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -67,6 +69,10 @@ func GetSettings(c *gin.Context) {
 		return
 	}
 
+	if result["email_smtp_password"] != "" {
+		result["email_smtp_password"] = "****"
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 }
 
@@ -112,6 +118,10 @@ func UpdateSetting(c *gin.Context) {
 	settingCacheMu.Lock()
 	settingCache = nil
 	settingCacheMu.Unlock()
+
+	if strings.HasPrefix(key, "email_") {
+		email.InvalidateEmailCache()
+	}
 
 	utils.SuccessResponse(c, setting)
 }

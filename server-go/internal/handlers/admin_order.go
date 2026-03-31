@@ -11,6 +11,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 	"bycigar-server/internal/ws"
+	"bycigar-server/pkg/email"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -326,6 +327,10 @@ func UpdateOrderStatus(c *gin.Context) {
 			"type":         "notification",
 			"notification": notification,
 		})
+
+		if input.Status == models.OrderStatusShipped {
+			go email.SendShippingNotification(order)
+		}
 	}
 
 	c.JSON(http.StatusOK, order)
