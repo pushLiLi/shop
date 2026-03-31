@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -8,6 +9,7 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
+	miniopkg "bycigar-server/pkg/minio"
 
 	"github.com/gin-gonic/gin"
 )
@@ -133,13 +135,20 @@ func UpdateBanner(c *gin.Context) {
 	}
 
 	banner.Title = input.Title
-	banner.Image = input.Image
 	banner.Link = input.Link
 	banner.SortOrder = input.SortOrder
 	banner.IsActive = input.IsActive
 
+	oldImage := banner.Image
+	banner.Image = input.Image
+
 	database.DB.Save(&banner)
 	invalidateBannerCache()
+
+	if oldImage != "" && oldImage != input.Image {
+		miniopkg.DeleteObjects([]string{oldImage})
+	}
+
 	c.JSON(http.StatusOK, banner)
 }
 
@@ -160,7 +169,22 @@ func DeleteBanner(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid banner ID"})
 		return
 	}
+
+	var banner models.Banner
+	if err := database.DB.First(&banner, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Banner not found"})
+		return
+	}
+
 	database.DB.Delete(&models.Banner{}, id)
 	invalidateBannerCache()
+
+	if banner.Image != "" {
+		deleted := miniopkg.DeleteObjects([]string{banner.Image})
+		if deleted > 0 {
+			log.Printf("DeleteBanner: deleted %d MinIO objects for banner %d", deleted, id)
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Banner deleted"})
 }

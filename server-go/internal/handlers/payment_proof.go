@@ -113,10 +113,14 @@ func UploadPaymentProof(c *gin.Context) {
 	hasExisting := database.DB.Where("order_id = ? AND status = ?", order.ID, models.PaymentProofStatusPending).First(&existingProof).Error == nil
 
 	if hasExisting {
+		oldImageURL := existingProof.ImageUrl
 		database.DB.Model(&existingProof).Updates(map[string]interface{}{
 			"payment_method_id": paymentMethodID,
 			"image_url":         imageUrl,
 		})
+		if oldImageURL != "" && oldImageURL != imageUrl {
+			miniopkg.DeleteObjects([]string{oldImageURL})
+		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "paymentProof": existingProof})
 	} else {
 		proof := models.PaymentProof{

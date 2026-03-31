@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"bycigar-server/internal/config"
 
@@ -64,4 +65,33 @@ func setBucketPolicy(ctx context.Context, bucketName string) {
 		log.Fatal("Failed to set bucket policy:", err)
 	}
 	log.Println("Set bucket policy: public read:", bucketName)
+}
+
+func URLToObjectKey(url string) string {
+	prefix := "/media/" + Bucket + "/"
+	if !strings.HasPrefix(url, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(url, prefix)
+}
+
+func DeleteObject(objectURL string) error {
+	objectKey := URLToObjectKey(objectURL)
+	if objectKey == "" {
+		return nil
+	}
+	ctx := context.Background()
+	return Client.RemoveObject(ctx, Bucket, objectKey, miniov7.RemoveObjectOptions{})
+}
+
+func DeleteObjects(objectURLs []string) int {
+	deleted := 0
+	for _, url := range objectURLs {
+		if err := DeleteObject(url); err != nil {
+			log.Printf("MinIO: failed to delete %s: %v", url, err)
+		} else {
+			deleted++
+		}
+	}
+	return deleted
 }
