@@ -12,6 +12,7 @@ type User struct {
 	Password  string         `json:"-" gorm:"not null"`
 	Name      string         `json:"name"`
 	Role      string         `json:"role" gorm:"default:'customer'"`
+	IsBanned  bool           `json:"isBanned" gorm:"default:false"`
 	CreatedAt time.Time      `json:"createdAt"`
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`

@@ -197,3 +197,117 @@ func UpdateUserRole(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+// BanUser godoc
+// @Summary 封禁用户
+// @Description 超级管理员封禁指定用户，该用户将无法登录和访问任何接口
+// @Tags admin-users
+// @Produce json
+// @Param id path int true "用户ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/admin/users/{id}/ban [put]
+func BanUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的用户ID")
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "用户不存在")
+		return
+	}
+
+	if user.Role == "admin" {
+		utils.ErrorResponse(c, http.StatusForbidden, "不能封禁超级管理员")
+		return
+	}
+
+	user.IsBanned = true
+	database.DB.Save(&user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "用户已封禁", "user": user})
+}
+
+// UnbanUser godoc
+// @Summary 解封用户
+// @Description 超级管理员解封指定用户
+// @Tags admin-users
+// @Produce json
+// @Param id path int true "用户ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/admin/users/{id}/unban [put]
+func UnbanUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的用户ID")
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "用户不存在")
+		return
+	}
+
+	user.IsBanned = false
+	database.DB.Save(&user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "用户已解封", "user": user})
+}
+
+// DeleteUser godoc
+// @Summary 删除用户
+// @Description 超级管理员删除指定用户，级联删除其所有关联数据（订单、购物车、收藏、地址、通知等）
+// @Tags admin-users
+// @Produce json
+// @Param id path int true "用户ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/admin/users/{id} [delete]
+func DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "无效的用户ID")
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, id).Error; err != nil {
+		utils.ErrorResponse(c, http.StatusNotFound, "用户不存在")
+		return
+	}
+
+	if user.Role == "admin" {
+		utils.ErrorResponse(c, http.StatusForbidden, "不能删除超级管理员")
+		return
+	}
+
+	db := database.DB
+
+	var orderIDs []uint
+	db.Model(&models.Order{}).Where("user_id = ?", id).Pluck("id", &orderIDs)
+	if len(orderIDs) > 0 {
+		db.Where("order_id IN ?", orderIDs).Delete(&models.PaymentProof{})
+		db.Where("order_id IN ?", orderIDs).Delete(&models.OrderItem{})
+		db.Where("order_id IN ?", orderIDs).Delete(&models.OrderSummary{})
+	}
+	db.Where("user_id = ?", id).Delete(&models.Order{})
+
+	db.Where("user_id = ?", id).Delete(&models.CartItem{})
+	db.Where("user_id = ?", id).Delete(&models.Favorite{})
+	db.Where("user_id = ?", id).Delete(&models.Address{})
+	db.Where("user_id = ?", id).Delete(&models.Notification{})
+
+	var conversationIDs []uint
+	db.Model(&models.Conversation{}).Where("user_id = ?", id).Pluck("id", &conversationIDs)
+	if len(conversationIDs) > 0 {
+		db.Where("conversation_id IN ?", conversationIDs).Delete(&models.Rating{})
+		db.Where("conversation_id IN ?", conversationIDs).Delete(&models.Message{})
+	}
+	db.Where("user_id = ?", id).Delete(&models.Conversation{})
+
+	db.Delete(&user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "用户已删除"})
+}

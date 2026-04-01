@@ -24,6 +24,7 @@ import AdminUsers from '../views/admin/AdminUsers.vue'
 import AdminChat from '../views/admin/AdminChat.vue'
 import AdminPaymentMethods from '../views/admin/AdminPaymentMethods.vue'
 import AdminContactMethods from '../views/admin/AdminContactMethods.vue'
+import AdminCleanup from '../views/admin/AdminCleanup.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -174,6 +175,12 @@ const router = createRouter({
           name: 'admin-contact-methods',
           component: AdminContactMethods,
           meta: { title: '联系方式', requiresSuperAdmin: true }
+        },
+        {
+          path: 'cleanup',
+          name: 'admin-cleanup',
+          component: AdminCleanup,
+          meta: { title: '数据清理', requiresSuperAdmin: true }
         }
       ]
     }

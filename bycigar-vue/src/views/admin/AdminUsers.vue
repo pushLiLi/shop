@@ -30,6 +30,10 @@ const selectedRole = ref('')
 const showResetModal = ref(false)
 const resetUser = ref(null)
 
+const showDeleteModal = ref(false)
+const deleteUser = ref(null)
+const deleteConfirmText = ref('')
+
 const authHeaders = () => ({
   'Content-Type': 'application/json',
   'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -163,6 +167,49 @@ const resetPassword = async () => {
   }
 }
 
+const toggleBan = async (user) => {
+  try {
+    const action = user.isBanned ? 'unban' : 'ban'
+    const res = await fetch(`${API_BASE}/admin/users/${user.id}/${action}`, {
+      method: 'PUT',
+      headers: authHeaders()
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || '操作失败')
+    }
+    toast.success(user.isBanned ? '用户已解封' : '用户已封禁')
+    fetchUsers()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
+const openDeleteModal = (user) => {
+  deleteUser.value = user
+  deleteConfirmText.value = ''
+  showDeleteModal.value = true
+}
+
+const confirmDeleteUser = async () => {
+  if (deleteConfirmText.value !== '确认删除') return
+  try {
+    const res = await fetch(`${API_BASE}/admin/users/${deleteUser.value.id}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || '删除失败')
+    }
+    toast.success('用户已删除')
+    showDeleteModal.value = false
+    fetchUsers()
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+
 const formatPrice = (price) => `¥${parseFloat(price || 0).toFixed(2)}`
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 const formatAddress = (addr) => `${addr.fullName} ${addr.phone} ${addr.state}${addr.city}${addr.addressLine1}${addr.addressLine2 ? ' ' + addr.addressLine2 : ''} ${addr.zipCode}`
@@ -228,10 +275,11 @@ onMounted(() => fetchUsers())
             <th class="sortable-th" @click="handleSort('email')">邮箱{{ sortIcon('email') }}</th>
             <th class="sortable-th" @click="handleSort('name')">姓名{{ sortIcon('name') }}</th>
             <th style="width: 100px" class="sortable-th" @click="handleSort('role')">角色{{ sortIcon('role') }}</th>
+            <th style="width: 80px">状态</th>
             <th style="width: 100px">订单数</th>
             <th style="width: 120px">消费金额</th>
             <th style="width: 170px" class="sortable-th" @click="handleSort('createdAt')">注册时间{{ sortIcon('createdAt') }}</th>
-            <th style="width: 140px">操作</th>
+            <th style="width: 220px">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -244,6 +292,10 @@ onMounted(() => fetchUsers())
                 {{ roleLabels[user.role] || user.role }}
               </span>
             </td>
+            <td>
+              <span v-if="user.isBanned" class="badge badge-banned">已封禁</span>
+              <span v-else class="badge badge-active">正常</span>
+            </td>
             <td>{{ user.orderCount }}</td>
             <td>{{ formatPrice(user.totalSpent) }}</td>
             <td class="time-cell">{{ formatDate(user.createdAt) }}</td>
@@ -251,10 +303,12 @@ onMounted(() => fetchUsers())
               <button class="btn-view" @click="openDetail(user)">详情</button>
               <button v-if="authStore.isSuperAdmin || user.role !== 'admin'" class="btn-reset-pwd" @click="openResetModal(user)">重置密码</button>
               <button v-if="authStore.isSuperAdmin" class="btn-role" @click="openRoleModal(user)">角色</button>
+              <button v-if="authStore.isSuperAdmin && user.role !== 'admin'" class="btn-ban" :class="{ 'btn-unban': user.isBanned }" @click="toggleBan(user)">{{ user.isBanned ? '解封' : '封禁' }}</button>
+              <button v-if="authStore.isSuperAdmin && user.role !== 'admin'" class="btn-delete" @click="openDeleteModal(user)">删除</button>
             </td>
           </tr>
           <tr v-if="users.length === 0">
-            <td colspan="8" class="empty-text">暂无用户数据</td>
+            <td colspan="9" class="empty-text">暂无用户数据</td>
           </tr>
         </tbody>
       </table>
@@ -359,6 +413,27 @@ onMounted(() => fetchUsers())
         <div class="modal-footer">
           <button class="btn-cancel" @click="showResetModal = false">取消</button>
           <button class="btn-save btn-danger" @click="resetPassword">确认重置</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>删除用户</h3>
+          <button class="modal-close" @click="showDeleteModal = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>确认删除用户 <strong>{{ deleteUser?.email }}</strong>？</p>
+          <p class="delete-warning">该操作将同时删除该用户的所有订单、购物车、收藏、地址、通知和会话数据，且不可恢复。</p>
+          <div class="form-group">
+            <label>请输入"确认删除"以继续</label>
+            <input v-model="deleteConfirmText" type="text" placeholder="确认删除" class="confirm-input">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showDeleteModal = false">取消</button>
+          <button class="btn-save btn-danger" :disabled="deleteConfirmText !== '确认删除'" @click="confirmDeleteUser">确认删除</button>
         </div>
       </div>
     </div>
@@ -532,13 +607,16 @@ onMounted(() => fetchUsers())
 
 .btn-view,
 .btn-role,
-.btn-reset-pwd {
+.btn-reset-pwd,
+.btn-ban,
+.btn-delete {
   padding: 5px 10px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 12px;
   margin-right: 5px;
+  margin-bottom: 3px;
   transition: all 0.2s;
 }
 
@@ -567,6 +645,63 @@ onMounted(() => fetchUsers())
 
 .btn-reset-pwd:hover {
   background: #f8bbd0;
+}
+
+.btn-ban {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.btn-ban:hover {
+  background: #ffe0b2;
+}
+
+.btn-unban {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.btn-unban:hover {
+  background: #c8e6c9;
+}
+
+.btn-delete {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.btn-delete:hover {
+  background: #ffcdd2;
+}
+
+.badge-banned {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.badge-active {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.delete-warning {
+  color: #c62828;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.confirm-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.confirm-input:focus {
+  outline: none;
+  border-color: #d4a574;
 }
 
 .empty-text {

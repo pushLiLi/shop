@@ -196,6 +196,9 @@ func main() {
 		superAdmin.PUT("/settings/:key", handlers.UpdateSetting)
 
 		superAdmin.PUT("/users/:id/role", handlers.UpdateUserRole)
+		superAdmin.PUT("/users/:id/ban", handlers.BanUser)
+		superAdmin.PUT("/users/:id/unban", handlers.UnbanUser)
+		superAdmin.DELETE("/users/:id", handlers.DeleteUser)
 
 		superAdmin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
 		superAdmin.POST("/payment-methods", handlers.CreatePaymentMethod)
@@ -208,6 +211,7 @@ func main() {
 		superAdmin.DELETE("/contact-methods/:id", handlers.DeleteContactMethod)
 
 		superAdmin.POST("/email/test", handlers.TestEmail)
+		superAdmin.POST("/cleanup", handlers.BatchCleanup)
 	}
 
 	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)

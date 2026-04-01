@@ -206,6 +206,11 @@ func Login(c *gin.Context) {
 
 	clearFailures(key)
 
+	if user.IsBanned {
+		c.JSON(http.StatusForbidden, gin.H{"error": "账号已被封禁，请联系客服"})
+		return
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": user.ID,
 		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(),
@@ -253,10 +258,11 @@ func GetProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
-			"id":    user.ID,
-			"email": user.Email,
-			"name":  user.Name,
-			"role":  user.Role,
+			"id":       user.ID,
+			"email":    user.Email,
+			"name":     user.Name,
+			"role":     user.Role,
+			"isBanned": user.IsBanned,
 		},
 	})
 }

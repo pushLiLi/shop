@@ -415,6 +415,9 @@ func SetupRouter() *gin.Engine {
 		superAdmin.PUT("/settings/:key", handlers.UpdateSetting)
 
 		superAdmin.PUT("/users/:id/role", handlers.UpdateUserRole)
+		superAdmin.PUT("/users/:id/ban", handlers.BanUser)
+		superAdmin.PUT("/users/:id/unban", handlers.UnbanUser)
+		superAdmin.DELETE("/users/:id", handlers.DeleteUser)
 
 		superAdmin.GET("/payment-methods", handlers.GetAdminPaymentMethods)
 		superAdmin.POST("/payment-methods", handlers.CreatePaymentMethod)
@@ -427,6 +430,7 @@ func SetupRouter() *gin.Engine {
 		superAdmin.DELETE("/contact-methods/:id", handlers.DeleteContactMethod)
 
 		superAdmin.POST("/email/test", handlers.TestEmail)
+		superAdmin.POST("/cleanup", handlers.BatchCleanup)
 	}
 
 	return r

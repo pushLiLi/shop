@@ -77,6 +77,12 @@ func RequireAuth() gin.HandlerFunc {
 			return
 		}
 
+		if user.IsBanned {
+			c.JSON(http.StatusForbidden, gin.H{"error": "账号已被封禁"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }
