@@ -1,2 +1,33 @@
 *.exe
 nul
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+server
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.db
+*.log
+__pycache__/
+.vite/
+.claude/
+.crush/

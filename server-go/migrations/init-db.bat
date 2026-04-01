@@ -43,8 +43,8 @@ mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% -e "CREATE DATABASE IF
 echo [OK] 数据库创建完成
 
 echo.
-echo [3/5] 导入表结构 (001_init_schema.sql)...
-mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "001_init_schema.sql" >nul 2>&1
+echo [3/5] 导入表结构 (1_schema.sql)...
+mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "1_schema.sql" >nul 2>&1
 if errorlevel 1 (
     echo [错误] 表结构导入失败
     pause
@@ -54,9 +54,9 @@ echo [OK] 表结构导入完成
 
 echo.
 echo [4/5] 导入种子数据...
-mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "002_seed_base.sql" >nul 2>&1
-mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "003_seed_demo.sql" >nul 2>&1
-mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "004_seed_settings.sql" >nul 2>&1
+mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "2_base.sql" >nul 2>&1
+mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "3_demo.sql" >nul 2>&1
+mysql -h%DB_HOST% -P%DB_PORT% -u%DB_USER% -p%DB_PASSWORD% %DB_NAME% < "4_settings.sql" >nul 2>&1
 echo [OK] 种子数据导入完成
 
 echo.
