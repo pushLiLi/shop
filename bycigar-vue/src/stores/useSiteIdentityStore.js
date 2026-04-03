@@ -5,7 +5,7 @@ const API_BASE = '/api'
 
 export const useSiteIdentityStore = defineStore('siteIdentity', () => {
   const identity = ref({
-    title: 'BYCIGAR | 权威正品雪茄在线购买商城',
+    title: '华烟阁 香烟商城',
     metaDescription: '',
     faviconUrl: '/favicon.png'
   })
