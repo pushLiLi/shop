@@ -65,8 +65,13 @@ func AddFavorite(c *gin.Context) {
 		return
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 	favorite := models.Favorite{
-		UserID:    userID.(uint),
+		UserID:    uid,
 		ProductID: input.ProductID,
 	}
 	database.DB.Create(&favorite)

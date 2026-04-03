@@ -16,6 +16,7 @@ import (
 	"bycigar-server/internal/ws"
 	imagepkg "bycigar-server/pkg/image"
 	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -123,9 +124,14 @@ func UploadPaymentProof(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "paymentProof": existingProof})
 	} else {
+		uid, ok := userID.(uint)
+		if !ok {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
 		proof := models.PaymentProof{
 			OrderID:         order.ID,
-			UserID:          userID.(uint),
+			UserID:          uid,
 			PaymentMethodID: uint(paymentMethodID),
 			ImageUrl:        imageUrl,
 			Status:          models.PaymentProofStatusPending,

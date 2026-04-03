@@ -16,6 +16,11 @@ import (
 
 func StartImageCleanup(db *gorm.DB) {
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("ImageCleanup panic recovered: %v", r)
+			}
+		}()
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 

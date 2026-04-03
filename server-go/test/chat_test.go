@@ -146,9 +146,9 @@ func (s *ChatTestSuite) TestSendMessageImageType() {
 	convID := int(resp["conversation"].(map[string]interface{})["id"].(float64))
 
 	body := map[string]interface{}{
-		"content":       "/media/test.jpg",
-		"messageType":   "image",
-		"thumbnailUrl":  "/media/test_thumb.jpg",
+		"content":      "/media/test.jpg",
+		"messageType":  "image",
+		"thumbnailUrl": "/media/test_thumb.jpg",
 	}
 	w = MakeRequest(s.router, "POST", fmt.Sprintf("/api/chat/conversations/%d/messages", convID), body, GetCustomerAuthHeader())
 	s.Equal(http.StatusOK, w.Code)

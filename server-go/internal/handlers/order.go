@@ -89,9 +89,15 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	order := models.Order{
 		OrderNo:   utils.GenerateOrderNo(),
-		UserID:    userID.(uint),
+		UserID:    uid,
 		AddressID: input.AddressID,
 		Total:     total,
 		Remark:    input.Remark,

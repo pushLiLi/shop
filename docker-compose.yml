@@ -7,8 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       MYSQL_DATABASE: bycigar
-    ports:
-      - "3306:3306"
+    # ports:  # 生产环境不暴露，仅开发时取消注释
+    #   - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql/my.cnf:/etc/mysql/conf.d/my.cnf

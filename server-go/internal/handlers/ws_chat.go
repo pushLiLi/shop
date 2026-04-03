@@ -53,7 +53,11 @@ func HandleCustomerWS(c *gin.Context) {
 		return
 	}
 
-	uid := userID.(uint)
+	uid, ok := userID.(uint)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	client := &ws.Client{
 		UserID: uid,
@@ -333,10 +337,10 @@ func handleCustomerCloseConvWS(client *ws.Client, msg WSMessage) {
 
 	systemMsg := models.Message{
 		ConversationID: convID,
-		SenderType:    "system",
-		SenderID:      0,
-		MessageType:   "text",
-		Content:       "客户已结束对话",
+		SenderType:     "system",
+		SenderID:       0,
+		MessageType:    "text",
+		Content:        "客户已结束对话",
 	}
 	database.DB.Create(&systemMsg)
 

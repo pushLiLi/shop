@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -26,7 +27,51 @@ var (
 	failureMutex  sync.Mutex
 )
 
-const maxLoginAttempts = 3
+const (
+	maxLoginAttempts        = 3
+	maxLoginFailureEntries  = 10000
+	loginFailureExpiration  = 15 * time.Minute
+)
+
+func init() {
+	go startLoginFailureCleanup()
+}
+
+func startLoginFailureCleanup() {
+	ticker := time.NewTicker(30 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		cleanupLoginFailures()
+	}
+}
+
+func cleanupLoginFailures() {
+	failureMutex.Lock()
+	defer failureMutex.Unlock()
+
+	cutoff := time.Now().Add(-loginFailureExpiration)
+	for key, attempt := range loginFailures {
+		if attempt.lastAttempt.Before(cutoff) {
+			delete(loginFailures, key)
+		}
+	}
+
+	if len(loginFailures) > maxLoginFailureEntries {
+		type kv struct {
+			key string
+			t   time.Time
+		}
+		var entries []kv
+		for k, a := range loginFailures {
+			entries = append(entries, kv{k, a.lastAttempt})
+		}
+
+		for i := 0; i < len(entries)-maxLoginFailureEntries; i++ {
+			delete(loginFailures, entries[i].key)
+		}
+		log.Printf("LoginFailures cleanup: trimmed to %d entries", maxLoginFailureEntries)
+	}
+}
 
 func getRequireCaptcha(key string) bool {
 	failureMutex.Lock()
@@ -35,7 +80,7 @@ func getRequireCaptcha(key string) bool {
 	if !ok {
 		return false
 	}
-	if time.Since(a.lastAttempt) > 15*time.Minute {
+	if time.Since(a.lastAttempt) > loginFailureExpiration {
 		delete(loginFailures, key)
 		return false
 	}

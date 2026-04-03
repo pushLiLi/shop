@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/csv"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -329,7 +330,14 @@ func UpdateOrderStatus(c *gin.Context) {
 		})
 
 		if input.Status == models.OrderStatusShipped {
-			go email.SendShippingNotification(order)
+			go func() {
+				defer func() {
+					if r := recover(); r != nil {
+						log.Printf("SendShippingNotification panic recovered (orderNo=%s): %v", order.OrderNo, r)
+					}
+				}()
+				email.SendShippingNotification(order)
+			}()
 		}
 	}
 
@@ -338,6 +346,13 @@ func UpdateOrderStatus(c *gin.Context) {
 
 func ExportAdminOrders(c *gin.Context) {
 	query, orderClause := buildOrderQuery(c)
+
+	var total int64
+	query.Count(&total)
+	if total > 10000 {
+		utils.ErrorResponse(c, http.StatusBadRequest, "Too many records to export (max: 10000). Please use filters to narrow down the results.")
+		return
+	}
 
 	var orders []models.Order
 	query.Preload("Items.Product").Preload("Address").

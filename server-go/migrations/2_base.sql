@@ -166,15 +166,15 @@ ON DUPLICATE KEY UPDATE `title` = VALUES(`title`), `image` = VALUES(`image`), `l
 -- ----------------------------
 -- 支付方式
 -- ----------------------------
-INSERT INTO `payment_methods` (`name`, `qr_code_url`, `instructions`, `is_active`, `sort_order`, `created_at`, `updated_at`) VALUES
-('微信支付', 'https://picsum.photos/seed/wxpay/200/200', '请扫描二维码支付', 1, 1, NOW(), NOW()),
-('支付宝', 'https://picsum.photos/seed/alipay/200/200', '请扫描二维码支付', 1, 2, NOW(), NOW()),
-('银行转账', '', '转账至指定银行账户', 1, 3, NOW(), NOW()),
-('微信支付(旧版)', 'https://picsum.photos/seed/wxpay-old/200/200', '已停用，请使用新版', 0, 4, NOW(), NOW()),
-('支付宝(旧版)', 'https://picsum.photos/seed/alipay-old/200/200', '已停用，请使用新版', 0, 5, NOW(), NOW()),
-('货到付款', '', '收货时付款', 1, 6, NOW(), NOW()),
+INSERT INTO `payment_methods` (`name`, `qr_code_url`, `payment_url`, `instructions`, `is_active`, `sort_order`, `created_at`, `updated_at`) VALUES
+('微信支付', 'https://picsum.photos/seed/wxpay/200/200', '', '请扫描二维码支付', 1, 1, NOW(), NOW()),
+('支付宝', 'https://picsum.photos/seed/alipay/200/200', '', '请扫描二维码支付', 1, 2, NOW(), NOW()),
+('银行转账', '', '', '转账至指定银行账户', 1, 3, NOW(), NOW()),
+('微信支付(旧版)', 'https://picsum.photos/seed/wxpay-old/200/200', '', '已停用，请使用新版', 0, 4, NOW(), NOW()),
+('支付宝(旧版)', 'https://picsum.photos/seed/alipay-old/200/200', '', '已停用，请使用新版', 0, 5, NOW(), NOW()),
+('货到付款', '', '', '收货时付款', 1, 6, NOW(), NOW()),
 ('PayPal', '', 'https://paypal.me/yourname', '点击上方按钮前往 PayPal 完成付款，付款后请上传截图', 1, 7, NOW(), NOW()),
-('企业转账', '', '仅限企业客户', 0, 8, NOW(), NOW())
+('企业转账', '', '', '仅限企业客户', 0, 8, NOW(), NOW())
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `qr_code_url` = VALUES(`qr_code_url`), `instructions` = VALUES(`instructions`), `is_active` = VALUES(`is_active`), `sort_order` = VALUES(`sort_order`);
 
 -- ----------------------------

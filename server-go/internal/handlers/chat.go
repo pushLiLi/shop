@@ -37,8 +37,14 @@ func CreateConversation(c *gin.Context) {
 		return
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	conversation = models.Conversation{
-		UserID:        userID.(uint),
+		UserID:        uid,
 		Status:        "open",
 		LastMessageAt: time.Now(),
 	}
@@ -163,10 +169,16 @@ func SendMessage(c *gin.Context) {
 		return
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	message := models.Message{
 		ConversationID: uint(conversationID),
 		SenderType:     "customer",
-		SenderID:       userID.(uint),
+		SenderID:       uid,
 		MessageType:    msgType,
 		Content:        input.Content,
 		ThumbnailURL:   input.ThumbnailURL,
@@ -180,12 +192,12 @@ func SendMessage(c *gin.Context) {
 	database.DB.Model(&conversation).Update("last_message_at", now)
 
 	convID := uint(conversationID)
-	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+	ws.DefaultHub.SendToUser(uid, WSResponse{
 		Type:           "new_message",
 		Message:        message,
 		ConversationID: convID,
 	})
-	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+	ws.DefaultHub.SendToUser(uid, WSResponse{
 		Type:         "conversation_updated",
 		Conversation: buildConversationDetail(convID),
 	})
@@ -312,6 +324,12 @@ func CustomerCloseConversation(c *gin.Context) {
 
 	convID := uint(conversationID)
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	systemMsg := models.Message{
 		ConversationID: convID,
 		SenderType:     "system",
@@ -323,12 +341,12 @@ func CustomerCloseConversation(c *gin.Context) {
 
 	database.DB.Model(&conversation).Update("status", "closed")
 
-	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+	ws.DefaultHub.SendToUser(uid, WSResponse{
 		Type:           "new_message",
 		Message:        systemMsg,
 		ConversationID: convID,
 	})
-	ws.DefaultHub.SendToUser(userID.(uint), WSResponse{
+	ws.DefaultHub.SendToUser(uid, WSResponse{
 		Type:           "conversation_closed",
 		ConversationID: convID,
 	})

@@ -1,7 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	_ "bycigar-server/docs"
 	"bycigar-server/internal/config"
@@ -214,8 +220,37 @@ func main() {
 		superAdmin.POST("/cleanup", handlers.BatchCleanup)
 	}
 
-	log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)
-	if err := r.Run(":" + config.AppConfig.ServerPort); err != nil {
-		log.Fatal("Failed to start server:", err)
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"timestamp": time.Now().Unix(),
+		})
+	})
+
+	srv := &http.Server{
+		Addr:    ":" + config.AppConfig.ServerPort,
+		Handler: r,
 	}
+
+	go func() {
+		log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("Failed to start server:", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("Server shutdown error: %v", err)
+	}
+
+	ws.DefaultHub.Shutdown()
+	log.Println("Server exited")
 }

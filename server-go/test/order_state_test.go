@@ -88,9 +88,9 @@ func (s *OrderStateTestSuite) TestPendingToShipped_illegal() {
 	orderID, _ := s.createPendingOrder()
 
 	body := map[string]interface{}{
-		"status":           models.OrderStatusShipped,
-		"trackingCompany":  "SF",
-		"trackingNumber":   "SF123456",
+		"status":          models.OrderStatusShipped,
+		"trackingCompany": "SF",
+		"trackingNumber":  "SF123456",
 	}
 	w := MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID), body, GetAdminAuthHeader())
 	s.Equal(http.StatusBadRequest, w.Code)
@@ -115,9 +115,9 @@ func (s *OrderStateTestSuite) TestProcessingToShipped() {
 
 	w = MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
-			"trackingCompany":  "SF Express",
-			"trackingNumber":   "SF123456789",
+			"status":          models.OrderStatusShipped,
+			"trackingCompany": "SF Express",
+			"trackingNumber":  "SF123456789",
 		}, GetAdminAuthHeader())
 	s.Equal(http.StatusOK, w.Code)
 
@@ -163,9 +163,9 @@ func (s *OrderStateTestSuite) TestShippedToCompleted() {
 
 	w = MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
-			"trackingCompany":  "SF",
-			"trackingNumber":   "SF123",
+			"status":          models.OrderStatusShipped,
+			"trackingCompany": "SF",
+			"trackingNumber":  "SF123",
 		}, GetAdminAuthHeader())
 	s.Equal(http.StatusOK, w.Code)
 
@@ -187,9 +187,9 @@ func (s *OrderStateTestSuite) TestShippedToCancelled_illegal() {
 
 	w = MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
-			"trackingCompany":  "SF",
-			"trackingNumber":   "SF123",
+			"status":          models.OrderStatusShipped,
+			"trackingCompany": "SF",
+			"trackingNumber":  "SF123",
 		}, GetAdminAuthHeader())
 	s.Equal(http.StatusOK, w.Code)
 
@@ -215,9 +215,9 @@ func (s *OrderStateTestSuite) TestShipOrderMissingTracking() {
 
 	w = MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
-			"trackingCompany":  "SF",
-			"trackingNumber":   "",
+			"status":          models.OrderStatusShipped,
+			"trackingCompany": "SF",
+			"trackingNumber":  "",
 		}, GetAdminAuthHeader())
 	s.Equal(http.StatusBadRequest, w.Code)
 }
@@ -231,7 +231,7 @@ func (s *OrderStateTestSuite) TestCompletedTerminal() {
 
 	w = MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
+			"status":          models.OrderStatusShipped,
 			"trackingCompany": "SF",
 			"trackingNumber":  "SF123",
 		}, GetAdminAuthHeader())
@@ -309,9 +309,9 @@ func (s *OrderStateTestSuite) TestOrderStatusChangeTriggersNotification() {
 
 	w := MakeRequest(s.router, "PUT", fmt.Sprintf("/api/admin/orders/%d/status", orderID),
 		map[string]interface{}{
-			"status":           models.OrderStatusShipped,
-			"trackingCompany":  "SF",
-			"trackingNumber":   "SF123",
+			"status":          models.OrderStatusShipped,
+			"trackingCompany": "SF",
+			"trackingNumber":  "SF123",
 		}, GetAdminAuthHeader())
 	s.Equal(http.StatusOK, w.Code)
 

@@ -152,10 +152,16 @@ func AdminSendMessage(c *gin.Context) {
 		return
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	message := models.Message{
 		ConversationID: uint(conversationID),
 		SenderType:     "service",
-		SenderID:       userID.(uint),
+		SenderID:       uid,
 		MessageType:    msgType,
 		Content:        input.Content,
 		ThumbnailURL:   input.ThumbnailURL,
@@ -283,7 +289,11 @@ func SetServiceStatus(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
-	uid := userID.(uint)
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 
 	if input.Online {
 		wasEmpty := ws.DefaultHub.SetServiceOnline(uid)
@@ -319,7 +329,11 @@ func RecallMessage(c *gin.Context) {
 	}
 
 	userID, _ := c.Get("userID")
-	uid := userID.(uint)
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
 
 	var message models.Message
 	if err := database.DB.Where("id = ? AND conversation_id = ? AND sender_type = ? AND sender_id = ? AND recalled_at IS NULL",
@@ -397,10 +411,16 @@ func CreateQuickReply(c *gin.Context) {
 		return
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	reply := models.QuickReply{
 		Title:     input.Title,
 		Content:   input.Content,
-		CreatedBy: userID.(uint),
+		CreatedBy: uid,
 		SortOrder: input.SortOrder,
 	}
 	if err := database.DB.Create(&reply).Error; err != nil {

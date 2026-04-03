@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"math/rand"
 	"time"
 
 	"bycigar-server/internal/config"
@@ -35,7 +34,8 @@ func Connect() {
 		SkipInitializeWithVersion: false,
 	})
 	DB, err = gorm.Open(mysqlConfig, &gorm.Config{
-		PrepareStmt: true,
+		PrepareStmt:                              true,
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -54,6 +54,35 @@ func Connect() {
 }
 
 func Migrate() {
+	foreignKeys := []struct {
+		Table string
+		Name  string
+	}{
+		{"categories", "fk_categories_parent"},
+		{"products", "fk_products_category"},
+		{"addresses", "fk_addresses_user"},
+		{"cart_items", "fk_cart_items_user"},
+		{"cart_items", "fk_cart_items_product"},
+		{"favorites", "fk_favorites_user"},
+		{"favorites", "fk_favorites_product"},
+		{"orders", "fk_orders_user"},
+		{"orders", "fk_orders_address"},
+		{"order_items", "fk_order_items_order"},
+		{"order_items", "fk_order_items_product"},
+		{"payment_proofs", "fk_payment_proofs_order"},
+		{"payment_proofs", "fk_payment_proofs_user"},
+		{"payment_proofs", "fk_payment_proofs_method"},
+		{"conversations", "fk_conversations_user"},
+		{"conversations", "fk_conversations_assigned"},
+		{"messages", "fk_messages_conversation"},
+		{"quick_replies", "fk_quick_replies_user"},
+		{"ratings", "fk_ratings_conversation"},
+		{"notifications", "fk_notifications_user"},
+	}
+	for _, fk := range foreignKeys {
+		DB.Exec(fmt.Sprintf("ALTER TABLE `%s` DROP FOREIGN KEY `%s`", fk.Table, fk.Name))
+	}
+
 	err := DB.AutoMigrate(
 		&models.User{},
 		&models.Category{},
@@ -90,7 +119,6 @@ func Seed() {
 	SeedPages()
 	SeedSettings()
 	SeedSiteConfig()
-	SeedBulkOrders()
 }
 
 func SeedAdminUser() {
@@ -185,175 +213,4 @@ func BackfillOrderNo() {
 	if len(orders) > 0 {
 		log.Printf("Backfilled order_no for %d orders", len(orders))
 	}
-}
-
-func SeedBulkOrders() {
-	var products []models.Product
-	DB.Where("is_active = ?", true).Find(&products)
-	if len(products) == 0 {
-		log.Println("SeedBulkOrders: 没有活跃商品，跳过订单生成")
-		return
-	}
-
-	var users []models.User
-	DB.Where("role = ?", "customer").Find(&users)
-	for len(users) < 2 {
-		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("test1234"), bcrypt.DefaultCost)
-		newUser := models.User{
-			Email:    fmt.Sprintf("testuser%d@test.com", len(users)+1),
-			Password: string(hashedPassword),
-			Name:     fmt.Sprintf("测试用户%d", len(users)+1),
-			Role:     "customer",
-		}
-		DB.Create(&newUser)
-		users = append(users, newUser)
-	}
-
-	var addresses []models.Address
-	DB.Find(&addresses)
-	for _, user := range users {
-		hasAddress := false
-		for _, a := range addresses {
-			if a.UserID == user.ID {
-				hasAddress = true
-				break
-			}
-		}
-		if !hasAddress {
-			addr := models.Address{
-				UserID:       user.ID,
-				FullName:     user.Name,
-				AddressLine1: fmt.Sprintf("测试地址 %d", user.ID),
-				City:         "北京",
-				State:        "北京",
-				ZipCode:      "100000",
-				Phone:        "13800138000",
-				IsDefault:    true,
-			}
-			DB.Create(&addr)
-			addresses = append(addresses, addr)
-		}
-	}
-
-	var paymentMethod models.PaymentMethod
-	DB.Where("is_active = ?", true).First(&paymentMethod)
-	if paymentMethod.ID == 0 {
-		paymentMethod = models.PaymentMethod{
-			Name:     "银行转账",
-			IsActive: true,
-		}
-		DB.Create(&paymentMethod)
-	}
-
-	testUserIDs := make([]uint, len(users))
-	for i, u := range users {
-		testUserIDs[i] = u.ID
-	}
-
-	var oldCount int64
-	DB.Model(&models.Order{}).Where("user_id IN ?", testUserIDs).Count(&oldCount)
-	if oldCount > 0 {
-		var oldOrderIDs []uint
-		DB.Model(&models.Order{}).Where("user_id IN ?", testUserIDs).Pluck("id", &oldOrderIDs)
-		if len(oldOrderIDs) > 0 {
-			DB.Where("order_id IN ?", oldOrderIDs).Delete(&models.PaymentProof{})
-			DB.Where("order_id IN ?", oldOrderIDs).Delete(&models.OrderItem{})
-			DB.Where("id IN ?", oldOrderIDs).Delete(&models.Order{})
-			log.Printf("SeedBulkOrders: 已清理 %d 条旧测试订单", oldCount)
-		}
-	}
-
-	const targetCount = 3000
-	now := time.Now()
-	r := rand.New(rand.NewSource(now.UnixNano()))
-
-	for i := 0; i < targetCount; i++ {
-		user := users[r.Intn(len(users))]
-
-		var userAddresses []models.Address
-		for _, a := range addresses {
-			if a.UserID == user.ID {
-				userAddresses = append(userAddresses, a)
-			}
-		}
-		if len(userAddresses) == 0 {
-			userAddresses = addresses
-		}
-		address := userAddresses[r.Intn(len(userAddresses))]
-
-		itemCount := r.Intn(5) + 1
-		var total float64
-		items := make([]models.OrderItem, itemCount)
-		for j := 0; j < itemCount; j++ {
-			product := products[r.Intn(len(products))]
-			quantity := r.Intn(10) + 1
-			total += product.Price * float64(quantity)
-			items[j] = models.OrderItem{
-				ProductID: product.ID,
-				Quantity:  quantity,
-				Price:     product.Price,
-			}
-		}
-
-		daysAgo := r.Intn(90)
-		createdAt := now.AddDate(0, 0, -daysAgo).Add(time.Duration(r.Intn(86400)) * time.Second)
-
-		roll := r.Intn(100)
-		var status string
-		var proofStatus string
-
-		switch {
-		case roll < 35:
-			status = []string{"pending", "processing", "shipped", "completed", "cancelled"}[r.Intn(5)]
-		case roll < 50:
-			status = "pending"
-			proofStatus = models.PaymentProofStatusPending
-		case roll < 70:
-			status = "processing"
-			proofStatus = models.PaymentProofStatusApproved
-		case roll < 85:
-			status = "pending"
-			proofStatus = models.PaymentProofStatusRejected
-		case roll < 100:
-			status = "shipped"
-			proofStatus = models.PaymentProofStatusApproved
-		}
-
-		order := models.Order{
-			OrderNo:   utils.GenerateOrderNo(),
-			UserID:    user.ID,
-			AddressID: address.ID,
-			Total:     total,
-			Status:    status,
-			Remark:    fmt.Sprintf("测试订单 %d", i+1),
-			Items:     items,
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
-		}
-		DB.Create(&order)
-
-		if proofStatus != "" {
-			proof := models.PaymentProof{
-				OrderID:         order.ID,
-				UserID:          user.ID,
-				PaymentMethodID: paymentMethod.ID,
-				ImageUrl:        "/media/bycigar/banner-1.png",
-				Status:          proofStatus,
-				CreatedAt:       createdAt,
-				UpdatedAt:       createdAt,
-			}
-			if proofStatus == models.PaymentProofStatusApproved || proofStatus == models.PaymentProofStatusRejected {
-				reviewerID := uint(1)
-				proof.ReviewerID = &reviewerID
-				reviewedAt := createdAt.Add(10 * time.Minute)
-				proof.ReviewedAt = &reviewedAt
-			}
-			DB.Create(&proof)
-		}
-
-		if (i+1)%500 == 0 {
-			log.Printf("已生成 %d / %d 订单", i+1, targetCount)
-		}
-	}
-	log.Printf("测试订单数据生成完成，共 %d 笔（含凭证）", targetCount)
 }

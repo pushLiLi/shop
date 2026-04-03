@@ -87,8 +87,14 @@ func CreateAddress(c *gin.Context) {
 		database.DB.Model(&models.Address{}).Where("user_id = ? AND is_default = ?", userID, true).Update("is_default", false)
 	}
 
+	uid, ok := userID.(uint)
+	if !ok {
+		utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
 	address := models.Address{
-		UserID:       userID.(uint),
+		UserID:       uid,
 		FullName:     input.FullName,
 		AddressLine1: input.AddressLine1,
 		AddressLine2: input.AddressLine2,

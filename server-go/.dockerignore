@@ -2,7 +2,6 @@
 test/
 scripts/
 migrations/
-docs/
 .env
 .env.*
 !*.example

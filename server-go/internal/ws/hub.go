@@ -68,7 +68,7 @@ func (h *Hub) Run() {
 			case client := <-h.Unregister:
 				h.mu.Lock()
 				if client.Role == "admin" || client.Role == "service" {
-				if existing, ok := h.AdminConns[client.UserID]; ok && existing == client {
+					if existing, ok := h.AdminConns[client.UserID]; ok && existing == client {
 						delete(h.AdminConns, client.UserID)
 					}
 				} else {
@@ -179,6 +179,11 @@ const (
 )
 
 func (c *Client) WritePump() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("WritePump panic recovered (userID=%d): %v", c.UserID, r)
+		}
+	}()
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -206,6 +211,9 @@ func (c *Client) WritePump() {
 
 func (c *Client) ReadPump(handler func(*Client, []byte)) {
 	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ReadPump panic recovered (userID=%d): %v", c.UserID, r)
+		}
 		c.Hub.Unregister <- c
 		c.Conn.Close()
 	}()
@@ -223,4 +231,18 @@ func (c *Client) ReadPump(handler func(*Client, []byte)) {
 		}
 		handler(c, message)
 	}
+}
+
+func (h *Hub) Shutdown() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for _, client := range h.CustomerConns {
+		client.Conn.Close()
+	}
+	for _, client := range h.AdminConns {
+		client.Conn.Close()
+	}
+	h.CustomerConns = make(map[uint]*Client)
+	h.AdminConns = make(map[uint]*Client)
+	log.Println("WebSocket hub shutdown completed")
 }

@@ -21,7 +21,7 @@ TRUNCATE TABLE payment_methods;
 TRUNCATE TABLE contact_methods;
 TRUNCATE TABLE settings;
 TRUNCATE TABLE pages;
-TRUNCATE TABLE configs;
+TRUNCATE TABLE site_configs;
 TRUNCATE TABLE users;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -210,7 +210,7 @@ INSERT INTO pages (id, slug, title, content, updated_at) VALUES
 -- =============================================
 -- CONFIGS (6 rows)
 -- =============================================
-INSERT INTO configs (id, config_key, config_value, created_at, updated_at) VALUES
+INSERT INTO site_configs (id, config_key, config_value, created_at, updated_at) VALUES
 (1, 'site_title', 'BYCIGAR 雪茄商城', NOW(), NOW()),
 (2, 'seo_description', '专业古巴雪茄及高档雪茄配件销售平台，提供高希霸、蒙特、大卫杜夫等品牌雪茄，品类齐全，品质保证。', NOW(), NOW()),
 (3, 'customer_service_hours', '9:00-22:00', NOW(), NOW()),
@@ -343,152 +343,92 @@ INSERT INTO orders (id, order_no, user_id, address_id, total, status, remark, tr
 -- =============================================
 -- ORDER_ITEMS (~100 rows)
 -- =============================================
-INSERT INTO order_items (order_id, product_id, quantity, price, created_at) VALUES
--- Order 1: (cohiba-siglo-i x2, cohiba-siglo-ii x1)
-(1, 1, 2, 128.00, NOW()),
-(1, 2, 1, 158.00, NOW()),
--- Order 2: (cohiba-siglo-iv x1)
-(2, 4, 1, 258.00, NOW()),
--- Order 3: (davidoff-escurio x1)
-(3, 27, 1, 168.00, NOW()),
--- Order 4: (cutter-v-cut x1, cutter-punch x1)
-(4, 40, 1, 88.00, NOW()),
-(4, 41, 1, 128.00, NOW()),
--- Order 5: (lighter-wood-matches x1)
-(5, 51, 1, 28.00, NOW()),
--- Order 6: (davidoff-wsc x1)
-(6, 26, 1, 458.00, NOW()),
--- Order 7: (cohiba-siglo-v x1, Oliva-v-series x1)
-(7, 5, 1, 328.00, NOW()),
-(7, 37, 1, 198.00, NOW()),
--- Order 8: (fuente-opus-x x1)
-(8, 30, 1, 688.00, NOW()),
-
--- Order 9: (davidoff-millennium x1)
-(9, 25, 1, 298.00, NOW()),
--- Order 10: (humidor-50 x1, humidor-cedar-liner x1)
-(10, 44, 1, 388.00, NOW()),
-(10, 49, 1, 128.00, NOW()),
-(10, 47, 1, 88.00, NOW()),
--- Order 11: (cohiba-siglo-i x1, cohiba-short x1)
-(11, 1, 1, 128.00, NOW()),
-(11, 6, 1, 68.00, NOW()),
--- Order 12: (davidoff-escurio x1)
-(12, 27, 1, 168.00, NOW()),
-(12, 29, 1, 228.00, NOW()),
--- Order 13: (cohiba-tasting-box x1)
-(13, 59, 1, 666.00, NOW()),
-
--- Order 14: (cohiba-siglo-ii x1, monte-no2 x3)
-(14, 2, 1, 158.00, NOW()),
-(14, 11, 3, 108.00, NOW()),
--- Order 15: (cohiba-short x2)
-(15, 6, 2, 68.00, NOW()),
--- Order 16: (partagas-d4 x1, my-father x1)
-(16, 16, 1, 98.00, NOW()),
-(16, 17, 1, 128.00, NOW()),
--- Order 17: (romeo-no2 x1)
-(17, 20, 1, 88.00, NOW()),
--- Order 18: (butane-lighter x1, wood-matches x2)
-(18, 50, 1, 158.00, NOW()),
-(18, 51, 2, 28.00, NOW()),
--- Order 19: (davidoff-wsc x1, Oliva-v-series x1, aj-fernandez x1)
-(19, 26, 1, 458.00, NOW()),
-(19, 37, 1, 198.00, NOW()),
-(19, 38, 1, 168.00, NOW()),
--- Order 20: (davidoff-escurio x1, fuente-hemingway x1)
-(20, 27, 1, 168.00, NOW()),
-(20, 31, 1, 188.00, NOW()),
--- Order 21: (cohiba-tasting-box x1)
-(21, 59, 1, 328.00, NOW()),
--- Order 22: (cohiba-siglo-i x1, cohiba-siglo-iv x1)
-(22, 1, 1, 128.00, NOW()),
-(22, 4, 1, 258.00, NOW()),
-
--- Order 23: (cohiba-short x2)
-(23, 6, 2, 68.00, NOW()),
--- Order 24: (monte-no2 x1, partagas-d4 x2)
-(24, 11, 1, 108.00, NOW()),
-(24, 16, 2, 98.00, NOW()),
--- Order 25: (partagas-d4 x1)
-(25, 16, 1, 98.00, NOW()),
--- Order 26: (cohiba-siglo-i x5)
-(26, 1, 5, 128.00, NOW()),
--- Order 27: (humidor-50 x1, humidor-cedar-liner x2)
-(27, 44, 1, 388.00, NOW()),
-(27, 49, 2, 128.00, NOW()),
--- Order 28: (gift-luxury-box x1)
-(28, 61, 1, 1288.00, NOW()),
--- Order 29: (humidor-cabinet-200 x1)
-(29, 46, 1, 2800.00, NOW()),
--- Order 30: (cohiba-tasting-box x1)
-(30, 59, 1, 666.00, NOW()),
--- Order 31: (butane-lighter x1)
-(31, 50, 1, 158.00, NOW()),
--- Order 32: (davidoff-escurio x1, fuente-hemingway x1, fuente-don-carlos x1)
-(32, 27, 1, 168.00, NOW()),
-(32, 31, 1, 188.00, NOW()),
-(32, 29, 1, 228.00, NOW()),
--- Order 33: (cohiba-siglo-ii x3)
-(33, 2, 3, 158.00, NOW()),
--- Order 34: (cohiba-siglo-iv x1, cohiba-short x1)
-(34, 4, 1, 258.00, NOW()),
-(34, 6, 1, 68.00, NOW()),
-
--- Order 35: (cohiba-siglo-i x2)
-(35, 1, 2, 128.00, NOW()),
--- Order 36: (monte-no2 x1, monte-edmundo x3)
-(36, 11, 1, 108.00, NOW()),
-(36, 13, 3, 138.00, NOW()),
--- Order 37: (cohiba-siglo-iv x1, davidoff-escurio x1)
-(37, 4, 1, 258.00, NOW()),
-(37, 27, 1, 168.00, NOW()),
--- Order 38: (cutter-v-cut x2)
-(38, 40, 2, 88.00, NOW()),
--- Order 39: (davidoff-escurio x1, fuente-hemingway x1)
-(39, 27, 1, 168.00, NOW()),
-(39, 31, 1, 188.00, NOW()),
--- Order 40: (butane-lighter x1)
-(40, 50, 1, 158.00, NOW()),
--- Order 41: (humidor-50 x1, humidor-cedar-liner x1)
-(41, 44, 1, 388.00, NOW()),
-(41, 49, 1, 128.00, NOW()),
--- Order 42: (gift-luxury-box x1)
-(42, 61, 1, 1288.00, NOW()),
--- Order 43: (cohiba-tasting-box x1)
-(43, 59, 1, 666.00, NOW()),
--- Order 44: (humidor-travel-5 x1, starter-pack-5 x2)
-(44, 45, 1, 168.00, NOW()),
-(44, 58, 2, 198.00, NOW()),
--- Order 45: (cohiba-siglo-i x1, cohiba-siglo-ii x1, cohiba-siglo-iii x1)
-(45, 1, 1, 128.00, NOW()),
-(45, 2, 1, 158.00, NOW()),
-(45, 3, 1, 198.00, NOW()),
--- Order 46: (cohiba-siglo-iv x2)
-(46, 4, 2, 258.00, NOW()),
--- Order 47: (davidoff-escurio x1)
-(47, 27, 1, 168.00, NOW()),
-(47, 31, 1, 188.00, NOW()),
--- Order 48: ( Oliva-v-series x1, aj-fernandez x1)
-(48, 37, 1, 198.00, NOW()),
-(48, 38, 1, 168.00, NOW()),
--- Order 49: (cohiba-tasting-box x1, travel-cigar-set x1)
-(49, 59, 1, 666.00, NOW()),
-(49, 60, 1, 358.00, NOW()),
-
--- Cancelled orders
--- Order 50: (davidoff-millennium x1)
-(50, 25, 1, 298.00, NOW()),
--- Order 51: (shengsaiyadi x1)
-(51, 32, 1, 258.00, NOW()),
--- Order 52: (cohiba-siglo-i x1, davidoff-escurio x1)
-(52, 1, 1, 128.00, NOW()),
-(52, 27, 1, 168.00, NOW()),
--- Order 53: (cutter-v-cut x1, cutter-punch x2)
-(53, 40, 1, 88.00, NOW()),
-(53, 41, 2, 58.00, NOW()),
--- Order 54: (lighter-wood-matches x1)
-(54, 51, 1, 28.00, NOW());
+INSERT INTO order_items (order_id, product_id, quantity, price) VALUES
+(1, 1, 2, 128.00),
+(1, 2, 1, 158.00),
+(2, 4, 1, 258.00),
+(3, 27, 1, 168.00),
+(4, 40, 1, 88.00),
+(4, 41, 1, 128.00),
+(5, 51, 1, 28.00),
+(6, 26, 1, 458.00),
+(7, 5, 1, 328.00),
+(7, 37, 1, 198.00),
+(8, 30, 1, 688.00),
+(9, 25, 1, 298.00),
+(10, 44, 1, 388.00),
+(10, 49, 1, 128.00),
+(10, 47, 1, 88.00),
+(11, 1, 1, 128.00),
+(11, 6, 1, 68.00),
+(12, 27, 1, 168.00),
+(12, 29, 1, 228.00),
+(13, 59, 1, 666.00),
+(14, 2, 1, 158.00),
+(14, 11, 3, 108.00),
+(15, 6, 2, 68.00),
+(16, 16, 1, 98.00),
+(16, 17, 1, 128.00),
+(17, 20, 1, 88.00),
+(18, 50, 1, 158.00),
+(18, 51, 2, 28.00),
+(19, 26, 1, 458.00),
+(19, 37, 1, 198.00),
+(19, 38, 1, 168.00),
+(20, 27, 1, 168.00),
+(20, 31, 1, 188.00),
+(21, 59, 1, 328.00),
+(22, 1, 1, 128.00),
+(22, 4, 1, 258.00),
+(23, 6, 2, 68.00),
+(24, 11, 1, 108.00),
+(24, 16, 2, 98.00),
+(25, 16, 1, 98.00),
+(26, 1, 5, 128.00),
+(27, 44, 1, 388.00),
+(27, 49, 2, 128.00),
+(28, 61, 1, 1288.00),
+(29, 46, 1, 2800.00),
+(30, 59, 1, 666.00),
+(31, 50, 1, 158.00),
+(32, 27, 1, 168.00),
+(32, 31, 1, 188.00),
+(32, 29, 1, 228.00),
+(33, 2, 3, 158.00),
+(34, 4, 1, 258.00),
+(34, 6, 1, 68.00),
+(35, 1, 2, 128.00),
+(36, 11, 1, 108.00),
+(36, 13, 3, 138.00),
+(37, 4, 1, 258.00),
+(37, 27, 1, 168.00),
+(38, 40, 2, 88.00),
+(39, 27, 1, 168.00),
+(39, 31, 1, 188.00),
+(40, 50, 1, 158.00),
+(41, 44, 1, 388.00),
+(41, 49, 1, 128.00),
+(42, 61, 1, 1288.00),
+(43, 59, 1, 666.00),
+(44, 45, 1, 168.00),
+(44, 58, 2, 198.00),
+(45, 1, 1, 128.00),
+(45, 2, 1, 158.00),
+(45, 3, 1, 198.00),
+(46, 4, 2, 258.00),
+(47, 27, 1, 168.00),
+(47, 31, 1, 188.00),
+(48, 37, 1, 198.00),
+(48, 38, 1, 168.00),
+(49, 59, 1, 666.00),
+(49, 60, 1, 358.00),
+(50, 25, 1, 298.00),
+(51, 32, 1, 258.00),
+(52, 1, 1, 128.00),
+(52, 27, 1, 168.00),
+(53, 40, 1, 88.00),
+(53, 41, 2, 58.00),
+(54, 51, 1, 28.00);
 
 -- =============================================
 -- PAYMENT_PROOFS (19 rows)
@@ -511,18 +451,18 @@ INSERT INTO payment_proofs (id, order_id, user_id, payment_method_id, image_url,
 (12, 12, 15, 2, 'https://picsum.photos/seed/proof11/400/300', 'pending', NULL, NULL, NULL, NOW(), NOW()),
 
 -- Rejected proofs (3)
-(13, 13, 16, 1, 'https://picsum.photos/seed/proof12/400/300', 'rejected', '图片不清晰，请重新上传', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY),
-(14, 14, 17, 2, 'https://picsum.photos/seed/proof13/400/300', 'rejected', '付款金额与订单不符', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY),
-(15, 15, 18, 3, 'https://picsum.photos/seed/proof14/400/300', 'rejected', '未填写订单备注', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY),
+(13, 13, 16, 1, 'https://picsum.photos/seed/proof12/400/300', 'rejected', '图片不清晰请重新上传', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY, NOW()),
+(14, 14, 17, 2, 'https://picsum.photos/seed/proof13/400/300', 'rejected', '付款金额与订单不符', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY, NOW()),
+(15, 15, 18, 3, 'https://picsum.photos/seed/proof14/400/300', 'rejected', '未填写订单备注', 2, NOW() - INTERVAL 1 DAY, NOW() - INTERVAL 1 DAY, NOW()),
 
 -- Approved proofs for processing orders (7)
-(16, 16, 19, 1, 'https://picsum.photos/seed/proofapproved00/400/300', 'approved', NULL, 2, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY),
-(17, 17, 20, 2, 'https://picsum.photos/seed/proofapproved01/400/300', 'approved', NULL, 2, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY),
-(18, 18, 21, 1, 'https://picsum.photos/seed/proofapproved02/400/300', 'approved', NULL, 2, NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 4 DAY),
-(19, 19, 22, 2, 'https://picsum.photos/seed/proofapproved03/400/300', 'approved', NULL, 2, NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 4 DAY),
-(20, 20, 23, 3, 'https://picsum.photos/seed/proofapproved04/400/300', 'approved', NULL, 2, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY),
-(21, 21, 24, 1, 'https://picsum.photos/seed/proofapproved05/400/300', 'approved', NULL, 2, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY),
-(22, 22, 25, 2, 'https://picsum.photos/seed/proofapproved06/400/300', 'approved', NULL, 2, NOW() - INTERVAL 6 DAY, NOW() - INTERVAL 6 DAY);
+(16, 16, 19, 1, 'https://picsum.photos/seed/proofapproved00/400/300', 'approved', NULL, 2, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY, NOW()),
+(17, 17, 20, 2, 'https://picsum.photos/seed/proofapproved01/400/300', 'approved', NULL, 2, NOW() - INTERVAL 3 DAY, NOW() - INTERVAL 3 DAY, NOW()),
+(18, 18, 21, 1, 'https://picsum.photos/seed/proofapproved02/400/300', 'approved', NULL, 2, NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 4 DAY, NOW()),
+(19, 19, 22, 2, 'https://picsum.photos/seed/proofapproved03/400/300', 'approved', NULL, 2, NOW() - INTERVAL 4 DAY, NOW() - INTERVAL 4 DAY, NOW()),
+(20, 20, 23, 3, 'https://picsum.photos/seed/proofapproved04/400/300', 'approved', NULL, 2, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY, NOW()),
+(21, 21, 24, 1, 'https://picsum.photos/seed/proofapproved05/400/300', 'approved', NULL, 2, NOW() - INTERVAL 5 DAY, NOW() - INTERVAL 5 DAY, NOW()),
+(22, 22, 25, 2, 'https://picsum.photos/seed/proofapproved06/400/300', 'approved', NULL, 2, NOW() - INTERVAL 6 DAY, NOW() - INTERVAL 6 DAY, NOW());
 
 -- =============================================
 -- CART_ITEMS (~40 rows)

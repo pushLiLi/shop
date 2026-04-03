@@ -82,8 +82,13 @@ func AddToCart(c *gin.Context) {
 		database.DB.Save(&existing)
 		item = existing
 	} else {
+		uid, ok := userID.(uint)
+		if !ok {
+			utils.ErrorResponse(c, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
 		item = models.CartItem{
-			UserID:    userID.(uint),
+			UserID:    uid,
 			ProductID: input.ProductID,
 			Quantity:  quantity,
 		}

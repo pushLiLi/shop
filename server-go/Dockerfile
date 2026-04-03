@@ -1,9 +1,10 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
+ENV GOTOOLCHAIN=auto
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go env -w GOPROXY=https://proxy.golang.org,direct
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/main.go
+RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o server ./cmd/main.go
 
 FROM alpine:latest
 WORKDIR /app
