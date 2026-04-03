@@ -1,16 +1,14 @@
 package utils
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"strings"
 	"time"
 
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 
-	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
 )
 
@@ -33,46 +31,25 @@ func StartImageCleanup(db *gorm.DB) {
 }
 
 func cleanupOrphanImages(db *gorm.DB) {
-	ctx := context.Background()
-	bucket := miniopkg.Bucket
-
-	objectCh := miniopkg.Client.ListObjects(ctx, bucket, minio.ListObjectsOptions{
-		Recursive: true,
-	})
+	localFiles := storage.ListFiles()
 
 	dbURLSet := make(map[string]bool)
 	collectAllDBImageURLs(db, dbURLSet)
 
-	var orphanedKeys []string
-	for obj := range objectCh {
-		if obj.Err != nil {
-			log.Printf("Image cleanup: list objects error: %v", obj.Err)
-			continue
-		}
-		url := "/media/" + bucket + "/" + obj.Key
+	var orphanedURLs []string
+	for _, url := range localFiles {
 		if !dbURLSet[url] {
-			orphanedKeys = append(orphanedKeys, url)
+			orphanedURLs = append(orphanedURLs, url)
 		}
 	}
 
-	if len(orphanedKeys) == 0 {
+	if len(orphanedURLs) == 0 {
 		return
 	}
 
-	batchSize := 100
-	totalDeleted := 0
-	for i := 0; i < len(orphanedKeys); i += batchSize {
-		end := i + batchSize
-		if end > len(orphanedKeys) {
-			end = len(orphanedKeys)
-		}
-		batch := orphanedKeys[i:end]
-		deleted := miniopkg.DeleteObjects(batch)
-		totalDeleted += deleted
-	}
-
-	if totalDeleted > 0 {
-		log.Printf("Image cleanup: deleted %d orphaned MinIO objects (found %d total)", totalDeleted, len(orphanedKeys))
+	deleted := storage.DeleteFiles(orphanedURLs)
+	if deleted > 0 {
+		log.Printf("Image cleanup: deleted %d orphaned files (found %d total)", deleted, len(orphanedURLs))
 	}
 }
 
@@ -117,14 +94,12 @@ func collectAllDBImageURLs(db *gorm.DB, urlSet map[string]bool) {
 	var configs []models.SiteConfig
 	db.Select("config_value").Find(&configs)
 	for _, c := range configs {
-		if strings.HasPrefix(c.ConfigValue, "/media/") {
-			addURL(urlSet, c.ConfigValue)
-		}
+		addURL(urlSet, c.ConfigValue)
 	}
 }
 
 func addURL(urlSet map[string]bool, url string) {
-	if url != "" && strings.HasPrefix(url, "/media/") {
+	if url != "" && (strings.HasPrefix(url, "/uploads/") || strings.HasPrefix(url, "/media/")) {
 		urlSet[url] = true
 	}
 }

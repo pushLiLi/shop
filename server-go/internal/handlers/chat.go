@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,12 +13,11 @@ import (
 	"bycigar-server/internal/models"
 	"bycigar-server/internal/ws"
 	imagepkg "bycigar-server/pkg/image"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 )
 
 func CreateConversation(c *gin.Context) {
@@ -260,34 +257,20 @@ func UploadChatImage(c *gin.Context) {
 	baseName := fmt.Sprintf("chat_%d_%s", time.Now().Unix(), uuid.New().String())
 	origName := baseName + result.OrigExt
 
-	_, err = miniopkg.Client.PutObject(
-		context.Background(),
-		miniopkg.Bucket,
-		origName,
-		bytes.NewReader(result.Original),
-		int64(len(result.Original)),
-		minio.PutObjectOptions{ContentType: result.ContentType},
-	)
+	err = storage.SaveFile(origName, result.Original)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "上传图片失败"})
 		return
 	}
 
-	url := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, origName)
+	url := storage.URLPrefix + origName
 	thumbnailUrl := ""
 
 	if len(result.Thumbnail) > 0 {
 		thumbName := baseName + "_thumb.jpg"
-		_, err = miniopkg.Client.PutObject(
-			context.Background(),
-			miniopkg.Bucket,
-			thumbName,
-			bytes.NewReader(result.Thumbnail),
-			int64(len(result.Thumbnail)),
-			minio.PutObjectOptions{ContentType: "image/jpeg"},
-		)
+		err = storage.SaveFile(thumbName, result.Thumbnail)
 		if err == nil {
-			thumbnailUrl = fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, thumbName)
+			thumbnailUrl = storage.URLPrefix + thumbName
 		}
 	}
 

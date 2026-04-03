@@ -37,7 +37,7 @@ func (s *UploadTestSuite) TestUploadImageJPG() {
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	s.Equal(true, resp["success"])
-	s.Contains(resp["url"], "/media/")
+	s.Contains(resp["url"], "/uploads/")
 }
 
 func (s *UploadTestSuite) TestUploadImagePNG() {

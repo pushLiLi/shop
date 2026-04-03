@@ -13,8 +13,8 @@ BYCIGAR e-commerce platform — a cigar shop migrated from a static HTML site to
 | Frontend | Vue 3 (Composition API, `<script setup>`) + Vite + Vue Router + Pinia |
 | Backend | Go 1.23 + Gin + GORM + JWT + Swagger |
 | Database | MySQL 8.4 (Docker) |
-| Object Storage | MinIO (Docker, for image uploads) |
-| Deployment | Docker Compose (MySQL + MinIO + Go backend + Vue frontend) |
+| File Storage | Local filesystem (`/opt/bycigar/uploads/`) |
+| Deployment | Hybrid: MySQL (Docker) + Go binary (systemd) + nginx (host) |
 | Language | JavaScript only (no TypeScript) |
 
 ## Common Commands
@@ -36,15 +36,14 @@ go run ./cmd/main.go    # Start API server at localhost:3000
 go build -o server ./cmd/main.go   # Build binary
 ```
 
-### Docker (full stack)
+### Docker (MySQL only)
 ```bash
-docker-compose up --build    # MySQL:3306 + MinIO:9000/9001 + Backend:3000 + Frontend:80
+docker compose up -d         # MySQL only (127.0.0.1:3306)
 ```
 
 ### Database
 ```bash
-docker-compose up mysql      # Start MySQL only (root/123456, database: bycigar)
-docker-compose up minio      # Start MinIO only (minioadmin/minioadmin123, bucket: bycigar)
+docker compose up -d         # Start MySQL (root/123456, database: bycigar)
 ```
 Auto-migrates all tables on backend startup. Seeds admin user and default data on first run.
 
@@ -52,10 +51,10 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 
 ### Backend (`server-go/`)
 
-- **Entry**: `cmd/main.go` — loads config → connects MySQL → migrations → seeds → InitMinio → InitSnowflake → BackfillOrderNo → start cleanup jobs → init WebSocket Hub → Gin router
+- **Entry**: `cmd/main.go` — loads config → connects MySQL → migrations → seeds → InitStorage → InitSnowflake → BackfillOrderNo → start cleanup jobs → init WebSocket Hub → Gin router
 - **Structure**: `internal/config/`, `internal/database/`, `internal/models/`, `internal/handlers/`, `internal/middleware/`, `internal/ws/`
 - **Route registration**: `cmd/main.go` registers routes in groups — public routes directly on `router.Group("/api")`, admin routes on `router.Group("/api/admin")` with `AuthMiddleware` + `AdminOnly`. SuperAdminOnly applied per-handler for sensitive endpoints.
-- **Config**: `.env` file (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET, SERVER_PORT, MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY, MINIO_BUCKET, MINIO_USE_SSL)
+- **Config**: `.env` file (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET, SERVER_HOST, SERVER_PORT, UPLOAD_DIR)
 - **Auth middleware** (`internal/middleware/auth.go`):
   - `AuthMiddleware()` — optional JWT parsing; supports `Bearer {token}` and `user-{id}` dev bypass. Sets `userID` in Gin context.
   - `RequireAuth()` — checks `userID` exists + DB lookup. Returns 401 if missing.
@@ -88,7 +87,6 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 
 ### Default Credentials
 - Admin: `admin@admin.com` / `123456` (seeded on first run)
-- MinIO: `minioadmin` / `minioadmin123`
 
 ## Important Notes
 
@@ -101,7 +99,7 @@ Auto-migrates all tables on backend startup. Seeds admin user and default data o
 - **No code comments** in source files
 - **Keep responses concise** (max 4 lines when possible)
 - **No tests or linter** configured — vitest is set up but only a few store spec files exist; no comprehensive test suite
-- **Image storage**: New uploads use MinIO. Legacy images stored as relative paths in `static/`.
+- **Image storage**: New uploads use local filesystem via `pkg/storage/`. Legacy images stored as relative paths in `static/`.
 - **API base**: Older stores hardcode `http://localhost:3000/api/*`. Newer stores use `/api` relative path. Production uses nginx to proxy `/api` to backend (see `bycigar-vue/nginx.conf`).
 - **Stock sorting**: Product listings always sort `stock > 0` items first (done in SQL via CASE expression).
 - **Order numbers**: Orders use snowflake IDs as display order numbers. `GetOrder` endpoint accepts both numeric ID and string orderNo.

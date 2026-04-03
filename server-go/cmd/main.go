@@ -15,7 +15,7 @@ import (
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
 	"bycigar-server/internal/ws"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 	pkgutils "bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -51,8 +51,7 @@ func main() {
 	database.Migrate()
 	pkgutils.InitSnowflake(1)
 	database.Seed()
-	miniopkg.InitMinio()
-	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
+	storage.InitStorage(config.AppConfig.UploadDir)
 	database.BackfillOrderNo()
 	pkgutils.StartChatCleanup(database.DB)
 	pkgutils.StartNotificationCleanup(database.DB)
@@ -69,6 +68,7 @@ func main() {
 	r.Use(middleware.AuthMiddleware())
 
 	r.Static("/static", "./static")
+	r.Static("/uploads", storage.UploadDir)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, ginSwagger.URL("/swagger/doc.json"), ginSwagger.DefaultModelsExpandDepth(-1)))
 
@@ -227,13 +227,14 @@ func main() {
 		})
 	})
 
+	addr := config.AppConfig.ServerHost + ":" + config.AppConfig.ServerPort
 	srv := &http.Server{
-		Addr:    ":" + config.AppConfig.ServerPort,
+		Addr:    addr,
 		Handler: r,
 	}
 
 	go func() {
-		log.Printf("Server running at http://localhost:%s", config.AppConfig.ServerPort)
+		log.Printf("Server running at http://%s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Failed to start server:", err)
 		}

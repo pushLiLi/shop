@@ -7,7 +7,7 @@ import (
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 
 	"gorm.io/gorm"
 )
@@ -50,13 +50,13 @@ func cleanupChatMessages(db *gorm.DB, cutoff time.Time) {
 	if len(messages) > 0 {
 		var urls []string
 		for _, m := range messages {
-			if strings.HasPrefix(m.ThumbnailURL, "/media/") {
+			if strings.HasPrefix(m.ThumbnailURL, "/uploads/") {
 				urls = append(urls, m.ThumbnailURL)
 			}
 		}
-		deleted := miniopkg.DeleteObjects(urls)
+		deleted := storage.DeleteFiles(urls)
 		if deleted > 0 {
-			log.Printf("Chat cleanup: deleted %d MinIO objects for old messages", deleted)
+			log.Printf("Chat cleanup: deleted %d files for old messages", deleted)
 		}
 	}
 

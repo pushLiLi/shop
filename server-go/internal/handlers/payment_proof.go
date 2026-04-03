@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,12 +13,11 @@ import (
 	"bycigar-server/internal/models"
 	"bycigar-server/internal/ws"
 	imagepkg "bycigar-server/pkg/image"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/minio/minio-go/v7"
 )
 
 func UploadPaymentProof(c *gin.Context) {
@@ -95,20 +92,13 @@ func UploadPaymentProof(c *gin.Context) {
 	baseName := fmt.Sprintf("%d_%s", time.Now().Unix(), uuid.New().String())
 	origName := baseName + result.OrigExt
 
-	_, err = miniopkg.Client.PutObject(
-		context.Background(),
-		miniopkg.Bucket,
-		origName,
-		bytes.NewReader(result.Original),
-		int64(len(result.Original)),
-		minio.PutObjectOptions{ContentType: result.ContentType},
-	)
+	err = storage.SaveFile(origName, result.Original)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "上传文件失败"})
 		return
 	}
 
-	imageUrl := fmt.Sprintf("/media/%s/%s", miniopkg.Bucket, origName)
+	imageUrl := storage.URLPrefix + origName
 
 	var existingProof models.PaymentProof
 	hasExisting := database.DB.Where("order_id = ? AND status = ?", order.ID, models.PaymentProofStatusPending).First(&existingProof).Error == nil
@@ -120,7 +110,7 @@ func UploadPaymentProof(c *gin.Context) {
 			"image_url":         imageUrl,
 		})
 		if oldImageURL != "" && oldImageURL != imageUrl {
-			miniopkg.DeleteObjects([]string{oldImageURL})
+			storage.DeleteFiles([]string{oldImageURL})
 		}
 		c.JSON(http.StatusOK, gin.H{"success": true, "paymentProof": existingProof})
 	} else {

@@ -1,0 +1,16 @@
+[Unit]
+Description=BYCIGAR Backend
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/bycigar
+ExecStart=/opt/bycigar/backend
+Restart=always
+RestartSec=5
+User=www-data
+EnvironmentFile=/opt/bycigar/.env
+
+[Install]
+WantedBy=multi-user.target

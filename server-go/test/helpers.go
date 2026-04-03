@@ -17,7 +17,7 @@ import (
 	"bycigar-server/internal/handlers"
 	"bycigar-server/internal/middleware"
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -67,8 +67,7 @@ func SetupTestDB() {
 	database.Connect()
 	database.Migrate()
 	utils.InitSnowflake(1)
-	miniopkg.InitMinio()
-	miniopkg.EnsureBucket(config.AppConfig.MinioBucket)
+	storage.InitStorage("")
 	CleanDB()
 	SeedTestData()
 }

@@ -15,12 +15,9 @@ type Config struct {
 	DBPassword               string
 	DBName                   string
 	JWTSecret                string
+	ServerHost               string
 	ServerPort               string
-	MinioEndpoint            string
-	MinioAccessKey           string
-	MinioSecretKey           string
-	MinioBucket              string
-	MinioUseSSL              bool
+	UploadDir                string
 	CleanupSoftDeleteDays    int
 	CleanupCartStaleDays     int
 	CleanupOrderArchiveDays  int
@@ -43,12 +40,9 @@ func LoadConfig() {
 		DBPassword:               getEnv("DB_PASSWORD", ""),
 		DBName:                   getEnv("DB_NAME", "bycigar"),
 		JWTSecret:                getEnv("JWT_SECRET", "your-super-secret-jwt-key"),
+		ServerHost:               getEnv("SERVER_HOST", ""),
 		ServerPort:               getEnv("SERVER_PORT", "3000"),
-		MinioEndpoint:            getEnv("MINIO_ENDPOINT", "localhost:9000"),
-		MinioAccessKey:           getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-		MinioSecretKey:           getEnv("MINIO_SECRET_KEY", "minioadmin123"),
-		MinioBucket:              getEnv("MINIO_BUCKET", "bycigar"),
-		MinioUseSSL:              getEnvBool("MINIO_USE_SSL", false),
+		UploadDir:                getEnv("UPLOAD_DIR", "/opt/bycigar/uploads"),
 		CleanupSoftDeleteDays:    getEnvInt("CLEANUP_SOFT_DELETE_DAYS", 30),
 		CleanupCartStaleDays:     getEnvInt("CLEANUP_CART_STALE_DAYS", 90),
 		CleanupOrderArchiveDays:  getEnvInt("CLEANUP_ORDER_ARCHIVE_DAYS", 365),
@@ -61,16 +55,6 @@ func LoadConfig() {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
-	}
-	return defaultValue
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		b, err := strconv.ParseBool(value)
-		if err == nil {
-			return b
-		}
 	}
 	return defaultValue
 }

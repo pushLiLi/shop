@@ -8,7 +8,7 @@ import (
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 
 	"gorm.io/gorm"
 )
@@ -48,9 +48,9 @@ func purgeSoftDeleted(db *gorm.DB) {
 		for i := range products {
 			allURLs = append(allURLs, collectProductImageURLsFromDB(&products[i])...)
 		}
-		deleted := miniopkg.DeleteObjects(allURLs)
+		deleted := storage.DeleteFiles(allURLs)
 		if deleted > 0 {
-			log.Printf("SoftDelete cleanup: deleted %d MinIO objects for %d soft-deleted products", deleted, len(productIDs))
+			log.Printf("SoftDelete cleanup: deleted %d files for %d soft-deleted products", deleted, len(productIDs))
 		}
 
 		result := db.Unscoped().Where("deleted_at < ?", cutoff).Delete(&models.Product{})

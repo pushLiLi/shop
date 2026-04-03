@@ -10,7 +10,7 @@ import (
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
 	"bycigar-server/internal/ws"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 	"bycigar-server/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -151,7 +151,7 @@ func UpdateProduct(c *gin.Context) {
 	}
 	_ = oldURLSet
 	if len(orphanedURLs) > 0 {
-		deleted := miniopkg.DeleteObjects(orphanedURLs)
+		deleted := storage.DeleteFiles(orphanedURLs)
 		if deleted > 0 {
 			log.Printf("UpdateProduct: deleted %d orphaned MinIO objects for product %d", deleted, id)
 		}
@@ -243,7 +243,7 @@ func DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	deleted := miniopkg.DeleteObjects(imageURLs)
+	deleted := storage.DeleteFiles(imageURLs)
 	if deleted > 0 {
 		log.Printf("DeleteProduct: deleted %d MinIO objects for product %d", deleted, id)
 	}
@@ -405,7 +405,7 @@ func BatchDeleteProducts(c *gin.Context) {
 		return
 	}
 
-	deleted := miniopkg.DeleteObjects(allImageURLs)
+	deleted := storage.DeleteFiles(allImageURLs)
 	if deleted > 0 {
 		log.Printf("BatchDeleteProducts: deleted %d MinIO objects for %d products", deleted, len(input.IDs))
 	}

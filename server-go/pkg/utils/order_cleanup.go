@@ -6,7 +6,7 @@ import (
 
 	"bycigar-server/internal/config"
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -119,9 +119,9 @@ func archiveAndCleanupOrders(db *gorm.DB) {
 		Select("DISTINCT payment_proofs.image_url").
 		Pluck("image_url", &proofImageURLs)
 
-	deleted := miniopkg.DeleteObjects(proofImageURLs)
+	deleted := storage.DeleteFiles(proofImageURLs)
 	if deleted > 0 {
-		log.Printf("Order cleanup: deleted %d MinIO objects for payment proofs", deleted)
+		log.Printf("Order cleanup: deleted %d files for payment proofs", deleted)
 	}
 
 	var oldOrderIDs []uint

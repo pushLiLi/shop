@@ -9,7 +9,7 @@ import (
 
 	"bycigar-server/internal/database"
 	"bycigar-server/internal/models"
-	miniopkg "bycigar-server/pkg/minio"
+	"bycigar-server/pkg/storage"
 
 	"github.com/gin-gonic/gin"
 )
@@ -146,7 +146,7 @@ func UpdateBanner(c *gin.Context) {
 	invalidateBannerCache()
 
 	if oldImage != "" && oldImage != input.Image {
-		miniopkg.DeleteObjects([]string{oldImage})
+		storage.DeleteFiles([]string{oldImage})
 	}
 
 	c.JSON(http.StatusOK, banner)
@@ -180,7 +180,7 @@ func DeleteBanner(c *gin.Context) {
 	invalidateBannerCache()
 
 	if banner.Image != "" {
-		deleted := miniopkg.DeleteObjects([]string{banner.Image})
+		deleted := storage.DeleteFiles([]string{banner.Image})
 		if deleted > 0 {
 			log.Printf("DeleteBanner: deleted %d MinIO objects for banner %d", deleted, id)
 		}
