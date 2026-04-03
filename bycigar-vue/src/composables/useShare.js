@@ -46,7 +46,7 @@ export function useShare() {
     const url = `${window.location.origin}/products/${product.id}`
     return share({
       title: product.name,
-      text: product.description ? product.description.substring(0, 100) : `${product.name} - $${product.price}`,
+      text: product.description ? product.description.substring(0, 100) : `${product.name} - ¥${product.price}`,
       url
     })
   }

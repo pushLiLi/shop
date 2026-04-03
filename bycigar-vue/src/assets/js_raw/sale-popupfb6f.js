@@ -77,8 +77,8 @@ document.addEventListener('DOMContentLoaded', function() {
           <img src="${image || 'https://via.placeholder.com/200x200?text=Product'}" alt="${name}">
         </div>
         <div class="product-price">
-          <span class="current-price">USD $${parseFloat(price).toFixed(2)}</span>
-          ${originalPrice > 0 ? `<span class="original-price">$${parseFloat(originalPrice).toFixed(2)}</span>` : ''}
+          <span class="current-price">¥${parseFloat(price).toFixed(2)}</span>
+          ${originalPrice > 0 ? `<span class="original-price">¥${parseFloat(originalPrice).toFixed(2)}</span>` : ''}
         </div>
         <div class="product-actions">
           <button class="add-to-cart-btn" data-sku-id="${skuId}" ${!hasStock ? 'disabled' : ''}>${hasStock ? lang.sale.add_to_cart : lang.sale.out_of_stock}</button>
