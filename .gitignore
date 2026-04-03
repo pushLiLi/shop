@@ -24,6 +24,15 @@ server
 .DS_Store
 Thumbs.db
 
+# Sensitive / internal docs (not for GitHub)
+CLAUDE.md
+DEPLOYMENT.md
+deploy/OPS.md
+AGENTS.md
+ssh-commands.txt
+nginx.conf
+bycigar-src.tar.gz
+
 # Misc
 *.db
 *.log
