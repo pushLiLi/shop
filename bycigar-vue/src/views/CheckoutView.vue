@@ -174,7 +174,7 @@ async function createOrder() {
 }
 
 function formatPrice(price) {
-  return '$' + Number(price).toFixed(2)
+  return '¥' + Number(price).toFixed(2)
 }
 </script>
 

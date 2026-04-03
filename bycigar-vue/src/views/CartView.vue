@@ -9,7 +9,7 @@ const total = computed(() => cartStore.total)
 const loading = computed(() => cartStore.loading)
 
 function formatPrice(price) {
-  return `$${Number(price).toFixed(2)}`
+  return `¥${Number(price).toFixed(2)}`
 }
 
 function handleInput(item, e) {

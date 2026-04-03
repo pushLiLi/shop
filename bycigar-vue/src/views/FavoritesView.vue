@@ -54,7 +54,7 @@ onMounted(() => {
 })
 
 function formatPrice(price) {
-  return `$${Number(price).toFixed(2)}`
+  return `¥${Number(price).toFixed(2)}`
 }
 
 function toggleSelect(productId) {
