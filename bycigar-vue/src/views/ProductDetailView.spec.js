@@ -132,7 +132,7 @@ describe('ProductDetailView', () => {
 
   it('renders product price formatted', async () => {
     const { wrapper } = await mountDetail()
-    expect(wrapper.find('.product-price-main').text()).toBe('$49.99')
+    expect(wrapper.find('.product-price-main').text()).toBe('¥49.99')
   })
 
   it('renders product brand', async () => {

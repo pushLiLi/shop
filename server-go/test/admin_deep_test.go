@@ -68,7 +68,7 @@ func (s *AdminDeepTestSuite) TestAdminGetConversationsSort() {
 		{"status", "asc"},
 	}
 	for _, c := range sortCases {
-		w := MakeRequest(s.router,
+		w := MakeRequest(s.router, "GET",
 			fmt.Sprintf("/api/admin/chat/conversations?sortBy=%s&sortOrder=%s", c.sortBy, c.sortOrder),
 			nil, GetAdminAuthHeader())
 		s.Equal(http.StatusOK, w.Code, "sortBy=%s sortOrder=%s should return 200", c.sortBy, c.sortOrder)
@@ -408,7 +408,7 @@ func (s *AdminDeepTestSuite) TestAdminOrdersSort() {
 	}
 	for _, c := range sortCases {
 		url := fmt.Sprintf("/api/admin/orders?sortBy=%s&sortOrder=%s", c.sortBy, c.sortOrder)
-		w := MakeRequest(s.router, url, nil, GetAdminAuthHeader())
+		w := MakeRequest(s.router, "GET", url, nil, GetAdminAuthHeader())
 		s.Equal(http.StatusOK, w.Code, "sortBy=%s sortOrder=%s should return 200", c.sortBy, c.sortOrder)
 	}
 }
@@ -469,7 +469,7 @@ func (s *AdminDeepTestSuite) TestAdminProductsSort() {
 	}
 	for _, c := range sortCases {
 		url := fmt.Sprintf("/api/admin/products?sortBy=%s&sortOrder=%s", c.sortBy, c.sortOrder)
-		w := MakeRequest(s.router, url, nil, GetAdminAuthHeader())
+		w := MakeRequest(s.router, "GET", url, nil, GetAdminAuthHeader())
 		s.Equal(http.StatusOK, w.Code)
 	}
 }

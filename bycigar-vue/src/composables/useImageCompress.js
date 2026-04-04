@@ -1,6 +1,6 @@
 export function useImageCompress() {
   const compress = (file, options = {}) => {
-    const { maxWidth = 1920, maxHeight = 1920, quality = 0.8 } = options
+    const { maxWidth = 1920, maxHeight = 1920, quality = 0.9 } = options
 
     return new Promise((resolve, reject) => {
       const img = new Image()

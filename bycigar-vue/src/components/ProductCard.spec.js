@@ -56,7 +56,7 @@ describe('ProductCard', () => {
   it('renders product name and price', async () => {
     const wrapper = await mountCard()
     expect(wrapper.text()).toContain('Test Cigar')
-    expect(wrapper.text()).toContain('$29.99')
+    expect(wrapper.text()).toContain('¥29.99')
   })
 
   it('renders product image', async () => {

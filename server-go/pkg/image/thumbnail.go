@@ -11,9 +11,9 @@ import (
 
 const (
 	MaxOriginalWidth = 1200
-	ThumbSize        = 300
-	JPEGQuality      = 85
-	ThumbQuality     = 80
+	ThumbSize        = 600
+	JPEGQuality      = 90
+	ThumbQuality     = 85
 )
 
 type ProcessResult struct {

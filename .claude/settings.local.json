@@ -5,7 +5,9 @@
       "Bash(go build:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(xxd \"C:/code/js/shop/bycigar-vue/src/views/admin/AdminChat.vue\")"
+      "Bash(xxd \"C:/code/js/shop/bycigar-vue/src/views/admin/AdminChat.vue\")",
+      "Bash(git push:*)",
+      "Bash(go test:*)"
     ]
   }
 }

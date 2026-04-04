@@ -149,7 +149,7 @@ async function createOrder() {
     }
 
     const formData = new FormData()
-    const compressedProof = await compress(proofFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.8 })
+    const compressedProof = await compress(proofFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.9 })
     formData.append('file', compressedProof, 'proof.jpg')
     formData.append('paymentMethodId', selectedPaymentMethodId.value)
 

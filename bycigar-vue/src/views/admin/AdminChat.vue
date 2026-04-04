@@ -376,7 +376,7 @@ const handleFileSelect = async (e) => {
   if (file.size > 5 * 1024 * 1024) { toast.error('图片大小不能超过 5MB'); return }
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { toast.error('只支持 JPG、PNG、WebP 格式'); return }
   try {
-    const blob = await compress(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 })
+    const blob = await compress(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
     previewBlob.value = blob
     previewImage.value = URL.createObjectURL(blob)
   } catch (err) {

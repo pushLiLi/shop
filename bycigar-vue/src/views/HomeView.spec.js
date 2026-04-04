@@ -128,7 +128,7 @@ describe('HomeView', () => {
   it('renders banner slider with dots', async () => {
     const wrapper = await mountHome()
     const dots = wrapper.findAll('.dot')
-    expect(dots.length).toBe(3)
+    expect(dots.length).toBe(5)
   })
 
   it('renders slider prev/next buttons', async () => {
@@ -152,7 +152,7 @@ describe('HomeView', () => {
       '/api/categories': [
         { id: 1, name: '雪茄', slug: 'cigars', _count: 5 }
       ],
-      '/api/products?categoryId=1&limit=8': {
+      '/api/products?categoryId=1&limit=12': {
         products: [
           { id: 10, name: 'Cigar A', price: 15, imageUrl: '/a.jpg', stock: 3 }
         ]
@@ -168,7 +168,7 @@ describe('HomeView', () => {
       '/api/categories': [
         { id: 1, name: '雪茄', slug: 'cigars', _count: 5 }
       ],
-      '/api/products?categoryId=1&limit=8': {
+      '/api/products?categoryId=1&limit=12': {
         products: [{ id: 10, name: 'Cigar A', price: 15, imageUrl: '/a.jpg', stock: 3 }]
       }
     })

@@ -21,7 +21,7 @@ const props = defineProps({
   },
   quality: {
     type: Number,
-    default: 0.8
+    default: 0.9
   }
 })
 

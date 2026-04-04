@@ -116,7 +116,7 @@ const handleFileSelect = async (e) => {
     return
   }
   try {
-    const blob = await compress(file, { maxWidth: 800, maxHeight: 800, quality: 0.7 })
+    const blob = await compress(file, { maxWidth: 800, maxHeight: 800, quality: 0.8 })
     previewBlob.value = blob
     previewImage.value = URL.createObjectURL(blob)
     nextTick(() => scrollToBottom())

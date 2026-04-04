@@ -62,6 +62,12 @@ security_hardening() {
         fi
     fi
 
+    echo "--- 6. 恢复 Docker 网络 ---"
+    if command -v docker &> /dev/null; then
+        systemctl restart docker
+        echo "Docker 服务已重启，iptables 规则已恢复"
+    fi
+
     echo "===== 安全加固完成 ====="
 }
 

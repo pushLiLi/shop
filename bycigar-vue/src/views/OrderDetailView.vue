@@ -69,7 +69,7 @@ async function handleReupload() {
   if (!reuploadFile.value || !order.value) return
   try {
     reuploading.value = true
-    const compressed = await compress(reuploadFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.8 })
+    const compressed = await compress(reuploadFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.9 })
     const formData = new FormData()
     formData.append('file', compressed, 'proof.jpg')
     formData.append('paymentMethodId', paymentProof.value?.paymentMethodId || '')

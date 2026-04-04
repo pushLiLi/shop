@@ -79,7 +79,7 @@ async function handleReupload(orderId) {
     const token = localStorage.getItem('token')
     const proof = paymentProofs.value[orderId]
     const formData = new FormData()
-    const compressed = await compress(reuploadFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.8 })
+    const compressed = await compress(reuploadFile.value, { maxWidth: 1920, maxHeight: 1920, quality: 0.9 })
     formData.append('file', compressed, 'proof.jpg')
     formData.append('paymentMethodId', proof?.paymentMethodId || proof?.payment_method_id || '')
 

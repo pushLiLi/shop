@@ -128,7 +128,7 @@ describe('CartDrawer', () => {
 
     expect(wrapper.find('.cart-items').exists()).toBe(true)
     expect(wrapper.text()).toContain('Cigar A')
-    expect(wrapper.text()).toContain('$25.00')
+    expect(wrapper.text()).toContain('¥25.00')
   })
 
   it('shows subtotal per item', async () => {
@@ -158,7 +158,7 @@ describe('CartDrawer', () => {
     cartStore.loading = false
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('$30.00')
+    expect(wrapper.text()).toContain('¥30.00')
   })
 
   it('shows total in footer', async () => {
@@ -187,7 +187,7 @@ describe('CartDrawer', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('.drawer-footer').exists()).toBe(true)
-    expect(wrapper.text()).toContain('$55.00')
+    expect(wrapper.text()).toContain('¥55.00')
   })
 
   it('has close button', async () => {
