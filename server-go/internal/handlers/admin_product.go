@@ -173,11 +173,13 @@ func UpdateProduct(c *gin.Context) {
 		}
 		if len(notifications) > 0 {
 			database.DB.Create(&notifications)
-			for _, n := range notifications {
-				ws.DefaultHub.SendToUser(n.UserID, gin.H{
-					"type":         "notification",
-					"notification": n,
-				})
+			if ws.DefaultHub != nil {
+				for _, n := range notifications {
+					ws.DefaultHub.SendToUser(n.UserID, gin.H{
+						"type":         "notification",
+						"notification": n,
+					})
+				}
 			}
 		}
 	}
@@ -198,11 +200,13 @@ func UpdateProduct(c *gin.Context) {
 		}
 		if len(notifications) > 0 {
 			database.DB.Create(&notifications)
-			for _, n := range notifications {
-				ws.DefaultHub.SendToUser(n.UserID, gin.H{
-					"type":         "notification",
-					"notification": n,
-				})
+			if ws.DefaultHub != nil {
+				for _, n := range notifications {
+					ws.DefaultHub.SendToUser(n.UserID, gin.H{
+						"type":         "notification",
+						"notification": n,
+					})
+				}
 			}
 		}
 	}

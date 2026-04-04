@@ -174,10 +174,12 @@ func ReviewPaymentProof(c *gin.Context) {
 			OrderID: &order.ID,
 		}
 		database.DB.Create(&notification)
-		ws.DefaultHub.SendToUser(notification.UserID, gin.H{
-			"type":         "notification",
-			"notification": notification,
-		})
+		if ws.DefaultHub != nil {
+			ws.DefaultHub.SendToUser(notification.UserID, gin.H{
+				"type":         "notification",
+				"notification": notification,
+			})
+		}
 
 	} else if input.Action == "reject" {
 		proof.Status = models.PaymentProofStatusRejected
@@ -204,10 +206,12 @@ func ReviewPaymentProof(c *gin.Context) {
 			OrderID: &order.ID,
 		}
 		database.DB.Create(&notification)
-		ws.DefaultHub.SendToUser(notification.UserID, gin.H{
-			"type":         "notification",
-			"notification": notification,
-		})
+		if ws.DefaultHub != nil {
+			ws.DefaultHub.SendToUser(notification.UserID, gin.H{
+				"type":         "notification",
+				"notification": notification,
+			})
+		}
 
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的审核操作"})

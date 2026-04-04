@@ -324,10 +324,12 @@ func UpdateOrderStatus(c *gin.Context) {
 			notification.Content = "您的订单 " + order.OrderNo + " 状态已更新为「" + statusText + "」"
 		}
 		database.DB.Create(&notification)
-		ws.DefaultHub.SendToUser(notification.UserID, gin.H{
-			"type":         "notification",
-			"notification": notification,
-		})
+		if ws.DefaultHub != nil {
+			ws.DefaultHub.SendToUser(notification.UserID, gin.H{
+				"type":         "notification",
+				"notification": notification,
+			})
+		}
 
 		if input.Status == models.OrderStatusShipped {
 			go func() {
