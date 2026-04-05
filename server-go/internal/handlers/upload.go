@@ -57,7 +57,11 @@ func UploadImage(c *gin.Context) {
 		return
 	}
 
-	result, _ := imagepkg.Process(fileBytes, ext)
+	result, err := imagepkg.Process(fileBytes, ext)
+	if err != nil || result == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "图片处理失败"})
+		return
+	}
 
 	baseName := fmt.Sprintf("%d_%s", time.Now().Unix(), uuid.New().String())
 	origName := baseName + result.OrigExt

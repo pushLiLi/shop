@@ -222,7 +222,7 @@ onMounted(() => { fetchBanners() })
 
     <div class="content-tips">
       <div class="tip-item">
-        <strong>推荐尺寸：</strong>1400 × 500px（宽高比 7:3）
+        <strong>推荐尺寸：</strong>1400 × 467px（宽高比 3:1）
       </div>
       <div class="tip-item">
         <strong>推荐内容：</strong>品牌故事、新品推荐、促销活动、节日专题、限量发售等
@@ -287,8 +287,8 @@ onMounted(() => { fetchBanners() })
             </div>
             <div class="form-group">
               <label>轮播图片 <span class="required">*</span></label>
-              <AdminImageUpload v-model="form.imageUrl" :aspect-ratio="7/3" />
-              <div class="field-hint">推荐尺寸 1400×500px，适合展示品牌形象、新品、活动等内容</div>
+              <AdminImageUpload v-model="form.imageUrl" :aspect-ratio="3/1" />
+              <div class="field-hint">推荐尺寸 1400×467px，适合展示品牌形象、新品、活动等内容</div>
             </div>
             <div class="form-group">
               <label>跳转链接</label>
@@ -498,7 +498,7 @@ onMounted(() => { fetchBanners() })
 
 .banner-image img {
   width: 100%;
-  aspect-ratio: 7/3;
+  aspect-ratio: 3/1;
   object-fit: cover;
   border-radius: 6px;
   transition: transform 0.2s;
