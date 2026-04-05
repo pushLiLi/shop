@@ -256,7 +256,7 @@ onMounted(fetchSettings)
 
         <div v-for="(label, key) in bannerLabels" :key="key" class="form-group">
           <label>{{ label }}</label>
-          <AdminImageUpload v-model="banners[key]" :aspect-ratio="7/3" />
+          <AdminImageUpload v-model="banners[key]" :aspect-ratio="60/23" />
         </div>
       </div>
 
