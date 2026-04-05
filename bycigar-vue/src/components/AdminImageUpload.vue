@@ -94,7 +94,20 @@ const processFile = async (file) => {
 }
 
 const confirmCrop = async () => {
-  const { canvas } = cropperRef.value.getResult()
+  let { canvas } = cropperRef.value.getResult()
+
+  const maxDim = props.maxDimension
+  if (canvas.width > maxDim || canvas.height > maxDim) {
+    const ratio = Math.min(maxDim / canvas.width, maxDim / canvas.height)
+    const w = Math.round(canvas.width * ratio)
+    const h = Math.round(canvas.height * ratio)
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    c.getContext('2d').drawImage(canvas, 0, 0, w, h)
+    canvas = c
+  }
+
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95))
   showCropper.value = false
   cropImageSrc.value = null
