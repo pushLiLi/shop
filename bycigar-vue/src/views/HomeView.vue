@@ -323,9 +323,6 @@ onMounted(() => { fetchData() })
   position: relative;
   overflow: hidden;
   touch-action: pan-y;
-  max-width: 783px;
-  margin: 0 auto;
-  border-radius: 6px;
 }
 
 .slider-track {
@@ -342,8 +339,9 @@ onMounted(() => { fetchData() })
 .slide img {
   width: 100%;
   height: auto;
+  max-height: 450px;
   aspect-ratio: 60/23;
-  object-fit: contain;
+  object-fit: cover;
   display: block;
 }
 
