@@ -339,7 +339,7 @@ onMounted(() => { fetchData() })
 .slide img {
   width: 100%;
   height: auto;
-  aspect-ratio: 3/1;
+  aspect-ratio: 7/3;
   object-fit: cover;
   display: block;
 }

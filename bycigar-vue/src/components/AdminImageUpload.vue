@@ -81,16 +81,7 @@ const processFile = async (file) => {
   error.value = ''
 
   if (props.aspectRatio == null) {
-    try {
-      const compressed = await compress(file, {
-        maxWidth: props.maxDimension,
-        maxHeight: props.maxDimension,
-        quality: props.quality
-      })
-      uploadFile(compressed)
-    } catch (e) {
-      error.value = '图片压缩失败'
-    }
+    uploadFile(file)
     return
   }
 
@@ -104,15 +95,10 @@ const processFile = async (file) => {
 
 const confirmCrop = async () => {
   const { canvas } = cropperRef.value.getResult()
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', props.quality))
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95))
   showCropper.value = false
   cropImageSrc.value = null
-  const compressed = await compress(blob, {
-    maxWidth: props.maxDimension,
-    maxHeight: props.maxDimension,
-    quality: props.quality
-  })
-  uploadFile(compressed, 'cropped.jpg')
+  uploadFile(blob, 'cropped.jpg')
 }
 
 const cancelCrop = () => {

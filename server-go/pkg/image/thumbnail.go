@@ -30,6 +30,31 @@ func Process(fileBytes []byte, ext string) (*ProcessResult, error) {
 		return processGIF(fileBytes, ext)
 	}
 
+	isJPEG := ext == ".jpg" || ext == ".jpeg"
+
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(fileBytes))
+	if err != nil {
+		return fallback(fileBytes, ext), nil
+	}
+
+	if isJPEG && cfg.Width <= MaxOriginalWidth {
+		thumb, err := generateThumbnail(fileBytes)
+		if err != nil {
+			return &ProcessResult{
+				Original:    fileBytes,
+				Thumbnail:   nil,
+				OrigExt:     ".jpg",
+				ContentType: "image/jpeg",
+			}, nil
+		}
+		return &ProcessResult{
+			Original:    fileBytes,
+			Thumbnail:   thumb,
+			OrigExt:     ".jpg",
+			ContentType: "image/jpeg",
+		}, nil
+	}
+
 	img, _, err := image.Decode(bytes.NewReader(fileBytes))
 	if err != nil {
 		return fallback(fileBytes, ext), nil
@@ -63,6 +88,21 @@ func Process(fileBytes []byte, ext string) (*ProcessResult, error) {
 		OrigExt:     ".jpg",
 		ContentType: "image/jpeg",
 	}, nil
+}
+
+func generateThumbnail(fileBytes []byte) ([]byte, error) {
+	img, _, err := image.Decode(bytes.NewReader(fileBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	img = onWhiteBg(img)
+	thumb := imaging.Fill(img, ThumbSize, ThumbSize, imaging.Center, imaging.Lanczos)
+	var thumbBuf bytes.Buffer
+	if err := imaging.Encode(&thumbBuf, thumb, imaging.JPEG, imaging.JPEGQuality(ThumbQuality)); err != nil {
+		return nil, err
+	}
+	return thumbBuf.Bytes(), nil
 }
 
 func processGIF(fileBytes []byte, ext string) (*ProcessResult, error) {
