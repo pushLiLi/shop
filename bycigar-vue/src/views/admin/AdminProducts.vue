@@ -197,7 +197,7 @@ const closeModal = () => {
 }
 
 const saveProduct = async () => {
-  if (!form.value.name || !form.value.price) {
+  if (!form.value.name || (form.value.currency === 'CNY' ? !form.value.price : !form.value.priceUsd)) {
     toast.error('请填写商品名称和价格')
     return
   }
@@ -594,26 +594,28 @@ onMounted(() => {
             <div class="section-title">价格与货币</div>
             <div class="form-row">
               <div class="form-group">
-                <label>默认货币</label>
-                <select v-model="form.currency">
-                  <option value="CNY">人民币 (¥)</option>
-                  <option value="USD">美元 ($)</option>
-                </select>
+                <label>商品币种</label>
+                <div class="currency-toggle">
+                  <button type="button" class="currency-btn" :class="{ active: form.currency === 'CNY' }" @click="form.currency = 'CNY'">¥ 人民币</button>
+                  <button type="button" class="currency-btn" :class="{ active: form.currency === 'USD' }" @click="form.currency = 'USD'">$ 美元</button>
+                </div>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>人民币价格 <span class="required">*</span></label>
+                <label>商品价格 <span class="required">*</span></label>
                 <div class="input-group">
-                  <span class="input-prefix">¥</span>
-                  <input v-model.number="form.price" type="number" step="0.01" min="0" placeholder="0.00">
+                  <span class="input-prefix">{{ form.currency === 'CNY' ? '¥' : '$' }}</span>
+                  <input v-if="form.currency === 'CNY'" v-model.number="form.price" type="number" step="0.01" min="0" placeholder="0.00">
+                  <input v-else v-model.number="form.priceUsd" type="number" step="0.01" min="0" placeholder="0.00">
                 </div>
               </div>
               <div class="form-group">
-                <label>美元价格</label>
+                <label>{{ form.currency === 'CNY' ? '美元参考价' : '人民币参考价' }}（选填）</label>
                 <div class="input-group">
-                  <span class="input-prefix">$</span>
-                  <input v-model.number="form.priceUsd" type="number" step="0.01" min="0" placeholder="0.00">
+                  <span class="input-prefix">{{ form.currency === 'CNY' ? '$' : '¥' }}</span>
+                  <input v-if="form.currency === 'CNY'" v-model.number="form.priceUsd" type="number" step="0.01" min="0" placeholder="0.00">
+                  <input v-else v-model.number="form.price" type="number" step="0.01" min="0" placeholder="0.00">
                 </div>
               </div>
               <div class="form-group">
@@ -1206,5 +1208,37 @@ select {
 .btn-save:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.currency-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.currency-btn {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  background: #f5f5f5;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.currency-btn:first-child {
+  border-right: 1px solid #ddd;
+}
+
+.currency-btn.active {
+  background: #d4a574;
+  color: #fff;
+}
+
+.currency-btn:hover:not(.active) {
+  background: #eee;
 }
 </style>
