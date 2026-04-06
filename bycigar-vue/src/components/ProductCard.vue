@@ -91,7 +91,10 @@ async function shareHandler(e) {
         <router-link :to="'/products/' + product.id">{{ product.name }}</router-link>
       </h3>
       <div class="product-bottom">
-        <button class="add-cart-btn" @click="addToCartHandler">加入购物车</button>
+        <button class="add-cart-btn" @click="addToCartHandler">
+          <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span class="cart-text">加入购物车</span>
+        </button>
         <div class="product-price">{{ formatPrice(product.price) }}</div>
       </div>
     </div>
@@ -173,6 +176,10 @@ async function shareHandler(e) {
   font-size: 13px;
   margin: 0 0 10px;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .product-name a {
@@ -189,7 +196,8 @@ async function shareHandler(e) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .add-cart-btn {
@@ -201,6 +209,14 @@ async function shareHandler(e) {
   cursor: pointer;
   transition: all 0.3s;
   border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.add-cart-btn .cart-icon {
+  display: none;
 }
 
 .add-cart-btn:hover {
@@ -300,6 +316,23 @@ async function shareHandler(e) {
     padding: 8px;
   }
 
+  .product-info {
+    padding: 12px;
+  }
+
+  .product-name {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .product-bottom {
+    gap: 6px;
+  }
+
+  .product-price {
+    font-size: 13px;
+  }
+
   .product-card.horizontal .product-image {
     width: 120px;
     height: 120px;
@@ -334,6 +367,85 @@ async function shareHandler(e) {
 
   .product-card.horizontal .product-price {
     font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-info {
+    padding: 10px;
+  }
+
+  .product-name {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .add-cart-btn {
+    padding: 6px;
+    font-size: 0;
+  }
+
+  .add-cart-btn .cart-icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+
+  .add-cart-btn .cart-text {
+    display: none;
+  }
+
+  .product-price {
+    font-size: 13px;
+  }
+
+  .product-image {
+    padding: 6px;
+  }
+
+  .favorite-btn {
+    top: 6px;
+    right: 6px;
+    padding: 5px;
+  }
+
+  .favorite-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .share-btn {
+    top: 6px;
+    left: 6px;
+    padding: 5px;
+  }
+
+  .share-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .product-card.horizontal .product-image {
+    width: 100px;
+    height: 100px;
+    padding: 6px;
+  }
+
+  .product-card.horizontal .product-name {
+    font-size: 13px;
+  }
+
+  .product-card.horizontal .add-cart-btn .cart-text {
+    display: inline;
+  }
+
+  .product-card.horizontal .add-cart-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .product-card.horizontal .add-cart-btn .cart-icon {
+    display: none;
   }
 }
 </style>
