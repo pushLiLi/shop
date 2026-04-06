@@ -297,7 +297,7 @@ watch([totalCount, pageSize], () => {
                 <button class="filter-tag-close" @click="selectedCategorySlug = ''; currentPage = 1; searchProducts()">&times;</button>
               </span>
               <span class="filter-tag" v-if="minPrice || maxPrice">
-                {{ minPrice ? '¥' + minPrice : '¥0' }} - {{ maxPrice ? '¥' + maxPrice : '∞' }}
+                {{ minPrice ? '¥' + minPrice : '¥0' }} - {{ maxPrice ? '¥' + maxPrice : '¥∞' }}
                 <button class="filter-tag-close" @click="clearPriceFilter">&times;</button>
               </span>
             </div>

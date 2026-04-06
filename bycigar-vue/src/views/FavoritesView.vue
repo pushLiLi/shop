@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useFavoritesStore } from '../stores/favorites'
 import { useCartStore } from '../stores/cart'
 import { useToastStore } from '../stores/toast'
+import { formatPrice } from '../composables/useFormatPrice'
 
 const favoritesStore = useFavoritesStore()
 const cartStore = useCartStore()
@@ -52,10 +53,6 @@ const selectedCount = computed(() => selectedIds.value.size)
 onMounted(() => {
   favoritesStore.fetchFavorites()
 })
-
-function formatPrice(price) {
-  return `¥${Number(price).toFixed(2)}`
-}
 
 function toggleSelect(productId) {
   if (selectedIds.value.has(productId)) {
@@ -196,7 +193,7 @@ async function removeFavorite(productId) {
               {{ fav.product?.name }}
             </router-link>
             
-            <div class="item-price">{{ formatPrice(fav.product?.price) }}</div>
+            <div class="item-price">{{ formatPrice(fav.product) }}</div>
             
             <button 
               class="cart-btn" 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useToastStore } from '../../stores/toast'
-
+import { formatPriceByCurrency } from '../../composables/useFormatPrice'
 const API_BASE = '/api'
 const toast = useToastStore()
 
@@ -310,7 +310,7 @@ const batchReview = async (action) => {
   }
 }
 
-const formatPrice = (price) => `¥${parseFloat(price).toFixed(2)}`
+const formatPrice = (price) => formatPriceByCurrency(price, 'CNY')
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
 const submitShip = async () => {

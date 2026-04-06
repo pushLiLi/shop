@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useToastStore } from '../stores/toast'
 import { useImageCompress } from '../composables/useImageCompress'
+import { formatPriceByCurrency } from '../composables/useFormatPrice'
 
 const toast = useToastStore()
 const { compress } = useImageCompress()
@@ -112,9 +113,6 @@ function formatDate(dateStr) {
   return date.toLocaleDateString('zh-CN')
 }
 
-function formatPrice(price) {
-  return '¥' + Number(price).toFixed(2)
-}
 
 onMounted(() => {
   fetchOrders()
@@ -151,7 +149,7 @@ onMounted(() => {
             <div v-for="item in order.items" :key="item.id" class="order-item-row">
               <span class="item-name">{{ item.product?.name || '商品' }}</span>
               <span class="item-qty">x{{ item.quantity }}</span>
-              <span class="item-price">{{ formatPrice(item.price) }}</span>
+              <span class="item-price">{{ formatPriceByCurrency(item.price, item.currency) }}</span>
             </div>
           </div>
 
@@ -184,7 +182,7 @@ onMounted(() => {
 
           <div class="order-footer">
             <router-link :to="`/orders/${order.id}`" class="btn-detail">查看详情</router-link>
-            <span class="order-total">总计: {{ formatPrice(order.total) }}</span>
+            <span class="order-total">总计: {{ formatPriceByCurrency(order.total, 'CNY') }}</span>
           </div>
         </div>
       </div>

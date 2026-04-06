@@ -6,6 +6,7 @@ import { useFavoritesStore } from '../stores/favorites'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { useNotificationsStore } from '../stores/notifications'
+import { formatPrice } from '../composables/useFormatPrice'
 import NotificationPanel from './NotificationPanel.vue'
 
 const router = useRouter()
@@ -294,7 +295,7 @@ const handleVisibilityChange = () => {
                       <div class="suggestion-thumb-placeholder" v-else></div>
                       <div class="suggestion-info">
                         <span class="suggestion-name">{{ item.name }}</span>
-                        <span class="suggestion-price">¥{{ item.price }}</span>
+                        <span class="suggestion-price">{{ formatPrice(item) }}</span>
                       </div>
                     </div>
                   </div>

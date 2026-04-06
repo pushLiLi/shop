@@ -116,6 +116,7 @@ func CreateOrder(c *gin.Context) {
 				ProductID: item.ProductID,
 				Quantity:  item.Quantity,
 				Price:     item.Product.Price,
+				Currency:  item.Product.Currency,
 			}
 			database.DB.Create(&orderItem)
 		}

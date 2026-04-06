@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '../../stores/auth'
+import { formatPriceByCurrency } from '../../composables/useFormatPrice'
 import { Line, Bar } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -115,7 +116,7 @@ const fetchRevenue = async () => {
   }
 }
 
-const formatPrice = (price) => `¥${parseFloat(price || 0).toFixed(2)}`
+const formatPrice = (price) => formatPriceByCurrency(price || 0, 'CNY')
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
 const revenueChartData = computed(() => {

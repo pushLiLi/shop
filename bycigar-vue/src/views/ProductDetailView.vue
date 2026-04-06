@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
@@ -7,6 +7,7 @@ import { useToastStore } from '../stores/toast'
 import { useAuthStore } from '../stores/auth'
 import { useShare } from '../composables/useShare'
 import ProductCard from '../components/ProductCard.vue'
+import { formatPrice } from '../composables/useFormatPrice'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,9 +29,6 @@ const isFavorite = computed(() => {
   return favoritesStore.items.some(item => item.productId === product.value.id)
 })
 
-const formatPrice = (price) => {
-  return `¥${Number(price).toFixed(2)}`
-}
 
 async function fetchProduct() {
   try {
@@ -102,6 +100,11 @@ async function shareHandler() {
 onMounted(() => {
   fetchProduct()
 })
+
+watch(productId, () => {
+  quantity.value = 1
+  fetchProduct()
+})
 </script>
 
 <template>
@@ -133,7 +136,7 @@ onMounted(() => {
           <div class="product-info">
             <h1 class="product-title">{{ product.name }}</h1>
             <div class="product-brand" v-if="product.brand">{{ product.brand }}</div>
-            <div class="product-price-main">{{ formatPrice(product.price) }}</div>
+            <div class="product-price-main">{{ formatPrice(product) }}</div>
             
             <div class="product-description" v-if="product.description">
               <p>{{ product.description }}</p>

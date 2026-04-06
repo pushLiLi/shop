@@ -43,6 +43,7 @@ type OrderItem struct {
 	Product   Product `json:"product" gorm:"foreignKey:ProductID"`
 	Quantity  int     `json:"quantity" gorm:"not null"`
 	Price     float64 `json:"price" gorm:"not null"`
+	Currency  string  `json:"currency" gorm:"size:10;default:'CNY'"`
 }
 
 type OrderResponse struct {

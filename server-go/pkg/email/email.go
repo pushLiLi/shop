@@ -105,6 +105,13 @@ func RenderTemplate(templateStr string, data map[string]string) string {
 	return result
 }
 
+func getCurrencySymbol(currency string) string {
+	if currency == "USD" {
+		return "$"
+	}
+	return "¥"
+}
+
 func BuildOrderItemsHTML(items []models.OrderItem) string {
 	var rows strings.Builder
 	for _, item := range items {
@@ -112,11 +119,12 @@ func BuildOrderItemsHTML(items []models.OrderItem) string {
 		if productName == "" {
 			productName = fmt.Sprintf("商品 #%d", item.ProductID)
 		}
+		symbol := getCurrencySymbol(item.Currency)
 		rows.WriteString(fmt.Sprintf(`<tr>
 			<td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:14px;">%s</td>
 			<td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:14px;text-align:center;">%d</td>
-			<td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:14px;text-align:right;">¥%.2f</td>
-		</tr>`, productName, item.Quantity, item.Price))
+			<td style="padding:10px 16px;border-bottom:1px solid #eee;font-size:14px;text-align:right;">%s%.2f</td>
+		</tr>`, productName, item.Quantity, symbol, item.Price))
 	}
 
 	return fmt.Sprintf(`<table style="width:100%%;border-collapse:collapse;margin:16px 0;">

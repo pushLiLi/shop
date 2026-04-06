@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
+import { formatPrice, formatPriceByCurrency } from '../composables/useFormatPrice'
 
 const cartStore = useCartStore()
 const router = useRouter()
@@ -9,10 +10,6 @@ const router = useRouter()
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
 const loading = computed(() => cartStore.loading)
-
-function formatPrice(price) {
-  return `¥${Number(price).toFixed(2)}`
-}
 
 function handleInput(item, e) {
   const val = parseInt(e.target.value) || 0
@@ -96,7 +93,7 @@ watch(() => cartStore.isOpen, (isOpen) => {
                 </div>
                 <div class="item-info">
                   <h3 class="item-name" @click="goToProduct(item.productId)">{{ item.product?.name }}</h3>
-                  <div class="item-price">{{ formatPrice(item.product?.price) }}</div>
+                  <div class="item-price">{{ formatPrice(item.product) }}</div>
                   <div class="item-actions">
                     <div class="quantity-control">
                       <button @click="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
@@ -121,7 +118,7 @@ watch(() => cartStore.isOpen, (isOpen) => {
                     </button>
                   </div>
                   <div class="item-total">
-                    小计: {{ formatPrice((item.product?.price || 0) * item.quantity) }}
+                    小计: {{ formatPriceByCurrency((item.product?.price || 0) * item.quantity, item.product?.currency) }}
                   </div>
                 </div>
               </div>
@@ -131,7 +128,7 @@ watch(() => cartStore.isOpen, (isOpen) => {
           <div v-if="items.length > 0" class="drawer-footer">
             <div class="summary-row">
               <span class="summary-label">总计</span>
-              <span class="summary-value">{{ formatPrice(total) }}</span>
+              <span class="summary-value">{{ formatPriceByCurrency(total, 'CNY') }}</span>
             </div>
             <button class="checkout-btn" @click="goToCheckout">去结算</button>
           </div>

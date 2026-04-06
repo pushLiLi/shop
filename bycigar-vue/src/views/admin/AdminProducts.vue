@@ -2,12 +2,14 @@
 import { ref, onMounted, computed } from 'vue'
 import AdminImageUpload from '../../components/AdminImageUpload.vue'
 import { useToastStore } from '../../stores/toast'
+import { formatPrice } from '../../composables/useFormatPrice'
 
 const API_BASE = '/api'
 const toast = useToastStore()
 
 const products = ref([])
 const categories = ref([])
+const allPaymentMethods = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const modalMode = ref('create')
@@ -28,6 +30,9 @@ const form = ref({
   slug: '',
   description: '',
   price: 0,
+  priceUsd: 0,
+  currency: 'CNY',
+  paymentMethodIds: '',
   imageUrl: '',
   thumbnailUrl: '',
   categoryId: '',
@@ -40,6 +45,8 @@ const form = ref({
 const selectedIds = ref([])
 const selectAll = ref(false)
 const imageList = ref([])
+const useGlobalPaymentMethods = ref(true)
+const selectedPaymentMethodIds = ref([])
 
 const authHeaders = () => ({
   'Content-Type': 'application/json',
@@ -52,6 +59,18 @@ const fetchCategories = async () => {
     categories.value = await res.json()
   } catch (e) {
     console.error('Error fetching categories:', e)
+  }
+}
+
+const fetchPaymentMethods = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/payment-methods`, {
+      headers: authHeaders()
+    })
+    const data = await res.json()
+    allPaymentMethods.value = data.paymentMethods || []
+  } catch (e) {
+    console.error('Error fetching payment methods:', e)
   }
 }
 
@@ -123,6 +142,9 @@ const openCreateModal = () => {
     slug: '',
     description: '',
     price: 0,
+    priceUsd: 0,
+    currency: 'CNY',
+    paymentMethodIds: '',
     imageUrl: '',
     thumbnailUrl: '',
     categoryId: '',
@@ -132,6 +154,8 @@ const openCreateModal = () => {
     images: ''
   }
   imageList.value = []
+  useGlobalPaymentMethods.value = true
+  selectedPaymentMethodIds.value = []
   showModal.value = true
 }
 
@@ -143,6 +167,9 @@ const openEditModal = (product) => {
     slug: product.slug,
     description: product.description || '',
     price: product.price,
+    priceUsd: product.priceUsd || 0,
+    currency: product.currency || 'CNY',
+    paymentMethodIds: product.paymentMethodIds || '',
     imageUrl: product.imageUrl || '',
     thumbnailUrl: product.thumbnailUrl || '',
     categoryId: product.categoryId || '',
@@ -152,6 +179,16 @@ const openEditModal = (product) => {
   }
   const extra = product.images ? product.images.split(',').filter(Boolean) : []
   imageList.value = extra
+  useGlobalPaymentMethods.value = !product.paymentMethodIds || product.paymentMethodIds === ''
+  if (product.paymentMethodIds) {
+    try {
+      selectedPaymentMethodIds.value = JSON.parse(product.paymentMethodIds).map(Number)
+    } catch {
+      selectedPaymentMethodIds.value = []
+    }
+  } else {
+    selectedPaymentMethodIds.value = []
+  }
   showModal.value = true
 }
 
@@ -176,6 +213,9 @@ const saveProduct = async () => {
       slug: form.value.slug,
       description: form.value.description,
       price: parseFloat(form.value.price),
+      priceUsd: parseFloat(form.value.priceUsd) || 0,
+      currency: form.value.currency || 'CNY',
+      paymentMethodIds: useGlobalPaymentMethods.value ? '' : JSON.stringify(selectedPaymentMethodIds.value),
       imageUrl: form.value.imageUrl,
       thumbnailUrl: form.value.thumbnailUrl || '',
       categoryId: form.value.categoryId ? parseInt(form.value.categoryId) : 0,
@@ -354,7 +394,11 @@ const toggleActive = async (product) => {
   }
 }
 
-const formatPrice = (price) => `¥${parseFloat(price).toFixed(2)}`
+const formatProductPrice = (product) => formatPrice(product)
+
+const updatePaymentMethodIds = () => {
+  form.value.paymentMethodIds = JSON.stringify(selectedPaymentMethodIds.value)
+}
 
 const prevPage = () => {
   if (currentPage.value > 1) {
@@ -373,6 +417,7 @@ const nextPage = () => {
 onMounted(() => {
   fetchCategories()
   fetchProducts()
+  fetchPaymentMethods()
 })
 </script>
 
@@ -453,7 +498,7 @@ onMounted(() => {
               <div class="product-name">{{ product.name }}</div>
             </td>
             <td>{{ product.category?.name || '-' }}</td>
-            <td>{{ formatPrice(product.price) }}</td>
+            <td>{{ formatProductPrice(product) }}</td>
             <td>{{ product.stock }} 件</td>
             <td>
               <span 
@@ -546,13 +591,29 @@ onMounted(() => {
           </div>
 
           <div class="form-section">
-            <div class="section-title">价格与库存</div>
+            <div class="section-title">价格与货币</div>
             <div class="form-row">
               <div class="form-group">
-                <label>价格 <span class="required">*</span></label>
+                <label>默认货币</label>
+                <select v-model="form.currency">
+                  <option value="CNY">人民币 (¥)</option>
+                  <option value="USD">美元 ($)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>人民币价格 <span class="required">*</span></label>
                 <div class="input-group">
                   <span class="input-prefix">¥</span>
                   <input v-model.number="form.price" type="number" step="0.01" min="0" placeholder="0.00">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>美元价格</label>
+                <div class="input-group">
+                  <span class="input-prefix">$</span>
+                  <input v-model.number="form.priceUsd" type="number" step="0.01" min="0" placeholder="0.00">
                 </div>
               </div>
               <div class="form-group">
@@ -561,6 +622,27 @@ onMounted(() => {
                   <input v-model.number="form.stock" type="number" min="0" placeholder="0">
                   <span class="input-suffix">件</span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title">付款方式</div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="useGlobalPaymentMethods">
+                <span>使用全局付款方式</span>
+              </label>
+              <p class="hint-text" v-if="useGlobalPaymentMethods">不限制，所有激活的付款方式均可用</p>
+            </div>
+            <div v-if="!useGlobalPaymentMethods" class="form-group">
+              <label>允许的付款方式</label>
+              <div class="payment-method-checkboxes">
+                <label v-for="pm in allPaymentMethods" :key="pm.id" class="checkbox-label">
+                  <input type="checkbox" :value="pm.id" v-model="selectedPaymentMethodIds" @change="updatePaymentMethodIds">
+                  {{ pm.name }}
+                </label>
+                <p v-if="allPaymentMethods.length === 0" class="hint-text">暂无付款方式，请先在付款方式管理中添加</p>
               </div>
             </div>
           </div>

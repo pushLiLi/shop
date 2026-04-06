@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToastStore } from '../stores/toast'
 import { useImageCompress } from '../composables/useImageCompress'
+import { formatPriceByCurrency } from '../composables/useFormatPrice'
 
 const route = useRoute()
 const router = useRouter()
@@ -119,9 +120,6 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleString('zh-CN')
 }
 
-function formatPrice(price) {
-  return '¥' + Number(price).toFixed(2)
-}
 
 onMounted(() => fetchOrder())
 </script>
@@ -207,12 +205,12 @@ onMounted(() => fetchOrder())
                 <span class="item-name">{{ item.product?.name || '商品' }}</span>
                 <span class="item-qty">x{{ item.quantity }}</span>
               </div>
-              <span class="item-price">{{ formatPrice(item.price * item.quantity) }}</span>
+              <span class="item-price">{{ formatPriceByCurrency(item.price * item.quantity, item.currency) }}</span>
             </div>
           </div>
           <div class="order-total">
             <span>合计</span>
-            <span class="total-price">{{ formatPrice(order.total) }}</span>
+            <span class="total-price">{{ formatPriceByCurrency(order.total, 'CNY') }}</span>
           </div>
         </div>
 

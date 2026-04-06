@@ -17,17 +17,20 @@ import (
 )
 
 type ProductInput struct {
-	Name           string  `json:"name"`
-	Slug           string  `json:"slug"`
-	Description    string  `json:"description"`
-	Price          float64 `json:"price"`
-	Image          string  `json:"imageUrl"`
-	Images         string  `json:"images"`
-	ThumbnailImage string  `json:"thumbnailUrl"`
-	CategoryID     uint    `json:"categoryId"`
-	Stock          int     `json:"stock"`
-	IsActive       bool    `json:"isActive"`
-	IsFeatured     bool    `json:"isFeatured"`
+	Name             string  `json:"name"`
+	Slug             string  `json:"slug"`
+	Description      string  `json:"description"`
+	Price            float64 `json:"price"`
+	PriceUSD         float64 `json:"priceUsd"`
+	Currency         string  `json:"currency"`
+	PaymentMethodIDs string  `json:"paymentMethodIds"`
+	Image            string  `json:"imageUrl"`
+	Images           string  `json:"images"`
+	ThumbnailImage   string  `json:"thumbnailUrl"`
+	CategoryID       uint    `json:"categoryId"`
+	Stock            int     `json:"stock"`
+	IsActive         bool    `json:"isActive"`
+	IsFeatured       bool    `json:"isFeatured"`
 }
 
 func generateSlug(name string) string {
@@ -61,18 +64,25 @@ func CreateProduct(c *gin.Context) {
 		input.Slug = generateSlug(input.Name)
 	}
 
+	if input.Currency == "" {
+		input.Currency = "CNY"
+	}
+
 	product := models.Product{
-		Name:           input.Name,
-		Slug:           input.Slug,
-		Description:    input.Description,
-		Price:          input.Price,
-		Image:          input.Image,
-		Images:         input.Images,
-		ThumbnailImage: input.ThumbnailImage,
-		CategoryID:     input.CategoryID,
-		Stock:          input.Stock,
-		IsActive:       input.IsActive,
-		IsFeatured:     input.IsFeatured,
+		Name:             input.Name,
+		Slug:             input.Slug,
+		Description:      input.Description,
+		Price:            input.Price,
+		PriceUSD:         input.PriceUSD,
+		Currency:         input.Currency,
+		PaymentMethodIDs: input.PaymentMethodIDs,
+		Image:            input.Image,
+		Images:           input.Images,
+		ThumbnailImage:   input.ThumbnailImage,
+		CategoryID:       input.CategoryID,
+		Stock:            input.Stock,
+		IsActive:         input.IsActive,
+		IsFeatured:       input.IsFeatured,
 	}
 
 	if err := database.DB.Create(&product).Error; err != nil {
@@ -125,6 +135,11 @@ func UpdateProduct(c *gin.Context) {
 	}
 	product.Description = input.Description
 	product.Price = input.Price
+	product.PriceUSD = input.PriceUSD
+	if input.Currency != "" {
+		product.Currency = input.Currency
+	}
+	product.PaymentMethodIDs = input.PaymentMethodIDs
 	product.Image = input.Image
 	product.Images = input.Images
 	product.ThumbnailImage = input.ThumbnailImage

@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { useCartStore } from '../stores/cart'
 import { useFavoritesStore } from '../stores/favorites'
 import { useToastStore } from '../stores/toast'
+import { formatPrice } from '../composables/useFormatPrice'
 import { useShare } from '../composables/useShare'
 
 const emit = defineEmits(['addToCart'])
@@ -30,10 +31,6 @@ const { shareProduct } = useShare()
 const isFavorite = computed(() => {
   return favoritesStore.items.some(item => item.productId === props.product.id)
 })
-
-const formatPrice = (price) => {
-  return `¥${Number(price).toFixed(2)}`
-}
 
 async function addToCartHandler(e) {
   e.preventDefault()
@@ -95,7 +92,7 @@ async function shareHandler(e) {
           <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           <span class="cart-text">加入购物车</span>
         </button>
-        <div class="product-price">{{ formatPrice(product.price) }}</div>
+        <div class="product-price">{{ formatPrice(product) }}</div>
       </div>
     </div>
   </div>

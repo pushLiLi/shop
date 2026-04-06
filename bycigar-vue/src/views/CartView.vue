@@ -1,16 +1,13 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useCartStore } from '../stores/cart'
+import { formatPrice, formatPriceByCurrency } from '../composables/useFormatPrice'
 
 const cartStore = useCartStore()
 
 const items = computed(() => cartStore.items)
 const total = computed(() => cartStore.total)
 const loading = computed(() => cartStore.loading)
-
-function formatPrice(price) {
-  return `¥${Number(price).toFixed(2)}`
-}
 
 function handleInput(item, e) {
   const val = parseInt(e.target.value) || 0
@@ -60,7 +57,7 @@ onMounted(() => {
             </div>
             <div class="item-info">
               <h3 class="item-name">{{ item.product?.name }}</h3>
-              <div class="item-price">单价: {{ formatPrice(item.product?.price) }}</div>
+              <div class="item-price">单价: {{ formatPrice(item.product) }}</div>
                <div class="item-actions">
                  <div class="quantity-control" @click.prevent>
                     <button @click.stop="cartStore.updateQuantity(item.id, item.quantity - 1)">-</button>
@@ -80,7 +77,7 @@ onMounted(() => {
                   >删除</button>
                </div>
               <div class="item-total">
-                小计: {{ formatPrice((item.product?.price || 0) * item.quantity) }}
+                小计: {{ formatPriceByCurrency((item.product?.price || 0) * item.quantity, item.product?.currency) }}
               </div>
             </div>
           </router-link>
@@ -89,7 +86,7 @@ onMounted(() => {
         <div class="cart-summary">
           <div class="summary-row">
             <span class="summary-label">总计:</span>
-            <span class="summary-value">{{ formatPrice(total) }}</span>
+            <span class="summary-value">{{ formatPriceByCurrency(total, 'CNY') }}</span>
           </div>
           <router-link to="/checkout" class="checkout-btn">去结算</router-link>
         </div>

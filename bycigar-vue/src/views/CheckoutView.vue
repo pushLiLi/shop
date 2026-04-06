@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router'
 import { useCartStore } from '../stores/cart'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { getStateName } from '../utils/states'
 import { useImageCompress } from '../composables/useImageCompress'
+import { formatPrice, formatPriceByCurrency } from '../composables/useFormatPrice'
 
 const router = useRouter()
 const cartStore = useCartStore()
@@ -69,13 +69,48 @@ async function fetchAddresses() {
 async function fetchPaymentMethods() {
   try {
     const res = await fetch('/api/payment-methods')
-    if (res.ok) {
-      const data = await res.json()
-      paymentMethods.value = data.paymentMethods || []
-      if (paymentMethods.value.length > 0) {
-        selectedPaymentMethodId.value = paymentMethods.value[0].id
+    if (!res.ok) {
+      paymentMethods.value = []
+      selectedPaymentMethodId.value = null
+      return
+    }
+    const data = await res.json()
+    let allMethods = data.paymentMethods || []
+
+    const cartItems = cartStore.items
+    if (cartItems.length === 0) {
+      paymentMethods.value = allMethods
+      if (allMethods.length > 0) selectedPaymentMethodId.value = allMethods[0].id
+      return
+    }
+
+    let hasCustom = false
+    const allSets = []
+    for (const item of cartItems) {
+      const p = item.product
+      if (p && p.paymentMethodIds) {
+        try {
+          const ids = JSON.parse(p.paymentMethodIds).map(Number)
+          if (ids.length > 0) {
+            hasCustom = true
+            allSets.push(new Set(ids))
+          }
+        } catch { /* ignore */ }
       }
     }
+
+    if (!hasCustom) {
+      paymentMethods.value = allMethods
+    } else {
+      const intersection = allMethods.filter(m =>
+        allSets.every(s => s.has(m.id))
+      )
+      paymentMethods.value = intersection
+    }
+
+    selectedPaymentMethodId.value = paymentMethods.value.length > 0
+      ? paymentMethods.value[0].id
+      : null
   } catch (e) {
     console.error('获取付款方式失败:', e)
   }
@@ -173,9 +208,7 @@ async function createOrder() {
   }
 }
 
-function formatPrice(price) {
-  return '¥' + Number(price).toFixed(2)
-}
+
 </script>
 
 <template>
@@ -190,7 +223,7 @@ function formatPrice(price) {
             <div v-for="item in items" :key="item.productId" class="order-item">
               <span class="item-name">{{ item.product?.name }}</span>
               <span class="item-quantity">x{{ item.quantity }}</span>
-              <span class="item-price">{{ formatPrice((item.product?.price || 0) * item.quantity) }}</span>
+              <span class="item-price">{{ formatPriceByCurrency((item.product?.price || 0) * item.quantity, item.product?.currency) }}</span>
             </div>
           </div>
         </div>
@@ -307,7 +340,7 @@ function formatPrice(price) {
           </div>
           <div class="summary-row total-row">
             <span>总计:</span>
-            <span class="total-value">{{ formatPrice(total) }}</span>
+            <span class="total-value">{{ formatPriceByCurrency(total, 'CNY') }}</span>
           </div>
           <button
             class="submit-btn"
