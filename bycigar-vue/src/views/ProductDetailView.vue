@@ -130,6 +130,9 @@ watch(productId, () => {
           <div class="product-gallery">
             <div class="main-image">
               <img :src="product.imageUrl" :alt="product.name">
+              <div v-if="product.stock === 0" class="sold-out-overlay">
+                <span class="sold-out-text">已售罄</span>
+              </div>
             </div>
           </div>
 
@@ -143,12 +146,14 @@ watch(productId, () => {
             </div>
 
             <div class="purchase-section">
-              <div class="quantity-selector">
+              <div class="quantity-selector" v-if="product.stock > 0">
                 <button class="qty-btn" @click="decreaseQty">-</button>
                 <input type="number" v-model.number="quantity" min="1" class="qty-input" @input="handleQtyInput">
                 <button class="qty-btn" @click="increaseQty">+</button>
               </div>
-              <button class="buy-btn" @click="addToCart">加入购物车</button>
+              <button class="buy-btn" :class="{ disabled: product.stock === 0 }" :disabled="product.stock === 0" @click="addToCart">
+                {{ product.stock === 0 ? '已售罄' : '加入购物车' }}
+              </button>
               <button class="favorite-btn" @click="toggleFavorite" :class="{ active: isFavorite }">
                 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" :fill="isFavorite ? '#d4a574' : 'none'" stroke="currentColor" stroke-width="2">
                   <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -243,6 +248,7 @@ watch(productId, () => {
   background: #fff;
   border-radius: 8px;
   overflow: hidden;
+  position: relative;
 }
 
 .main-image img {
@@ -357,6 +363,43 @@ watch(productId, () => {
 
 .buy-btn:hover {
   background: #e5b584;
+}
+
+.buy-btn.disabled,
+.buy-btn:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.buy-btn.disabled:hover,
+.buy-btn:disabled:hover {
+  background: #555;
+}
+
+.sold-out-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sold-out-text {
+  display: inline-block;
+  padding: 12px 36px;
+  background: #e53e3e;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 8px;
+  transform: rotate(-15deg);
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+  user-select: none;
 }
 
 .favorite-btn {

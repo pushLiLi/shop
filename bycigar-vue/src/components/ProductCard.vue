@@ -182,17 +182,15 @@ async function shareHandler(e) {
 
 .sold-out-text {
   display: inline-block;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  color: transparent;
-  font-size: 52px;
-  font-weight: 900;
-  letter-spacing: 12px;
+  padding: 8px 24px;
+  background: #e53e3e;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 6px;
   transform: rotate(-15deg);
-  -webkit-text-stroke: 2.5px #e53e3e;
-  text-shadow: 0 0 6px rgba(255, 255, 255, 0.6), 2px 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
   user-select: none;
 }
 
@@ -345,9 +343,9 @@ async function shareHandler(e) {
 }
 
 .product-card.horizontal .sold-out-text {
-  font-size: 32px;
-  letter-spacing: 8px;
-  -webkit-text-stroke: 2px #e53e3e;
+  font-size: 18px;
+  padding: 6px 18px;
+  letter-spacing: 4px;
 }
 
 @media (max-width: 768px) {
