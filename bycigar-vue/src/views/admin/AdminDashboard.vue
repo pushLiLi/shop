@@ -117,12 +117,6 @@ const fetchRevenue = async () => {
 }
 
 const formatPrice = (price, currency = 'CNY') => formatPriceByCurrency(price || 0, currency)
-const formatMultiCurrency = (revenueByCurrency) => {
-  if (!revenueByCurrency) return '¥0.00 / $0.00'
-  const cny = Number(revenueByCurrency.CNY || 0).toFixed(2)
-  const usd = Number(revenueByCurrency.USD || 0).toFixed(2)
-  return '¥' + cny + ' / $' + usd
-}
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
 const revenueChartData = computed(() => {
@@ -233,7 +227,10 @@ onMounted(async () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ formatMultiCurrency(stats.totalRevenueByCurrency) }}</div>
+              <div class="stat-value multi-currency-value">
+                <span class="currency-badge large cny">¥{{ Number(stats.totalRevenueByCurrency?.CNY || 0).toFixed(2) }}</span>
+                <span class="currency-badge large usd">${{ Number(stats.totalRevenueByCurrency?.USD || 0).toFixed(2) }}</span>
+              </div>
               <div class="stat-label">总营收</div>
             </div>
           </div>
@@ -267,7 +264,10 @@ onMounted(async () => {
               <div class="stat-label">今日订单</div>
             </div>
             <div class="stat-extra" v-if="showRevenue">
-              <span class="today-revenue">{{ formatMultiCurrency(stats.todayRevenueByCurrency) }}</span>
+              <div class="multi-currency-value small">
+                <span class="currency-badge small cny">¥{{ Number(stats.todayRevenueByCurrency?.CNY || 0).toFixed(2) }}</span>
+                <span class="currency-badge small usd">${{ Number(stats.todayRevenueByCurrency?.USD || 0).toFixed(2) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -396,7 +396,12 @@ onMounted(async () => {
                   <td><span class="rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</span></td>
                   <td>{{ product.productName }}</td>
                   <td>{{ product.totalSold }} 件</td>
-                  <td v-if="showRevenue" class="price">{{ formatMultiCurrency(product.revenueByCurrency) }}</td>
+                  <td v-if="showRevenue">
+                    <div class="multi-currency-value small">
+                      <span class="currency-badge small cny">¥{{ Number(product.revenueByCurrency?.CNY || 0).toFixed(2) }}</span>
+                      <span class="currency-badge small usd">${{ Number(product.revenueByCurrency?.USD || 0).toFixed(2) }}</span>
+                    </div>
+                  </td>
                 </tr>
                 <tr v-if="topProducts.length === 0">
                   <td :colspan="showRevenue ? 4 : 3" class="empty-text">暂无销售数据</td>
@@ -517,6 +522,49 @@ onMounted(async () => {
   color: #1a1a1a;
 }
 
+.multi-currency-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.multi-currency-value.small {
+  gap: 6px;
+}
+
+.currency-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.currency-badge.large {
+  font-size: 20px;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.currency-badge.small {
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+}
+
+.currency-badge.cny {
+  background: rgba(212, 165, 116, 0.15);
+  color: #b8860b;
+  border: 1px solid rgba(212, 165, 116, 0.3);
+}
+
+.currency-badge.usd {
+  background: rgba(46, 125, 50, 0.15);
+  color: #2e7d32;
+  border: 1px solid rgba(46, 125, 50, 0.3);
+}
+
 .stat-label {
   font-size: 13px;
   color: #999;
@@ -535,11 +583,6 @@ onMounted(async () => {
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
-}
-
-.today-revenue {
-  font-size: 12px;
-  color: #999;
 }
 
 .dashboard-grid {
