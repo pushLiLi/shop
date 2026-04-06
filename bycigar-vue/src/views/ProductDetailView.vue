@@ -390,15 +390,19 @@ watch(productId, () => {
 
 .sold-out-text {
   display: inline-block;
-  padding: 12px 36px;
-  background: #e53e3e;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 8px;
+  padding: 16px 32px;
+  background: rgba(229, 62, 62, 0.05);
+  border: 6px double #e53e3e;
+  border-radius: 12px;
+  color: #e53e3e;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  text-indent: 12px;
   transform: rotate(-15deg);
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 20px rgba(229, 62, 62, 0.2), inset 0 0 15px rgba(229, 62, 62, 0.2);
+  text-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8), -1px -1px 0px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
   user-select: none;
 }
 

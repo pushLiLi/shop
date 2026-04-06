@@ -182,15 +182,19 @@ async function shareHandler(e) {
 
 .sold-out-text {
   display: inline-block;
-  padding: 8px 24px;
-  background: #e53e3e;
-  border-radius: 4px;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: 6px;
+  padding: 10px 20px;
+  background: rgba(229, 62, 62, 0.05);
+  border: 4px double #e53e3e;
+  border-radius: 8px;
+  color: #e53e3e;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  text-indent: 8px;
   transform: rotate(-15deg);
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 15px rgba(229, 62, 62, 0.2), inset 0 0 10px rgba(229, 62, 62, 0.2);
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8), -1px -1px 0px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(2px);
   user-select: none;
 }
 
@@ -343,9 +347,11 @@ async function shareHandler(e) {
 }
 
 .product-card.horizontal .sold-out-text {
-  font-size: 18px;
-  padding: 6px 18px;
-  letter-spacing: 4px;
+  font-size: 22px;
+  padding: 8px 16px;
+  letter-spacing: 6px;
+  text-indent: 6px;
+  border-width: 3px;
 }
 
 @media (max-width: 768px) {
