@@ -30,9 +30,9 @@ func GetDashboardStats(c *gin.Context) {
 		Select("COALESCE(SUM(total_revenue), 0)").
 		Scan(&summaryRevenue)
 
-	totalRevenueByCurrency := make(map[string]float64)
+	totalRevenueByCurrency := map[string]float64{"CNY": 0, "USD": 0}
 	for _, cr := range currentRevenues {
-		totalRevenueByCurrency[cr.Currency] = cr.Revenue
+		totalRevenueByCurrency[cr.Currency] += cr.Revenue
 	}
 	if summaryRevenue > 0 {
 		totalRevenueByCurrency["CNY"] += summaryRevenue
@@ -62,9 +62,9 @@ func GetDashboardStats(c *gin.Context) {
 		Group("order_items.currency").
 		Scan(&todayRevenues)
 
-	todayRevenueByCurrency := make(map[string]float64)
+	todayRevenueByCurrency := map[string]float64{"CNY": 0, "USD": 0}
 	for _, tr := range todayRevenues {
-		todayRevenueByCurrency[tr.Currency] = tr.Revenue
+		todayRevenueByCurrency[tr.Currency] += tr.Revenue
 	}
 
 	var pendingOrders int64
@@ -193,9 +193,9 @@ func GetRevenueByDate(c *gin.Context) {
 			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
 			Count(&orders)
 
-		revenueByCurrency := make(map[string]float64)
+		revenueByCurrency := map[string]float64{"CNY": 0, "USD": 0}
 		for _, dr := range dayRevenues {
-			revenueByCurrency[dr.Currency] = dr.Revenue
+			revenueByCurrency[dr.Currency] += dr.Revenue
 		}
 
 		if summary, ok := summaryMap[dateStr]; ok {
@@ -250,7 +250,7 @@ func GetDashboardTopProducts(c *gin.Context) {
 				ProductName:       r.ProductName,
 				Image:             r.Image,
 				TotalSold:         r.TotalSold,
-				RevenueByCurrency: make(map[string]float64),
+				RevenueByCurrency: map[string]float64{"CNY": 0, "USD": 0},
 			}
 			productOrder = append(productOrder, r.ProductID)
 		}

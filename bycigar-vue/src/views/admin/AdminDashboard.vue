@@ -118,23 +118,17 @@ const fetchRevenue = async () => {
 
 const formatPrice = (price, currency = 'CNY') => formatPriceByCurrency(price || 0, currency)
 const formatMultiCurrency = (revenueByCurrency) => {
-  if (!revenueByCurrency) return '¥0.00'
-  const parts = []
-  if (revenueByCurrency.CNY) parts.push('¥' + Number(revenueByCurrency.CNY).toFixed(2))
-  if (revenueByCurrency.USD) parts.push('$' + Number(revenueByCurrency.USD).toFixed(2))
-  return parts.length ? parts.join(' / ') : '¥0.00'
+  if (!revenueByCurrency) return '¥0.00 / $0.00'
+  const cny = Number(revenueByCurrency.CNY || 0).toFixed(2)
+  const usd = Number(revenueByCurrency.USD || 0).toFixed(2)
+  return '¥' + cny + ' / $' + usd
 }
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
 const revenueChartData = computed(() => {
   const labels = revenueData.value.map(d => d.date.slice(5))
-  const datasets = []
-
-  const hasCNY = revenueData.value.some(d => d.revenueByCurrency && d.revenueByCurrency.CNY)
-  const hasUSD = revenueData.value.some(d => d.revenueByCurrency && d.revenueByCurrency.USD)
-
-  if (hasCNY) {
-    datasets.push({
+  const datasets = [
+    {
       label: '营收 (CNY)',
       data: revenueData.value.map(d => d.revenueByCurrency?.CNY || 0),
       borderColor: '#d4a574',
@@ -142,10 +136,8 @@ const revenueChartData = computed(() => {
       fill: true,
       tension: 0.4,
       yAxisID: 'y'
-    })
-  }
-  if (hasUSD) {
-    datasets.push({
+    },
+    {
       label: '营收 (USD)',
       data: revenueData.value.map(d => d.revenueByCurrency?.USD || 0),
       borderColor: '#2e7d32',
@@ -153,18 +145,17 @@ const revenueChartData = computed(() => {
       fill: true,
       tension: 0.4,
       yAxisID: 'y'
-    })
-  }
-
-  datasets.push({
-    label: '订单',
-    data: revenueData.value.map(d => d.orders),
-    borderColor: '#1565c0',
-    backgroundColor: 'rgba(21, 101, 192, 0.1)',
-    fill: true,
-    tension: 0.4,
-    yAxisID: 'y1'
-  })
+    },
+    {
+      label: '订单',
+      data: revenueData.value.map(d => d.orders),
+      borderColor: '#1565c0',
+      backgroundColor: 'rgba(21, 101, 192, 0.1)',
+      fill: true,
+      tension: 0.4,
+      yAxisID: 'y1'
+    }
+  ]
 
   return { labels, datasets }
 })
