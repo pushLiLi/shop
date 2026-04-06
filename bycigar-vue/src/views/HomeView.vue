@@ -144,42 +144,44 @@ onMounted(() => { fetchData() })
 <template>
   <main class="home-page">
     <section class="hero-slider">
-      <div
-        class="slider-container"
-        @mouseenter="onMouseEnter"
-        @mouseleave="onMouseLeave"
-        @touchstart="onTouchStart"
-        @touchend="onTouchEnd"
-      >
+      <div class="container">
         <div
-          class="slider-track"
-          :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
+          class="slider-container"
+          @mouseenter="onMouseEnter"
+          @mouseleave="onMouseLeave"
+          @touchstart="onTouchStart"
+          @touchend="onTouchEnd"
         >
           <div
-            v-for="(banner, index) in banners"
-            :key="index"
-            class="slide"
+            class="slider-track"
+            :style="{ transform: `translateX(-${currentIndex * 100}%)` }"
           >
-            <router-link :to="banner.link || '#'">
-              <img
-                :src="banner.imageUrl"
-                :alt="banner.title || 'Banner ' + (index + 1)"
-                :loading="index > 1 ? 'lazy' : 'eager'"
-                :fetchpriority="index === 0 ? 'high' : 'auto'"
-              >
-            </router-link>
+            <div
+              v-for="(banner, index) in banners"
+              :key="index"
+              class="slide"
+            >
+              <router-link :to="banner.link || '#'">
+                <img
+                  :src="banner.imageUrl"
+                  :alt="banner.title || 'Banner ' + (index + 1)"
+                  :loading="index > 1 ? 'lazy' : 'eager'"
+                  :fetchpriority="index === 0 ? 'high' : 'auto'"
+                >
+              </router-link>
+            </div>
           </div>
-        </div>
-        <button class="slider-btn prev" @click="prevSlide">&#10094;</button>
-        <button class="slider-btn next" @click="nextSlide">&#10095;</button>
-        <div class="slider-dots">
-          <button
-            v-for="(_, index) in banners"
-            :key="index"
-            class="dot"
-            :class="{ active: index === currentIndex }"
-            @click="goToSlide(index)"
-          ></button>
+          <button class="slider-btn prev" @click="prevSlide">&#10094;</button>
+          <button class="slider-btn next" @click="nextSlide">&#10095;</button>
+          <div class="slider-dots">
+            <button
+              v-for="(_, index) in banners"
+              :key="index"
+              class="dot"
+              :class="{ active: index === currentIndex }"
+              @click="goToSlide(index)"
+            ></button>
+          </div>
         </div>
       </div>
     </section>
@@ -345,6 +347,7 @@ onMounted(() => { fetchData() })
   position: relative;
   overflow: hidden;
   touch-action: pan-y;
+  border-radius: 8px;
 }
 
 .slider-track {
