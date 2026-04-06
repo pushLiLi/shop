@@ -68,6 +68,9 @@ async function shareHandler(e) {
   <div class="product-card" :class="{ horizontal: horizontal }" @click="router.push('/products/' + product.id)">
     <router-link :to="'/products/' + product.id" class="product-image">
       <img :src="product.thumbnailUrl || product.imageUrl" :alt="product.name" loading="lazy">
+      <div v-if="product.stock === 0" class="sold-out-overlay">
+        <span class="sold-out-text">已售罄</span>
+      </div>
       <button class="favorite-btn" @click="toggleFavorite" :class="{ active: isFavorite }">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" :fill="isFavorite ? '#d4a574' : 'none'" stroke="currentColor" stroke-width="2">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -88,10 +91,11 @@ async function shareHandler(e) {
         <router-link :to="'/products/' + product.id">{{ product.name }}</router-link>
       </h3>
       <div class="product-bottom">
-        <button class="add-cart-btn" @click="addToCartHandler">
+        <button v-if="product.stock > 0" class="add-cart-btn" @click="addToCartHandler">
           <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           <span class="cart-text">加入购物车</span>
         </button>
+        <span v-else class="sold-out-tag">已售罄</span>
         <div class="product-price">{{ formatPrice(product) }}</div>
       </div>
     </div>
@@ -163,6 +167,39 @@ async function shareHandler(e) {
   height: auto;
   aspect-ratio: 1;
   object-fit: cover;
+}
+
+.sold-out-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.sold-out-text {
+  display: inline-block;
+  padding: 8px 28px;
+  border: 3px solid #e53e3e;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  transform: rotate(-18deg);
+  background: rgba(229, 62, 62, 0.15);
+}
+
+.sold-out-tag {
+  color: #e53e3e;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border: 1px solid #e53e3e;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .product-info {
@@ -301,6 +338,12 @@ async function shareHandler(e) {
   top: 8px;
   left: 8px;
   padding: 6px;
+}
+
+.product-card.horizontal .sold-out-text {
+  font-size: 16px;
+  padding: 6px 18px;
+  letter-spacing: 2px;
 }
 
 @media (max-width: 768px) {

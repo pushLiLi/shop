@@ -157,4 +157,24 @@ describe('ProductCard', () => {
     await wrapper.find('.favorite-btn').trigger('click')
     expect(removeSpy).toHaveBeenCalledWith(1)
   })
+
+  it('shows sold out overlay when stock is 0', async () => {
+    const soldOutProduct = { ...mockProduct, stock: 0 }
+    const wrapper = await mountCard({ product: soldOutProduct })
+    expect(wrapper.find('.sold-out-overlay').exists()).toBe(true)
+    expect(wrapper.find('.sold-out-text').text()).toBe('已售罄')
+  })
+
+  it('does not show sold out overlay when stock > 0', async () => {
+    const wrapper = await mountCard()
+    expect(wrapper.find('.sold-out-overlay').exists()).toBe(false)
+  })
+
+  it('hides add to cart button and shows sold out tag when stock is 0', async () => {
+    const soldOutProduct = { ...mockProduct, stock: 0 }
+    const wrapper = await mountCard({ product: soldOutProduct })
+    expect(wrapper.find('.add-cart-btn').exists()).toBe(false)
+    expect(wrapper.find('.sold-out-tag').exists()).toBe(true)
+    expect(wrapper.find('.sold-out-tag').text()).toBe('已售罄')
+  })
 })
