@@ -40,4 +40,4 @@ __pycache__/
 .vite/
 .claude/
 .crush/
-.github/
+.github/workflows/
