@@ -41,6 +41,24 @@ func generateSlug(name string) string {
 	return slug
 }
 
+func ensureUniqueSlug(slug string, excludeID uint) string {
+	baseSlug := slug
+	counter := 1
+	for {
+		query := database.DB.Unscoped().Model(&models.Product{}).Where("slug = ?", slug)
+		if excludeID > 0 {
+			query = query.Where("id != ?", excludeID)
+		}
+		var count int64
+		query.Count(&count)
+		if count == 0 {
+			return slug
+		}
+		slug = baseSlug + "-" + strconv.Itoa(counter)
+		counter++
+	}
+}
+
 // CreateProduct godoc
 // @Summary 创建商品
 // @Description 创建新的商品
@@ -63,6 +81,7 @@ func CreateProduct(c *gin.Context) {
 	if input.Slug == "" {
 		input.Slug = generateSlug(input.Name)
 	}
+	input.Slug = ensureUniqueSlug(input.Slug, 0)
 
 	if input.Currency == "" {
 		input.Currency = "CNY"
@@ -131,7 +150,9 @@ func UpdateProduct(c *gin.Context) {
 
 	product.Name = input.Name
 	if input.Slug != "" {
-		product.Slug = input.Slug
+		product.Slug = ensureUniqueSlug(input.Slug, product.ID)
+	} else {
+		product.Slug = ensureUniqueSlug(generateSlug(input.Name), product.ID)
 	}
 	product.Description = input.Description
 	product.Price = input.Price
