@@ -339,7 +339,7 @@ onMounted(() => { fetchData() })
 .slide img {
   width: 100%;
   height: auto;
-  max-height: 450px;
+  max-height: min(55vh, 500px);
   aspect-ratio: 60/23;
   object-fit: cover;
   display: block;
@@ -618,6 +618,7 @@ onMounted(() => { fetchData() })
 @media (max-width: 768px) {
   .slide img {
     aspect-ratio: 2/1;
+    max-height: 30vh;
   }
 
   .slider-btn {
