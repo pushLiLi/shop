@@ -310,7 +310,8 @@ func (s *AdminDeepTestSuite) TestAdminGetDashboardStats() {
 
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
-	s.NotNil(resp["stats"])
+	s.NotNil(resp["totalRevenueByCurrency"])
+	s.NotNil(resp["totalOrders"])
 }
 
 func (s *AdminDeepTestSuite) TestAdminGetDashboardTopProducts() {

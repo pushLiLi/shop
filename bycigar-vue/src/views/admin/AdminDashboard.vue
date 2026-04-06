@@ -116,34 +116,57 @@ const fetchRevenue = async () => {
   }
 }
 
-const formatPrice = (price) => formatPriceByCurrency(price || 0, 'CNY')
+const formatPrice = (price, currency = 'CNY') => formatPriceByCurrency(price || 0, currency)
+const formatMultiCurrency = (revenueByCurrency) => {
+  if (!revenueByCurrency) return '¥0.00'
+  const parts = []
+  if (revenueByCurrency.CNY) parts.push('¥' + Number(revenueByCurrency.CNY).toFixed(2))
+  if (revenueByCurrency.USD) parts.push('$' + Number(revenueByCurrency.USD).toFixed(2))
+  return parts.length ? parts.join(' / ') : '¥0.00'
+}
 const formatDate = (date) => new Date(date).toLocaleString('zh-CN')
 
 const revenueChartData = computed(() => {
   const labels = revenueData.value.map(d => d.date.slice(5))
-  return {
-    labels,
-    datasets: [
-      {
-        label: '营收',
-        data: revenueData.value.map(d => d.revenue),
-        borderColor: '#d4a574',
-        backgroundColor: 'rgba(212, 165, 116, 0.1)',
-        fill: true,
-        tension: 0.4,
-        yAxisID: 'y'
-      },
-      {
-        label: '订单',
-        data: revenueData.value.map(d => d.orders),
-        borderColor: '#1565c0',
-        backgroundColor: 'rgba(21, 101, 192, 0.1)',
-        fill: true,
-        tension: 0.4,
-        yAxisID: 'y1'
-      }
-    ]
+  const datasets = []
+
+  const hasCNY = revenueData.value.some(d => d.revenueByCurrency && d.revenueByCurrency.CNY)
+  const hasUSD = revenueData.value.some(d => d.revenueByCurrency && d.revenueByCurrency.USD)
+
+  if (hasCNY) {
+    datasets.push({
+      label: '营收 (CNY)',
+      data: revenueData.value.map(d => d.revenueByCurrency?.CNY || 0),
+      borderColor: '#d4a574',
+      backgroundColor: 'rgba(212, 165, 116, 0.1)',
+      fill: true,
+      tension: 0.4,
+      yAxisID: 'y'
+    })
   }
+  if (hasUSD) {
+    datasets.push({
+      label: '营收 (USD)',
+      data: revenueData.value.map(d => d.revenueByCurrency?.USD || 0),
+      borderColor: '#2e7d32',
+      backgroundColor: 'rgba(46, 125, 50, 0.1)',
+      fill: true,
+      tension: 0.4,
+      yAxisID: 'y'
+    })
+  }
+
+  datasets.push({
+    label: '订单',
+    data: revenueData.value.map(d => d.orders),
+    borderColor: '#1565c0',
+    backgroundColor: 'rgba(21, 101, 192, 0.1)',
+    fill: true,
+    tension: 0.4,
+    yAxisID: 'y1'
+  })
+
+  return { labels, datasets }
 })
 
 const revenueChartOptions = {
@@ -156,7 +179,7 @@ const revenueChartOptions = {
       type: 'linear',
       display: true,
       position: 'left',
-      title: { display: true, text: '营收 (¥)' },
+      title: { display: true, text: '营收' },
       grid: { color: '#f5f5f5' }
     },
     y1: {
@@ -219,7 +242,7 @@ onMounted(async () => {
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ formatPrice(stats.totalRevenue) }}</div>
+              <div class="stat-value">{{ formatMultiCurrency(stats.totalRevenueByCurrency) }}</div>
               <div class="stat-label">总营收</div>
             </div>
           </div>
@@ -253,7 +276,7 @@ onMounted(async () => {
               <div class="stat-label">今日订单</div>
             </div>
             <div class="stat-extra" v-if="showRevenue">
-              <span class="today-revenue">{{ formatPrice(stats.todayRevenue) }}</span>
+              <span class="today-revenue">{{ formatMultiCurrency(stats.todayRevenueByCurrency) }}</span>
             </div>
           </div>
         </div>
@@ -317,7 +340,7 @@ onMounted(async () => {
                 <tr v-for="order in recentOrders" :key="order.id">
                   <td class="order-no">{{ order.orderNo }}</td>
                   <td>{{ order.userName || '-' }}</td>
-                  <td>{{ formatPrice(order.total) }}</td>
+                  <td>{{ formatPrice(order.total, order.currency === 'mixed' ? 'CNY' : order.currency) }}</td>
                   <td><span class="badge" :class="statusBadgeClass(order.status)">{{ statusLabels[order.status] }}</span></td>
                   <td class="time-cell">{{ formatDate(order.createdAt) }}</td>
                 </tr>
@@ -382,7 +405,7 @@ onMounted(async () => {
                   <td><span class="rank" :class="'rank-' + (index + 1)">{{ index + 1 }}</span></td>
                   <td>{{ product.productName }}</td>
                   <td>{{ product.totalSold }} 件</td>
-                  <td v-if="showRevenue" class="price">{{ formatPrice(product.revenue) }}</td>
+                  <td v-if="showRevenue" class="price">{{ formatMultiCurrency(product.revenueByCurrency) }}</td>
                 </tr>
                 <tr v-if="topProducts.length === 0">
                   <td :colspan="showRevenue ? 4 : 3" class="empty-text">暂无销售数据</td>

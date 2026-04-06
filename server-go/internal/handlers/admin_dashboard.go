@@ -12,17 +12,31 @@ import (
 )
 
 func GetDashboardStats(c *gin.Context) {
-	var totalRevenue float64
-	database.DB.Model(&models.Order{}).
-		Where("status IN ?", []string{"completed", "shipped", "processing"}).
-		Select("COALESCE(SUM(total), 0)").
-		Scan(&totalRevenue)
+	type CurrencyRevenue struct {
+		Currency string  `json:"currency"`
+		Revenue  float64 `json:"revenue"`
+	}
+
+	var currentRevenues []CurrencyRevenue
+	database.DB.Table("order_items").
+		Select("order_items.currency, SUM(order_items.quantity * order_items.price) as revenue").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Where("orders.status IN ?", []string{"completed", "shipped", "processing"}).
+		Group("order_items.currency").
+		Scan(&currentRevenues)
 
 	var summaryRevenue float64
 	database.DB.Model(&models.OrderSummary{}).
 		Select("COALESCE(SUM(total_revenue), 0)").
 		Scan(&summaryRevenue)
-	totalRevenue += summaryRevenue
+
+	totalRevenueByCurrency := make(map[string]float64)
+	for _, cr := range currentRevenues {
+		totalRevenueByCurrency[cr.Currency] = cr.Revenue
+	}
+	if summaryRevenue > 0 {
+		totalRevenueByCurrency["CNY"] += summaryRevenue
+	}
 
 	var totalOrders int64
 	database.DB.Model(&models.Order{}).Count(&totalOrders)
@@ -40,23 +54,30 @@ func GetDashboardStats(c *gin.Context) {
 	var todayOrders int64
 	database.DB.Model(&models.Order{}).Where("created_at >= ?", today).Count(&todayOrders)
 
-	var todayRevenue float64
-	database.DB.Model(&models.Order{}).
-		Where("created_at >= ? AND status IN ?", today, []string{"completed", "shipped", "processing"}).
-		Select("COALESCE(SUM(total), 0)").
-		Scan(&todayRevenue)
+	var todayRevenues []CurrencyRevenue
+	database.DB.Table("order_items").
+		Select("order_items.currency, SUM(order_items.quantity * order_items.price) as revenue").
+		Joins("JOIN orders ON orders.id = order_items.order_id").
+		Where("orders.created_at >= ? AND orders.status IN ?", today, []string{"completed", "shipped", "processing"}).
+		Group("order_items.currency").
+		Scan(&todayRevenues)
+
+	todayRevenueByCurrency := make(map[string]float64)
+	for _, tr := range todayRevenues {
+		todayRevenueByCurrency[tr.Currency] = tr.Revenue
+	}
 
 	var pendingOrders int64
 	database.DB.Model(&models.Order{}).Where("status = ?", "pending").Count(&pendingOrders)
 
 	c.JSON(http.StatusOK, gin.H{
-		"totalRevenue":  totalRevenue,
-		"totalOrders":   totalOrders,
-		"totalUsers":    totalUsers,
-		"totalProducts": totalProducts,
-		"todayOrders":   todayOrders,
-		"todayRevenue":  todayRevenue,
-		"pendingOrders": pendingOrders,
+		"totalRevenueByCurrency": totalRevenueByCurrency,
+		"totalOrders":            totalOrders,
+		"totalUsers":             totalUsers,
+		"totalProducts":          totalProducts,
+		"todayOrders":            todayOrders,
+		"todayRevenueByCurrency": todayRevenueByCurrency,
+		"pendingOrders":          pendingOrders,
 	})
 }
 
@@ -82,6 +103,7 @@ func GetDashboardRecentOrders(c *gin.Context) {
 		OrderNo   string    `json:"orderNo"`
 		UserName  string    `json:"userName"`
 		Total     float64   `json:"total"`
+		Currency  string    `json:"currency"`
 		Status    string    `json:"status"`
 		ItemCount int       `json:"itemCount"`
 		CreatedAt time.Time `json:"createdAt"`
@@ -90,11 +112,22 @@ func GetDashboardRecentOrders(c *gin.Context) {
 	var result []RecentOrder
 	for _, o := range orders {
 		u := userMap[o.UserID]
+		currency := "CNY"
+		if len(o.Items) > 0 {
+			currency = o.Items[0].Currency
+			for _, item := range o.Items {
+				if item.Currency != currency {
+					currency = "mixed"
+					break
+				}
+			}
+		}
 		result = append(result, RecentOrder{
 			ID:        o.ID,
 			OrderNo:   o.OrderNo,
 			UserName:  u.Name,
 			Total:     o.Total,
+			Currency:  currency,
 			Status:    o.Status,
 			ItemCount: len(o.Items),
 			CreatedAt: o.CreatedAt,
@@ -125,9 +158,9 @@ func GetRevenueByDate(c *gin.Context) {
 	startDate := time.Now().AddDate(0, 0, -days+1).Truncate(24 * time.Hour)
 
 	type DailyRevenue struct {
-		Date    string  `json:"date"`
-		Revenue float64 `json:"revenue"`
-		Orders  int     `json:"orders"`
+		Date              string             `json:"date"`
+		RevenueByCurrency map[string]float64 `json:"revenueByCurrency"`
+		Orders            int                `json:"orders"`
 	}
 
 	var results []DailyRevenue
@@ -143,25 +176,37 @@ func GetRevenueByDate(c *gin.Context) {
 		nextDay := day.AddDate(0, 0, 1)
 		dateStr := day.Format("2006-01-02")
 
-		var revenue float64
+		type CurrencyRevenue struct {
+			Currency string  `json:"currency"`
+			Revenue  float64 `json:"revenue"`
+		}
+		var dayRevenues []CurrencyRevenue
+		database.DB.Table("order_items").
+			Select("order_items.currency, SUM(order_items.quantity * order_items.price) as revenue").
+			Joins("JOIN orders ON orders.id = order_items.order_id").
+			Where("orders.created_at >= ? AND orders.created_at < ? AND orders.status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
+			Group("order_items.currency").
+			Scan(&dayRevenues)
+
 		var orders int64
-		database.DB.Model(&models.Order{}).
-			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
-			Select("COALESCE(SUM(total), 0)").
-			Scan(&revenue)
 		database.DB.Model(&models.Order{}).
 			Where("created_at >= ? AND created_at < ? AND status IN ?", day, nextDay, []string{"completed", "shipped", "processing"}).
 			Count(&orders)
 
+		revenueByCurrency := make(map[string]float64)
+		for _, dr := range dayRevenues {
+			revenueByCurrency[dr.Currency] = dr.Revenue
+		}
+
 		if summary, ok := summaryMap[dateStr]; ok {
-			revenue += summary.TotalRevenue
+			revenueByCurrency["CNY"] += summary.TotalRevenue
 			orders += int64(summary.CompletedOrders)
 		}
 
 		results = append(results, DailyRevenue{
-			Date:    dateStr,
-			Revenue: revenue,
-			Orders:  int(orders),
+			Date:              dateStr,
+			RevenueByCurrency: revenueByCurrency,
+			Orders:            int(orders),
 		})
 	}
 
@@ -170,23 +215,56 @@ func GetRevenueByDate(c *gin.Context) {
 
 func GetDashboardTopProducts(c *gin.Context) {
 	type TopProduct struct {
+		ProductID         uint               `json:"productId"`
+		ProductName       string             `json:"productName"`
+		Image             string             `json:"imageUrl"`
+		TotalSold         int                `json:"totalSold"`
+		RevenueByCurrency map[string]float64 `json:"revenueByCurrency"`
+	}
+
+	type ProductRevenue struct {
 		ProductID   uint    `json:"productId"`
 		ProductName string  `json:"productName"`
 		Image       string  `json:"imageUrl"`
 		TotalSold   int     `json:"totalSold"`
+		Currency    string  `json:"currency"`
 		Revenue     float64 `json:"revenue"`
 	}
 
-	var results []TopProduct
+	var rawResults []ProductRevenue
 	database.DB.Table("order_items").
-		Select("order_items.product_id, products.name as product_name, products.image as image, SUM(order_items.quantity) as total_sold, SUM(order_items.quantity * order_items.price) as revenue").
+		Select("order_items.product_id, products.name as product_name, products.image as image, SUM(order_items.quantity) as total_sold, order_items.currency, SUM(order_items.quantity * order_items.price) as revenue").
 		Joins("JOIN products ON products.id = order_items.product_id").
 		Joins("JOIN orders ON orders.id = order_items.order_id").
 		Where("orders.status IN ?", []string{"completed", "shipped", "processing"}).
-		Group("order_items.product_id, products.name, products.image").
+		Group("order_items.product_id, products.name, products.image, order_items.currency").
 		Order("total_sold desc").
-		Limit(10).
-		Scan(&results)
+		Scan(&rawResults)
+
+	productMap := make(map[uint]*TopProduct)
+	var productOrder []uint
+	for _, r := range rawResults {
+		if _, exists := productMap[r.ProductID]; !exists {
+			productMap[r.ProductID] = &TopProduct{
+				ProductID:         r.ProductID,
+				ProductName:       r.ProductName,
+				Image:             r.Image,
+				TotalSold:         r.TotalSold,
+				RevenueByCurrency: make(map[string]float64),
+			}
+			productOrder = append(productOrder, r.ProductID)
+		}
+		productMap[r.ProductID].RevenueByCurrency[r.Currency] += r.Revenue
+	}
+
+	var results []TopProduct
+	for _, id := range productOrder {
+		results = append(results, *productMap[id])
+	}
+
+	if len(results) > 10 {
+		results = results[:10]
+	}
 
 	c.JSON(http.StatusOK, gin.H{"products": results})
 }
