@@ -1,30 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import CategoryView from '../views/CategoryView.vue'
-import ProductDetailView from '../views/ProductDetailView.vue'
-import SearchView from '../views/SearchView.vue'
-import CartView from '../views/CartView.vue'
-import CheckoutView from '../views/CheckoutView.vue'
-import OrdersView from '../views/OrdersView.vue'
-import OrderDetailView from '../views/OrderDetailView.vue'
-import FavoritesView from '../views/FavoritesView.vue'
-import PageView from '../views/PageView.vue'
-import LoginView from '../views/LoginView.vue'
-import ProfileView from '../views/ProfileView.vue'
-import NotificationDetailView from '../views/NotificationDetailView.vue'
-import AdminLayout from '../views/admin/AdminLayout.vue'
-import AdminProducts from '../views/admin/AdminProducts.vue'
-import AdminBanners from '../views/admin/AdminBanners.vue'
-import AdminCategories from '../views/admin/AdminCategories.vue'
-import AdminPages from '../views/admin/AdminPages.vue'
-import AdminSettings from '../views/admin/AdminSettings.vue'
-import AdminOrders from '../views/admin/AdminOrders.vue'
-import AdminDashboard from '../views/admin/AdminDashboard.vue'
-import AdminUsers from '../views/admin/AdminUsers.vue'
-import AdminChat from '../views/admin/AdminChat.vue'
-import AdminPaymentMethods from '../views/admin/AdminPaymentMethods.vue'
-import AdminContactMethods from '../views/admin/AdminContactMethods.vue'
-import AdminCleanup from '../views/admin/AdminCleanup.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,154 +6,154 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: () => import('../views/HomeView.vue')
     },
     {
       path: '/products',
       name: 'all-products',
-      component: CategoryView
+      component: () => import('../views/CategoryView.vue')
     },
     {
       path: '/category/:slug',
       name: 'category',
-      component: CategoryView
+      component: () => import('../views/CategoryView.vue')
     },
     {
       path: '/products/:id',
       name: 'product-detail',
-      component: ProductDetailView
+      component: () => import('../views/ProductDetailView.vue')
     },
     {
       path: '/search',
       name: 'search',
-      component: SearchView
+      component: () => import('../views/SearchView.vue')
     },
     {
       path: '/cart',
       name: 'cart',
-      component: CartView
+      component: () => import('../views/CartView.vue')
     },
     {
       path: '/checkout',
       name: 'checkout',
-      component: CheckoutView,
+      component: () => import('../views/CheckoutView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/orders',
       name: 'orders',
-      component: OrdersView,
+      component: () => import('../views/OrdersView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/orders/:id',
       name: 'order-detail',
-      component: OrderDetailView,
+      component: () => import('../views/OrderDetailView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/favorites',
       name: 'favorites',
-      component: FavoritesView,
+      component: () => import('../views/FavoritesView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/:slug(about|services|privacy-policy|statement)',
       name: 'page',
-      component: PageView
+      component: () => import('../views/PageView.vue')
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: () => import('../views/LoginView.vue')
     },
     {
       path: '/profile',
       name: 'profile',
-      component: ProfileView,
+      component: () => import('../views/ProfileView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/notifications/:id',
       name: 'notification-detail',
-      component: NotificationDetailView,
+      component: () => import('../views/NotificationDetailView.vue'),
       meta: { requiresAuth: true }
     },
     {
       path: '/admin',
-      component: AdminLayout,
+      component: () => import('../views/admin/AdminLayout.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [
         {
           path: '',
           name: 'admin-dashboard',
-          component: AdminDashboard,
+          component: () => import('../views/admin/AdminDashboard.vue'),
           meta: { title: '仪表盘' }
         },
         {
           path: 'products',
           name: 'admin-products',
-          component: AdminProducts,
+          component: () => import('../views/admin/AdminProducts.vue'),
           meta: { title: '商品管理' }
         },
         {
           path: 'orders',
           name: 'admin-orders',
-          component: AdminOrders,
+          component: () => import('../views/admin/AdminOrders.vue'),
           meta: { title: '订单管理' }
         },
         {
           path: 'users',
           name: 'admin-users',
-          component: AdminUsers,
+          component: () => import('../views/admin/AdminUsers.vue'),
           meta: { title: '用户管理' }
         },
         {
           path: 'chat',
           name: 'admin-chat',
-          component: AdminChat,
+          component: () => import('../views/admin/AdminChat.vue'),
           meta: { title: '客服消息' }
         },
         {
           path: 'categories',
           name: 'admin-categories',
-          component: AdminCategories,
+          component: () => import('../views/admin/AdminCategories.vue'),
           meta: { title: '分类管理' }
         },
         {
           path: 'banners',
           name: 'admin-banners',
-          component: AdminBanners,
+          component: () => import('../views/admin/AdminBanners.vue'),
           meta: { title: '轮播图管理', requiresSuperAdmin: true }
         },
         {
           path: 'pages',
           name: 'admin-pages',
-          component: AdminPages,
+          component: () => import('../views/admin/AdminPages.vue'),
           meta: { title: '页面管理', requiresSuperAdmin: true }
         },
         {
           path: 'settings',
           name: 'admin-settings',
-          component: AdminSettings,
+          component: () => import('../views/admin/AdminSettings.vue'),
           meta: { title: '站点设置', requiresSuperAdmin: true }
         },
         {
           path: 'payment-methods',
           name: 'admin-payment-methods',
-          component: AdminPaymentMethods,
+          component: () => import('../views/admin/AdminPaymentMethods.vue'),
           meta: { title: '付款方式', requiresSuperAdmin: true }
         },
         {
           path: 'contact-methods',
           name: 'admin-contact-methods',
-          component: AdminContactMethods,
+          component: () => import('../views/admin/AdminContactMethods.vue'),
           meta: { title: '联系方式', requiresSuperAdmin: true }
         },
         {
           path: 'cleanup',
           name: 'admin-cleanup',
-          component: AdminCleanup,
+          component: () => import('../views/admin/AdminCleanup.vue'),
           meta: { title: '数据清理', requiresSuperAdmin: true }
         }
       ]

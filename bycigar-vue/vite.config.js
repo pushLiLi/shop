@@ -18,5 +18,22 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/media/, '')
       }
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/vue/') || id.includes('node_modules/vue-router/') || id.includes('node_modules/pinia/')) {
+            return 'vendor-vue'
+          }
+          if (id.includes('node_modules/chart.js/') || id.includes('node_modules/vue-chartjs/')) {
+            return 'vendor-chart'
+          }
+          if (id.includes('node_modules/marked/')) {
+            return 'vendor-marked'
+          }
+        }
+      }
+    }
   }
 })
